@@ -145,14 +145,14 @@ export default function Footer() {
           </div>
 
           {/* Newsletter Subscription */}
-          <div className="mt-8 sm:mt-10 md:mt-12 p-4 sm:p-6 bg-primary/30 rounded-xl shadow-sm text-white">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-center">
-              <div className="md:col-span-2">
+          <div className="mt-8 sm:mt-10 md:mt-12 p-4 sm:p-6 bg-primary/30 rounded-xl shadow-sm text-white min-w-xs">
+            <div className="flex flex-col md:flex-row gap-4 sm:gap-6 items-center justify-between ">
+              <div className="md:text-start text-center">
                 <h5 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2 font-poppins">Subscribe to Our Newsletter</h5>
                 <p className="text-xs sm:text-sm text-gray-600 font-nunito">Stay updated with our latest news and announcements</p>
               </div>
               <div>
-                <div className="flex">
+                <div className="flex flex-nowrap">
                   <input
                     type="email"
                     placeholder="Your email address"
