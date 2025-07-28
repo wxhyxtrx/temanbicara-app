@@ -60,13 +60,14 @@ export default function Navbar() {
                         >
                             Contact
                         </span>
-                        <Button 
-                            size={"lg"} 
-                            className='font-semibold rounded-full'
-                            onClick={() => scrollToSection('start-now')}
-                        >
-                            Get Started
-                        </Button>
+                        <Link href="/login">
+                            <Button 
+                                size={"lg"} 
+                                className='font-semibold rounded-full'
+                            >
+                                Get Started
+                            </Button>
+                        </Link>
                     </div>
                     
                     {/* Mobile Menu Button */}
@@ -100,13 +101,14 @@ export default function Navbar() {
                             >
                                 Contact
                             </span>
-                            <Button 
-                                size={"default"} 
-                                className='font-semibold rounded-full w-full'
-                                onClick={() => scrollToSection('start-now')}
-                            >
-                                Get Started
-                            </Button>
+                            <Link href="/login">
+                                <Button 
+                                    size={"default"} 
+                                    className='font-semibold rounded-full w-full'
+                                >
+                                    Get Started
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 )}
