@@ -21,8 +21,8 @@ TemanBicara adalah platform ramah dan aman di mana siapa pun dapat berbicara den
   /app          # App routes
   /components   # Komponen UI yang dapat digunakan kembali (shadcn)
     /shared     # Komponen bersama (layouts, organisms, molecules)
-    /ui         # Komponen UI dasar
-    /views      # Komponen khusus untuk tampilan
+    /ui         # Komponen UI dasar (shadcn ui components)
+    /views      # Komponen khusus untuk tampilan per fitur (page)
   /constant     # Konstanta dan data statis
   /lib          # Utilitas dan helper
     /fonts      # Konfigurasi font
