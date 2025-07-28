@@ -9,11 +9,101 @@ import { TiGroupOutline } from "react-icons/ti"
 export default function FeaturesSection() {
     return (
         <Layouts className='bg-white space-y-10'>
-            <div className='flex flex-col gap-4 justify-center text-center max-w-[800px] mx-auto'>
-                <h1 className='text-3xl font-bold'>Features</h1>
-                <p>TemanCerita is a platform that connects storytellers with readers. We believe that every story has the power to inspire and entertain. That's why we offer a unique platform where you can share your stories, read others, and connect with like-minded people.</p>
+            <div className='flex flex-col gap-4 justify-center text-center max-w-[800px] mx-auto px-4'>
+                <h1 className='text-2xl md:text-3xl font-bold'>Features</h1>
+                <p className="text-sm md:text-base">TemanCerita is a platform that connects storytellers with readers. We believe that every story has the power to inspire and entertain. That's why we offer a unique platform where you can share your stories, read others, and connect with like-minded people.</p>
             </div>
-            <div className="grid grid-cols-5 gap-6 w-full">
+            
+            {/* Mobile Features Layout */}
+            <div className="grid grid-cols-1 gap-6 md:hidden px-4">
+                <Image
+                    src="/images/maskot2.png"
+                    alt="Feature Section"
+                    width={500}
+                    height={500}
+                    className="object-cover mx-auto w-full max-w-xs"
+                    priority
+                    quality={100}
+                />
+                
+                <Card className="bg-gray-50 p-0">
+                    <CardContent className="p-6">
+                        <div className="mb-4">
+                            <MessageCircleHeart className="w-8 h-8 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2 text-gray-800">
+                            Speak Without Fear of Judgment
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                            A safe space for everyone to share their stories, free from stigma or labels.
+                        </p>
+                    </CardContent>
+                </Card>
+                
+                <Card className="bg-gray-50 p-0">
+                    <CardContent className="p-6">
+                        <div className="mb-4">
+                            <Headphones className="w-8 h-8 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2 text-gray-800">
+                            Listeners Ready to Support You
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                            Connect with verified listeners or fellow users who want to be there for you.
+                        </p>
+                    </CardContent>
+                </Card>
+                
+                <Card className="bg-gray-50 p-0">
+                    <CardContent className="p-6">
+                        <div className="mb-4">
+                            <Lock className="w-8 h-8 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2 text-gray-800">
+                            Privacy and Security Guaranteed
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                            Your data is safe. Stay anonymous if you choose—your identity is yours to share, or not.
+                        </p>
+                    </CardContent>
+                </Card>
+                
+                <Card className="bg-gray-50 p-0">
+                    <CardContent className="p-6">
+                        <div className="mb-4">
+                            <MdOutlineWorkspacePremium className="w-8 h-8 text-primary" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2 text-gray-800">
+                            Free & Professional Consultation
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                            Enjoy sessions with free listeners, or upgrade to certified professionals ready to help you with an empathetic approach.
+                        </p>
+                    </CardContent>
+                </Card>
+                
+                <Card className="bg-secondary-background border-secondary-background">
+                    <CardContent className="p-6 flex flex-col justify-between">
+                        <div>
+                            <TiGroupOutline className="w-8 h-8 text-primary mb-4" />
+                            <h3 className="text-lg font-semibold mb-2 text-gray-800">
+                                Caring Community
+                            </h3>
+                            <p className="text-gray-700 text-sm">
+                                We build not just features, but a community. At TemanBicara, you are never alone.
+                            </p>
+                        </div>
+                        <div className="mt-6">
+                            <Button size={"lg"}>
+                                Start Now
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+            
+            {/* Desktop/Tablet Features Layout */}
+            <div className="hidden md:grid grid-cols-5 gap-6 w-full">
                 <div className="row-span-2 col-span-2 space-y-3">
                     <Image
                         src="/images/maskot2.png"

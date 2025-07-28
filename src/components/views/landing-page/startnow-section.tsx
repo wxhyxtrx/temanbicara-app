@@ -6,13 +6,13 @@ import Image from 'next/image'
 export default function StartNowSection() {
     return (
         <Layouts>
-            <div className="relative overflow-hidden bg-background rounded-xl p-8 md:p-10 my-8">
+            <div className="relative overflow-hidden bg-background rounded-xl p-6 sm:p-8 md:p-10 my-4 sm:my-8">
                 {/* Background Patterns */}
                 <div className="absolute inset-0 z-0 overflow-hidden">
                     {/* Circles */}
-                    <div className="absolute w-32 h-32 rounded-full border border-foreground opacity-10 -top-10 -left-10"></div>
-                    <div className="absolute w-48 h-48 rounded-full border border-foreground opacity-10 top-1/2 -right-10 transform -translate-y-1/2"></div>
-                    <div className="absolute w-16 h-16 rounded-full bg-primary opacity-10 bottom-10 left-1/4"></div>
+                    <div className="absolute w-24 sm:w-32 h-24 sm:h-32 rounded-full border border-foreground opacity-10 -top-10 -left-10"></div>
+                    <div className="absolute w-32 sm:w-48 h-32 sm:h-48 rounded-full border border-foreground opacity-10 top-1/2 -right-10 transform -translate-y-1/2"></div>
+                    <div className="absolute w-12 sm:w-16 h-12 sm:h-16 rounded-full bg-primary opacity-10 bottom-10 left-1/4"></div>
 
                     {/* Dots */}
                     <div className="absolute w-2 h-2 rounded-full bg-primary top-1/4 right-1/4 opacity-30"></div>
@@ -27,13 +27,13 @@ export default function StartNowSection() {
                 </div>
 
                 {/* Content */}
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div className="space-y-4 max-w-xl">
-                        <h2 className="text-3xl md:text-4xl font-bold font-poppins text-foreground">Start Talking Today</h2>
-                        <p className="text-foreground/80 font-nunito">
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8">
+                    <div className="space-y-3 md:space-y-4 max-w-xl text-center md:text-left">
+                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-poppins text-foreground">Start Talking Today</h2>
+                        <p className="text-sm sm:text-base text-foreground/80 font-nunito">
                             Discover the power of simply being heard. Whether you're feeling overwhelmed, lonely, or just need someone to talk to — TemanBicara is here for you.
                         </p>
-                        <div className="flex flex-wrap gap-4 pt-2">
+                        <div className="flex justify-center md:justify-start flex-wrap gap-4 pt-2">
                             <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
                                 Start Now
                             </Button>
@@ -42,13 +42,13 @@ export default function StartNowSection() {
 
                     {/* Optional Illustration/Icon */}
                     <div className="flex-shrink-0">
-                        <div className="relative w-32 h-32 md:w-40 md:h-40 bg-secondary-background/70 rounded-full flex items-center justify-center">
+                        <div className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 bg-secondary-background/70 rounded-full flex items-center justify-center">
                             <Image
                                 src="/images/mascot1.png"
                                 alt="TemanBicara Mascot"
                                 width={120}
                                 height={120}
-                                className="object-contain"
+                                className="object-contain w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32"
                             />
                         </div>
                     </div>
