@@ -7,17 +7,19 @@ import TestimonialSection from './testimonial-section'
 export default function Landing() {
     return (
         <div>
-            <HeroSection />
-            <div className='bg-white py-20'>
+            <div id="hero">
+                <HeroSection />
+            </div>
+            <div id="features" className='bg-white py-20'>
                 <FeaturesSection />
             </div>
-            <div className='bg-secondary-background'>
+            <div id="join" className='bg-secondary-background'>
                 <JoinSection />
             </div>
-            <div className='py-20'>
+            <div id="testimonial" className='py-20'>
                 <TestimonialSection />
             </div>
-            <div className='bg-white py-20'>
+            <div id="start-now" className='bg-white py-20'>
                 <StartNowSection />
             </div>
         </div>

@@ -1,14 +1,31 @@
+"use client"
+
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import Link from 'next/link'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Layouts from '../layouts'
 
 export default function Navbar() {
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    const scrollToSection = (sectionId: string) => {
+        if (!mounted) return
+        
+        const section = document.getElementById(sectionId)
+        if (section) {
+            section.scrollIntoView({ behavior: 'smooth' })
+        }
+    }
+
     return (
         <Layouts>
             <div className="flex justify-between items-center py-4">
-                <div className="flex items-center">
+                <div className="flex items-center cursor-pointer" onClick={() => scrollToSection('hero')}>
                     <Image
                         src="/images/logo.png"
                         alt="TemanBicara Logo"
@@ -19,16 +36,29 @@ export default function Navbar() {
                     />
                 </div>
                 <div className="flex items-center gap-10 justify-end font-bold font-poppins">
-                    <Link href="/features">
+                    <span 
+                        className="cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => scrollToSection('features')}
+                    >
                         Features
-                    </Link>
-                    <Link href="/testimonial">
+                    </span>
+                    <span 
+                        className="cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => scrollToSection('testimonial')}
+                    >
                         Testimonial
-                    </Link>
-                    <Link href="/contact">
+                    </span>
+                    <span 
+                        className="cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => scrollToSection('join')}
+                    >
                         Contact
-                    </Link>
-                    <Button size={"lg"} className='font-semibold rounded-full'>
+                    </span>
+                    <Button 
+                        size={"lg"} 
+                        className='font-semibold rounded-full'
+                        onClick={() => scrollToSection('start-now')}
+                    >
                         Get Started
                     </Button>
                 </div>

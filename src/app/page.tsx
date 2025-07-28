@@ -10,7 +10,6 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <Landing />
-
       <Footer />
     </div>
   );
