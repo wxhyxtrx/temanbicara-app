@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TemanBicara
 
-## Getting Started
+TemanBicara adalah platform ramah dan aman di mana siapa pun dapat berbicara dengan pendengar yang suportif — secara anonim, aman, dan tanpa penilaian. Baik Anda merasa stres, cemas, atau hanya membutuhkan seseorang untuk diajak bicara, kami siap mendengarkan.
 
-First, run the development server:
+## ✨ Fitur
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- 👂 Berbicara dengan Pendengar Terlatih : Terhubung dengan pendengar yang terverifikasi atau sesama pengguna yang ingin ada untuk Anda  
+- 🔐 Anonim dan Aman : Komunikasi sepenuhnya anonim dan aman, identitas Anda adalah milik Anda untuk dibagikan atau tidak  
+- 🎧 Antarmuka Chat Real-time : Dapatkan dukungan emosional melalui antarmuka chat yang intuitif  
+- 🧡 Gratis dan Mudah Digunakan : Akses kapan saja, di mana saja, tanpa biaya  
+- 👥 Komunitas yang Peduli : Kami membangun tidak hanya fitur, tetapi komunitas. Di TemanBicara, Anda tidak pernah sendirian
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Frontend : Next.js 15 (App Router), TypeScript, Tailwind CSS v4, Shadcn UI, Zustand  
+- Autentikasi : NextAuth.js  
+- Design System : Tailwind + Shadcn  
+- Deployment : Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+/src
+  /app          # App routes
+  /components   # Komponen UI yang dapat digunakan kembali (shadcn)
+    /shared     # Komponen bersama (layouts, organisms, molecules)
+    /ui         # Komponen UI dasar
+    /views      # Komponen khusus untuk tampilan
+  /constant     # Konstanta dan data statis
+  /lib          # Utilitas dan helper
+    /fonts      # Konfigurasi font
+    utils.ts    # Fungsi utilitas
