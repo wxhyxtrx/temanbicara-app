@@ -4,6 +4,8 @@ import Image from 'next/image'
 import React from 'react'
 import { BsChatHeartFill, BsShieldLockFill } from "react-icons/bs";
 import { LuEar } from "react-icons/lu";
+import Link from 'next/link';
+
 function HeroSection() {
     return (
         <Layouts className='space-y-12 md:space-y-24 py-10 md:pb-20'>
@@ -15,9 +17,11 @@ function HeroSection() {
                     <p className="text-sm sm:text-base md:text-lg text-muted-foreground font-poppins leading-relaxed max-w-lg mx-auto lg:mx-0">
                         You don't have to go through it alone. Talk to a listener who's ready to understand, support, and stand with you— all in a space that's private, safe, and free of judgment.
                     </p>
-                    <Button size={"lg"} className='font-semibold rounded-full font-poppins'>
-                        Get Started
-                    </Button>
+                    <Link href="/login">
+                        <Button size={"lg"} className='font-semibold rounded-full font-poppins'>
+                            Get Started
+                        </Button>
+                    </Link>
                 </div>
 
                 <div className="flex justify-center order-1 lg:order-2 font-poppins">

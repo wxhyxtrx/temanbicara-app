@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import Link from 'next/link'
 
 export default function JoinSection() {
     return (
@@ -30,12 +31,16 @@ export default function JoinSection() {
                             Whether you want to talk or just listen, TemanBicara is here for you. Join our caring community where every voice matters.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 pt-2">
-                            <Button size={"lg"} className="rounded-full shadow-lg shadow-primary/20 font-poppins">
-                                Start Talking
-                            </Button>
-                            <Button size={"lg"} variant={"outline"} className="rounded-full font-poppins">
-                                Become a Listener
-                            </Button>
+                            <Link href="/login">
+                                <Button size={"lg"} className="rounded-full shadow-lg shadow-primary/20 font-poppins">
+                                    Start Talking
+                                </Button>
+                            </Link>
+                            <Link href="/login">
+                                <Button size={"lg"} variant={"outline"} className="rounded-full font-poppins">
+                                    Become a Listener
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                     

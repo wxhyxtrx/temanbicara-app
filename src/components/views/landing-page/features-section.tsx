@@ -5,6 +5,7 @@ import { Headphones, Lock, MessageCircleHeart } from 'lucide-react'
 import Image from 'next/image'
 import { MdOutlineWorkspacePremium } from "react-icons/md"
 import { TiGroupOutline } from "react-icons/ti"
+import Link from 'next/link'
 
 export default function FeaturesSection() {
     return (
@@ -94,9 +95,11 @@ export default function FeaturesSection() {
                             </p>
                         </div>
                         <div className="mt-6">
-                            <Button size={"lg"}>
-                                Start Now
-                            </Button>
+                            <Link href="/login">
+                                <Button size={"lg"}>
+                                    Start Now
+                                </Button>
+                            </Link>
                         </div>
                     </CardContent>
                 </Card>
@@ -189,9 +192,11 @@ export default function FeaturesSection() {
                                 </p>
                             </div>
                             <div className="mt-6">
-                                <Button size={"lg"}>
-                                    Start Now
-                                </Button>
+                                <Link href="/login">
+                                    <Button size={"lg"}>
+                                        Start Now
+                                    </Button>
+                                </Link>
                             </div>
                         </CardContent>
                     </Card>
