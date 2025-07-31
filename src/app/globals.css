@@ -199,6 +199,36 @@ a {
   }
 }
 
+/* Custom Scrollbar */
+@layer base {
+  /* Webkit browsers (Chrome, Safari, newer versions of Opera) */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--secondary-background);
+    border-radius: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 8px;
+    border: 2px solid var(--secondary-background);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #e56a5c; /* Slightly darker than primary */
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--secondary-background);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -64,3 +64,11 @@ export const recentConversations = [
     avatar: "/images/mascot1.png",
   },
 ];
+
+export const moodOptions = [
+  { value: "happy", label: "😊 Senang", color: "bg-green-100 text-green-800" },
+  { value: "neutral", label: "😐 Biasa", color: "bg-blue-100 text-blue-800" },
+  { value: "sad", label: "😔 Sedih", color: "bg-yellow-100 text-yellow-800" },
+  { value: "anxious", label: "😰 Cemas", color: "bg-orange-100 text-orange-800" },
+  { value: "stressed", label: "😫 Stres", color: "bg-red-100 text-red-800" },
+];

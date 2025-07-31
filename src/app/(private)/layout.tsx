@@ -25,12 +25,26 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
         <SidebarProvider>
             <AppSidebar />
             <SidebarInset className="bg-gradient-to-t from-secondary-background to-background min-h-screen">
-                <div className="flex items-center p-4 justify-between">
+                <div className="flex items-center p-4 px-10 justify-between">
                     <div className='flex items-center gap-5'>
                         <SidebarTrigger className="mr-2 p-4 bg-secondary-background hover:bg-primary/20" />
                         <h1 className="text-xl font-heading font-bold">
                             {getPageTitle()}
                         </h1>
+                    </div>
+                    <div className='flex items-center gap-5'>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="secondary">
+                                        <Bell />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent align='end' alignOffset={5}>
+                                    <p>You have 3 new messages</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 </div>
                 <div className='px-4 max-w-[1440px] mx-auto'>

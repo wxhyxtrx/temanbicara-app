@@ -49,7 +49,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <div className="flex items-center gap-3 px-3 py-3 mb-2 bg-background border border-secondary-background rounded-xl mx-2 overflow-hidden">
                         <Avatar>
-                            <AvatarImage src="/images/avatar-placeholder.png" alt="User" />
+                            <AvatarImage src="" alt="User" />
                             <AvatarFallback className="bg-primary/20 text-foreground">TB</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col min-w-0 overflow-hidden">

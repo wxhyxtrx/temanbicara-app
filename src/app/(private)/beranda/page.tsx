@@ -1,89 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MessageCircle, BookOpen, History, Star, Clock, ChevronRight, PlusCircle } from "lucide-react";
-
-// Data konsultan terverifikasi
-const verifiedConsultants = [
-    {
-        id: 1,
-        name: "Dr. Anita Wijaya",
-        specialty: "Psikolog Klinis",
-        rating: 4.9,
-        reviews: 124,
-        avatar: "/images/mascot1.png",
-        available: true,
-    },
-    {
-        id: 2,
-        name: "Budi Santoso, M.Psi",
-        specialty: "Konselor Karier",
-        rating: 4.7,
-        reviews: 98,
-        avatar: "/images/mascot1.png",
-        available: true,
-    },
-    {
-        id: 3,
-        name: "Siti Rahayu, S.Psi",
-        specialty: "Konselor Remaja",
-        rating: 4.8,
-        reviews: 112,
-        avatar: "/images/mascot1.png",
-        available: false,
-    },
-];
-
-// Data jadwal sesi
-const upcomingSessions = [
-    {
-        id: 1,
-        consultant: "Dr. Anita Wijaya",
-        date: "Senin, 15 Juli 2024",
-        time: "14:00 - 15:00",
-        status: "confirmed", // confirmed, pending, completed
-    },
-    {
-        id: 2,
-        consultant: "Budi Santoso, M.Psi",
-        date: "Rabu, 17 Juli 2024",
-        time: "10:00 - 11:00",
-        status: "pending",
-    },
-];
-
-// Data riwayat percakapan
-const recentConversations = [
-    {
-        id: 1,
-        with: "TemanBicara AI",
-        lastMessage: "Terima kasih sudah berbagi cerita hari ini. Bagaimana perasaanmu sekarang?",
-        time: "Kemarin, 20:45",
-        avatar: "/images/mascot1.png",
-    },
-    {
-        id: 2,
-        with: "Dr. Anita Wijaya",
-        lastMessage: "Jangan lupa latihan pernapasan yang sudah kita bahas ya.",
-        time: "3 hari lalu",
-        avatar: "/images/mascot1.png",
-    },
-];
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { moodOptions, recentConversations, upcomingSessions, verifiedConsultants } from "@/constant/beranda";
+import { Calendar, ChevronRight, MessageCircle, PlusCircle, Star } from "lucide-react";
+import { useState } from 'react';
+import { MdVerified } from "react-icons/md";
 
 function BerandaPage() {
     const [mood, setMood] = useState<string | null>(null);
-
-    const moodOptions = [
-        { value: "happy", label: "😊 Senang", color: "bg-green-100 text-green-800" },
-        { value: "neutral", label: "😐 Biasa", color: "bg-blue-100 text-blue-800" },
-        { value: "sad", label: "😔 Sedih", color: "bg-yellow-100 text-yellow-800" },
-        { value: "anxious", label: "😰 Cemas", color: "bg-orange-100 text-orange-800" },
-        { value: "stressed", label: "😫 Stres", color: "bg-red-100 text-red-800" },
-    ];
 
     return (
         <div className='min-h-screen font-nunito pb-5'>
@@ -240,9 +167,12 @@ function BerandaPage() {
                                             <div className="mt-2 sm:mt-0">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <p className="font-medium">{consultant.name}</p>
-                                                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
+                                                    {/* <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
                                                         Verified
-                                                    </Badge>
+                                                    </Badge> */}
+                                                    <span className="!text-shadow-blue-400">
+                                                        <MdVerified className="text-xl" color="#4299E1" />
+                                                    </span>
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">{consultant.specialty}</p>
                                                 <div className="flex items-center gap-1 mt-1">
@@ -253,10 +183,10 @@ function BerandaPage() {
                                             </div>
                                         </div>
                                         <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                                            <Button size="sm" variant="outline" className="text-xs border-primary text-primary hover:bg-primary/10 flex-1">
+                                            <Button variant="outline" className="text-xs border-primary text-primary hover:bg-primary/10 flex-1">
                                                 Lihat Profil
                                             </Button>
-                                            <Button size="sm" className="text-xs bg-primary hover:bg-primary/90 flex-1">
+                                            <Button className="text-xs bg-primary hover:bg-primary/90 flex-1">
                                                 {consultant.available ? 'Jadwalkan Sesi' : 'Ajukan Pertanyaan'}
                                             </Button>
                                         </div>
