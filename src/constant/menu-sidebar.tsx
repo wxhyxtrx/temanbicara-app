@@ -11,7 +11,7 @@ export const mainItems = [
     {
         title: "Teman Bicara",
         description: "Mulai percakapan dengan AI atau manusia",
-        url: "/chat",
+        url: "/room",
         icon: MessageCircle,
         badge: "15",
     },
