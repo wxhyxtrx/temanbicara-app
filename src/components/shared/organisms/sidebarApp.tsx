@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState } from "react"
+import { usePathname } from "next/navigation"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -27,7 +27,7 @@ import { LiaPowerOffSolid } from "react-icons/lia"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export function AppSidebar() {
-    const [activeItem, setActiveItem] = useState("Beranda")
+    const pathname = usePathname()
 
     return (
         <Sidebar className="border-r border-accent !bg-white ">
@@ -72,12 +72,11 @@ export function AppSidebar() {
                                 <SidebarMenuItem key={item.title}>
                                     <SidebarMenuButton
                                         asChild
-                                        isActive={activeItem === item.title}
-                                        onClick={() => setActiveItem(item.title)}
+                                        isActive={pathname === item.url || pathname.startsWith(`${item.url}/`)}
                                     >
                                         <Link href={item.url} className="flex flex-col items-start gap-0 py-2 text-sm !text-foreground">
                                             <div className="flex items-center w-full">
-                                                <item.icon className={`${activeItem === item.title ? "text-primary" : ""} mr-2 w-4.5 h-4.5`} />
+                                                <item.icon className={`${pathname === item.url || pathname.startsWith(`${item.url}/`) ? "text-primary" : ""} mr-2 w-4.5 h-4.5`} />
                                                 <span className="font-medium">{item.title}</span>
                                             </div>
                                             <span className="text-xs text-muted-foreground pl-6 truncate">{item.description}</span>
@@ -105,11 +104,10 @@ export function AppSidebar() {
                                 <SidebarMenuItem key={item.title}>
                                     <SidebarMenuButton
                                         asChild
-                                        isActive={activeItem === item.title}
-                                        onClick={() => setActiveItem(item.title)}
+                                        isActive={pathname === item.url || pathname.startsWith(`${item.url}/`)}
                                     >
                                         <Link href={item.url} className="flex items-center text-sm !text-foreground">
-                                            <item.icon className={`${activeItem === item.title ? "text-primary" : ""} mr-2 w-4.5 h-4.5`} />
+                                            <item.icon className={`${pathname === item.url || pathname.startsWith(`${item.url}/`) ? "text-primary" : ""} mr-2 w-4.5 h-4.5`} />
                                             <span>{item.title}</span>
                                         </Link>
                                     </SidebarMenuButton>
