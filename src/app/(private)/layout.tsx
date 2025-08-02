@@ -47,7 +47,7 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
                         </TooltipProvider>
                     </div>
                 </div>
-                <div className='px-4 max-w-[1440px] mx-auto'>
+                <div className='px-4 '>
                     {children}
                 </div>
             </SidebarInset>
