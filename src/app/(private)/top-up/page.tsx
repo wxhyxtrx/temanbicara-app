@@ -349,11 +349,13 @@ export default function TopUpPage() {
                 </Card>
 
                 {/* Promo Code */}
-                <Card>
-                    <CardContent className="p-6">
-                        <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <Card className="overflow-hidden">
+                    <CardHeader className="bg-secondary-background/20 py-3 px-6">
+                        <CardTitle className="text-sm font-medium">Kode Promo</CardTitle>
+                    </CardHeader>
+                    <CardContent className="">
+                        <div className="flex flex-col gap-4">
                             <div className="flex-1 space-y-2">
-                                <Label htmlFor="promoCode">Kode Promo (Opsional)</Label>
                                 <div className="relative">
                                     <div className="absolute left-3 top-1/2 -translate-y-1/2">
                                         <Gift size={16} className="text-muted-foreground" />
@@ -361,7 +363,7 @@ export default function TopUpPage() {
                                     <Input
                                         id="promoCode"
                                         placeholder="Masukkan kode promo"
-                                        className="pl-9"
+                                        className="pl-9 pr-10"
                                         value={promoCode}
                                         onChange={handlePromoCodeChange}
                                         disabled={promoApplied}
@@ -373,32 +375,39 @@ export default function TopUpPage() {
                                     )}
                                 </div>
                                 {promoApplied && (
-                                    <div className="text-sm text-green-600">Kode promo berhasil diterapkan! ({promoDiscount}% diskon)</div>
+                                    <div className="text-sm text-green-600 flex items-center gap-1">
+                                        <Check size={14} />
+                                        <span>Kode promo berhasil diterapkan! ({promoDiscount}% diskon)</span>
+                                    </div>
                                 )}
                             </div>
-                            {promoApplied ? (
-                                <Button 
-                                    variant="outline" 
-                                    className="border-red-500 text-red-500 hover:bg-red-50"
-                                    onClick={() => {
-                                        setPromoApplied(false);
-                                        setPromoDiscount(0);
-                                        setPromoCode("");
-                                    }}
-                                >
-                                    <X size={16} className="mr-2" />
-                                    Batalkan
-                                </Button>
-                            ) : (
-                                <Button 
-                                    variant="outline" 
-                                    className="border-primary text-primary hover:bg-primary/10"
-                                    onClick={applyPromoCode}
-                                    disabled={!promoCode}
-                                >
-                                    Terapkan
-                                </Button>
-                            )}
+                            <div className="flex justify-end">
+                                {promoApplied ? (
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="border-red-500 text-red-500 hover:bg-red-50 w-full sm:w-auto"
+                                        onClick={() => {
+                                            setPromoApplied(false);
+                                            setPromoDiscount(0);
+                                            setPromoCode("");
+                                        }}
+                                    >
+                                        <X size={16} className="mr-2" />
+                                        Batalkan
+                                    </Button>
+                                ) : (
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="border-primary text-primary hover:bg-primary/10 w-full sm:w-auto"
+                                        onClick={applyPromoCode}
+                                        disabled={!promoCode}
+                                    >
+                                        Terapkan
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

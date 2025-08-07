@@ -22,12 +22,12 @@ function RoomChatPage() {
     <div className="min-h-full font-nunito">
       <div className="h-[calc(100vh-100px)]">
         {(!selectedConversation || !isMobile) && (
-          <div className={`h-full ${selectedConversation && !isMobile ? 'hidden md:block md:w-[350px] lg:w-[380px] float-left mr-6' : 'w-full'}`}>
+          <div className={`h-full ${selectedConversation && !isMobile ? 'hidden lg:block md:w-[350px] lg:w-[380px] float-left mr-6' : 'w-full'}`}>
             <ConversationList />
           </div>
         )}
         {selectedConversation && (
-          <div className={`h-full ${!isMobile ? 'md:ml-[350px] lg:ml-[380px]' : 'w-full'}`}>
+          <div className={`h-full ${!isMobile ? 'lg:ml-[350px] 2xl:ml-[380px]' : 'w-full'}`}>
             <ChatArea />
           </div>
         )}
