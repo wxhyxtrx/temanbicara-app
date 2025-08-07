@@ -39,7 +39,7 @@ export const utilityItems = [
     {
         title: "Pusat Bantuan",
         description: "FAQ dan kontak CS",
-        url: "/help",
+        url: "/help-center",
         icon: HelpCircle,
     },
 ]
