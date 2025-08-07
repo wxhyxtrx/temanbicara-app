@@ -31,10 +31,10 @@ export const utilityItems = [
         icon: Settings,
     },
     {
-        title: "Paket & Langganan",
-        description: "Upgrade akun dan info pembayaran",
-        url: "/subscription",
-        icon: CreditCard,
+        title: "Top Up",
+        description: "Top up coin akun",
+        url: "/top-up",
+        icon: Coins,
     },
     {
         title: "Pusat Bantuan",
