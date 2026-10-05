@@ -1,34 +1,40 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { testimonials } from "@/constant/testimonial";
-import { Quote } from "lucide-react";
+import { Testimonial } from "@/constant/testimonial";
+import { Quote, Star } from "lucide-react";
 
-function TestimonialCard({ testimonial }: { testimonial: (typeof testimonials)[0] }) {
-    return (
-        <Card className="w-64 sm:w-72 md:w-80 h-full bg-white/90 backdrop-blur-sm border-0 shadow-lg flex-shrink-0 mx-2 sm:mx-3 p-0">
-            <CardContent className="p-4 sm:p-6 h-full flex flex-col justify-between">
-                <div>
-                    <Quote className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-2 sm:mb-3" />
-                    <p className="text-xs sm:text-sm leading-relaxed line-clamp-3 ">{testimonial.text}</p>
-                </div>
-                <div className="flex items-center gap-2 sm:gap-3 mt-3 sm:mt-4">
-                    <Avatar className="w-8 h-8 sm:w-10 sm:h-10">
-                        <AvatarImage src={testimonial.avatar || "/placeholder.svg"} alt={testimonial.author} />
-                        <AvatarFallback>
-                            {testimonial.author
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <p className="font-semibold font-poppins text-xs sm:text-sm">{testimonial.author}</p>
-                        <p className="text-gray-600 text-xs">{testimonial.role}</p>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    )
+export function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
+  return (
+    <Card className="w-72 sm:w-80 md:w-[360px] h-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow rounded-2xl flex-shrink-0 mx-2.5 sm:mx-3 p-0 overflow-hidden">
+      <CardContent className="p-5 sm:p-6 h-full flex flex-col justify-between space-y-4">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Quote className="w-5 h-5 text-teal-600 dark:text-teal-400 opacity-60" />
+            <div className="flex items-center gap-0.5">
+              {Array.from({ length: testimonial.rating }).map((_, i) => (
+                <Star key={i} size={13} className="text-amber-400 fill-amber-400" />
+              ))}
+            </div>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-nunito italic">
+            "{testimonial.text}"
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="w-9 h-9 rounded-full bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 font-bold text-xs flex items-center justify-center border border-teal-200 dark:border-teal-800 flex-shrink-0 font-heading">
+            {testimonial.initials}
+          </div>
+          <div className="leading-tight min-w-0">
+            <p className="font-bold font-heading text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+              {testimonial.author}
+            </p>
+            <p className="text-slate-500 dark:text-slate-400 text-[11px] truncate">{testimonial.role}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
-export default TestimonialCard
+export default TestimonialCard;

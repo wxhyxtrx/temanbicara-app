@@ -1,70 +1,115 @@
-import Layouts from '@/components/shared/layouts';
-import { Button } from '@/components/ui/button'
-import Image from 'next/image'
-import React from 'react'
-import { BsChatHeartFill, BsShieldLockFill } from "react-icons/bs";
-import { LuEar } from "react-icons/lu";
-import Link from 'next/link';
+import Layouts from "@/components/shared/layouts";
+import { Button } from "@/components/ui/button";
+import React from "react";
+import Link from "next/link";
+import { ShieldCheck, MessageCircle, Calendar, Sparkles, HeartHandshake, Lock, Award, Clock } from "lucide-react";
+import HeroVector from "./hero-vector";
 
-function HeroSection() {
-    return (
-        <Layouts className='space-y-12 md:space-y-24 py-10 md:pb-20'>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-                <div className="space-y-4 md:space-y-6 text-center lg:text-left order-2 lg:order-1">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight">
-                        Start Healing by Talking
-                    </h1>
-                    <p className="text-sm sm:text-base md:text-lg text-muted-foreground font-poppins leading-relaxed max-w-lg mx-auto lg:mx-0">
-                        You don't have to go through it alone. Talk to a listener who's ready to understand, support, and stand with you— all in a space that's private, safe, and free of judgment.
-                    </p>
-                    <Link href="/login">
-                        <Button size={"lg"} className='font-semibold rounded-full font-poppins'>
-                            Get Started
-                        </Button>
-                    </Link>
-                </div>
+export default function HeroSection() {
+  return (
+    <div className="relative pt-6 pb-16 md:pt-12 md:pb-24 overflow-hidden">
+      {/* Background Soft Calming Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-teal-50/50 via-slate-50/30 to-white dark:from-teal-950/20 dark:via-slate-950/40 dark:to-slate-950 pointer-events-none" />
 
-                <div className="flex justify-center order-1 lg:order-2 font-poppins">
-                    <div className="relative">
-                        <Image
-                            src="/images/mascot1.png"
-                            alt="TemanBicara Mascot"
-                            width={500}
-                            height={500}
-                            className="w-56 h-56 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 xl:w-[500px] xl:h-[500px] object-contain"
-                            priority
-                        />
-                    </div>
-                </div>
+      <Layouts className="relative z-10 space-y-12 md:space-y-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+          {/* Left Column: Value Proposition */}
+          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+            {/* Clinical Trust Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200/80 dark:border-teal-800 text-teal-800 dark:text-teal-300 text-xs font-semibold shadow-xs">
+              <span className="flex h-2 w-2 rounded-full bg-teal-600 animate-pulse" />
+              <span>Layanan Konseling Psikologi & Suaka Kesehatan Mental</span>
             </div>
-            <div className='max-w-[1200px] mx-auto grid grid-cols-2 sm:grid-cols-3 gap-6 md:gap-10'>
-                <div className='flex justify-center flex-col gap-3 items-center'>
-                    <div className='bg-secondary-background p-4 rounded-full w-fit'>
-                        <BsChatHeartFill size={30} className="sm:text-3xl md:text-4xl" />
-                    </div>
-                    <p className='text-center font-bold text-xl sm:text-2xl'>
-                        Anonymously
-                    </p>
-                </div>
-                <div className='flex justify-center flex-col gap-3 items-center'>
-                    <div className='bg-secondary-background p-4 rounded-full w-fit'>
-                        <BsShieldLockFill size={30} className="sm:text-3xl md:text-4xl" />
-                    </div>
-                    <p className='text-center font-bold text-xl sm:text-2xl'>
-                        Secure & Private
-                    </p>
-                </div>
-                <div className='flex justify-center flex-col gap-3 items-center max-md:col-span-2'>
-                    <div className='bg-secondary-background p-4 rounded-full w-fit'>
-                        <LuEar size={30} className="sm:text-3xl md:text-4xl" />
-                    </div>
-                    <p className='text-center font-bold text-xl sm:text-2xl'>
-                        Various Listeners
-                    </p>
-                </div>
+
+            {/* Main Headline */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[46px] xl:text-[54px] font-bold text-slate-900 dark:text-white leading-[1.18] tracking-tight font-heading">
+              Ruang Tenang untuk Didengar, Dipahami, dan{" "}
+              <span className="text-teal-600 dark:text-teal-400 relative inline-block">
+                Pulih Kembali
+                <svg
+                  className="absolute left-0 -bottom-2 w-full h-3 text-teal-300/70 dark:text-teal-500/40 -z-10"
+                  viewBox="0 0 100 12"
+                  preserveAspectRatio="none"
+                >
+                  <path d="M0,8 Q50,0 100,8" stroke="currentColor" strokeWidth="4" fill="none" />
+                </svg>
+              </span>
+            </h1>
+
+            {/* Subtitle */}
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 font-nunito leading-relaxed max-w-2xl mx-auto lg:mx-0">
+              TemanBicara menghubungkanmu dengan psikolog klinis berlisensi (SIPPK) dan AI pendengar empatik 24/7. Curahkan isi hati tanpa rasa takut, tanpa stigma, dan dengan privasi 100% terenkripsi.
+            </p>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-2">
+              <Link href="/register" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-7 py-6 text-base shadow-md shadow-teal-700/20 cursor-pointer gap-2">
+                  <MessageCircle size={19} />
+                  Mulai Konseling Sekarang
+                </Button>
+              </Link>
+              <Link href="#features" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white text-slate-700 dark:text-slate-200 font-semibold rounded-xl px-6 py-6 text-base cursor-pointer gap-2">
+                  <Calendar size={18} />
+                  Lihat Pendekatan Terapi
+                </Button>
+              </Link>
             </div>
-        </Layouts>
-    )
+
+            {/* Micro Trust Indicators */}
+            <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400" />
+                <span>Privasi Terlindungi Kode Etik</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Lock size={15} className="text-teal-600 dark:text-teal-400" />
+                <span>Bebas Pilih Mode Anonim</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Award size={15} className="text-teal-600 dark:text-teal-400" />
+                <span>Psikolog Berizin Resmi</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: High-End Vector Illustration */}
+          <div className="lg:col-span-5 flex justify-center">
+            <HeroVector />
+          </div>
+        </div>
+
+        {/* Barometer / Social Proof Strip */}
+        <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-7 shadow-xs">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-slate-800">
+            <div className="pt-2 md:pt-0">
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">15.000+</p>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-1 flex items-center justify-center gap-1">
+                <HeartHandshake size={14} className="text-teal-600 dark:text-teal-400" /> Sesi Konseling Selesai
+              </p>
+            </div>
+            <div className="pt-2 md:pt-0">
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">100+</p>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-1 flex items-center justify-center gap-1">
+                <Award size={14} className="text-teal-600 dark:text-teal-400" /> Psikolog & Konselor
+              </p>
+            </div>
+            <div className="pt-2 md:pt-0">
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">4.9 / 5.0</p>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-1 flex items-center justify-center gap-1">
+                <Sparkles size={14} className="text-amber-500" /> Kepuasan Klien
+              </p>
+            </div>
+            <div className="pt-2 md:pt-0">
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">24/7</p>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-1 flex items-center justify-center gap-1">
+                <Clock size={14} className="text-teal-600 dark:text-teal-400" /> Pendamping Emosional
+              </p>
+            </div>
+          </div>
+        </div>
+      </Layouts>
+    </div>
+  );
 }
-
-export default HeroSection

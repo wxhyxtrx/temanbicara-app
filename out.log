@@ -1,0 +1,72 @@
+
+> temanbicara@0.1.0 dev
+> next dev --turbopack -H 0.0.0.0
+
+   ▲ Next.js 15.4.4 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://0.0.0.0:3000
+
+ ✓ Starting...
+ ✓ Ready in 1818ms
+ ○ Compiling /beranda ...
+ ✓ Compiled /beranda in 4.4s
+ GET /beranda 200 in 5106ms
+ ✓ Compiled / in 393ms
+ GET / 200 in 719ms
+ ✓ Compiled /schedule in 418ms
+ GET /schedule 200 in 576ms
+ GET /beranda 200 in 54ms
+ GET /beranda 200 in 56ms
+ ✓ Compiled /room in 361ms
+ GET /room 200 in 403ms
+ GET /beranda 200 in 43ms
+ GET /schedule 200 in 49ms
+ GET /beranda 200 in 45ms
+ ✓ Compiled /top-up in 364ms
+ GET /top-up 200 in 408ms
+ GET /beranda 200 in 47ms
+ GET /beranda 200 in 628ms
+ GET /beranda 200 in 206ms
+ GET /schedule 200 in 57ms
+ GET /beranda 200 in 438ms
+ ✓ Compiled /settings in 429ms
+ GET /settings 200 in 481ms
+ GET /beranda 200 in 59ms
+ GET /beranda 200 in 464ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 678ms
+ GET /login 200 in 729ms
+ ✓ Compiled /register in 309ms
+ GET /register 200 in 355ms
+ GET /beranda 200 in 59ms
+ GET /beranda 200 in 150ms
+ GET /top-up 200 in 79ms
+ GET /room 200 in 75ms
+ GET /room 200 in 60ms
+ GET /beranda 200 in 51ms
+ GET /room 200 in 58ms
+ GET /room 200 in 199ms
+ GET /beranda 200 in 77ms
+ ✓ Compiled in 154ms
+ ✓ Compiled in 295ms
+ ✓ Compiled in 295ms
+ GET /beranda 200 in 179ms
+ GET /room 200 in 206ms
+ GET /room 200 in 530ms
+ ✓ Compiled in 334ms
+ ✓ Compiled in 158ms
+ ✓ Compiled in 351ms
+ GET /room 200 in 454ms
+ GET /room 200 in 186ms
+ GET /room 200 in 414ms
+ GET /room 200 in 444ms
+ GET /room 200 in 199ms
+ GET /room 200 in 173ms
+ GET /beranda 200 in 80ms
+ GET /room 200 in 88ms
+ GET /schedule 200 in 48ms
+ GET /schedule 200 in 458ms
+ GET /schedule 200 in 160ms
+ GET /beranda 200 in 91ms
+ GET /room 200 in 64ms
+^C^C^C

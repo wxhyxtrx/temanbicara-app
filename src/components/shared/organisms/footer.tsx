@@ -1,181 +1,113 @@
+import React from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
+import { Mail, Phone, MapPin, ShieldCheck, HeartPulse } from "lucide-react";
 import Layouts from "../layouts";
+import { Logo } from "@/components/shared/atoms/Logo";
 
 export default function Footer() {
   return (
-    <footer className="bg-gradient-to-t from-secondary-background to-background py-8 sm:py-12 md:py-16">
+    <footer className="bg-slate-950 text-slate-400 pt-16 pb-12 border-t border-slate-800/80">
       <Layouts>
-        <div className="container mx-auto px-4 sm:px-6">
-          {/* Main Footer Content */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
-            {/* Logo and Description Section */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Image
-                  src="/images/logo.png"
-                  alt="TemanBicara Logo"
-                  width={120}
-                  height={40}
-                  className="object-contain w-32 sm:w-36 md:w-40"
-                />
-              </div>
-              <p className="text-xs sm:text-sm font-nunito max-w-xs">
-                Connect with listeners who understand. Get support anonymously and securely in a safe, judgment-free environment.
+        <div className="space-y-12">
+          {/* Main Footer Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
+            {/* Brand & Description (4 Cols) */}
+            <div className="lg:col-span-5 space-y-4">
+              <Logo variant="dark" showTagline size="lg" />
+              <p className="text-xs sm:text-sm font-nunito text-slate-400 leading-relaxed max-w-sm pt-1">
+                Suaka kesehatan mental dan platform konsultasi psikolog klinis berlisensi di Indonesia. Menyediakan ruang bercerita yang hangat, aman, dan tanpa penghakiman.
               </p>
-              <div className="flex space-x-3 sm:space-x-4 pt-2">
-                <a href="#" className="bg-white p-1.5 sm:p-2 rounded-full shadow-sm hover:shadow-md transition-all">
-                  <Facebook size={16} className="text-primary" />
-                </a>
-                <a href="#" className="bg-white p-1.5 sm:p-2 rounded-full shadow-sm hover:shadow-md transition-all">
-                  <Twitter size={16} className="text-primary" />
-                </a>
-                <a href="#" className="bg-white p-1.5 sm:p-2 rounded-full shadow-sm hover:shadow-md transition-all">
-                  <Instagram size={16} className="text-primary" />
-                </a>
-                <a href="#" className="bg-white p-1.5 sm:p-2 rounded-full shadow-sm hover:shadow-md transition-all">
-                  <Linkedin size={16} className="text-primary" />
-                </a>
+              <div className="flex items-center gap-2 text-xs text-teal-400 font-medium pt-1">
+                <ShieldCheck size={16} />
+                <span>Kerahasiaan Berstandar Etika Psikologi (HIMPSI)</span>
               </div>
             </div>
 
-            {/* Quick Links - Hidden on smallest screens */}
-            <div className="hidden sm:block">
-              <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 md:mb-5 font-poppins">
-                Quick Links
+            {/* Layanan Konseling (2 Cols) */}
+            <div className="lg:col-span-2 space-y-3 font-heading">
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                Layanan
               </h4>
-              <ul className="space-y-2 sm:space-y-3 font-nunito">
+              <ul className="space-y-2 text-xs font-nunito">
                 <li>
-                  <a href="#" className="text-xs sm:text-sm hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    Home
+                  <Link href="/login" className="hover:text-teal-400 transition-colors">
+                    Konsultasi Psikolog
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/login" className="hover:text-teal-400 transition-colors">
+                    Curhat AI 24/7
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/schedule" className="hover:text-teal-400 transition-colors">
+                    Jadwal Sesi
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/top-up" className="hover:text-teal-400 transition-colors">
+                    Paket Sesi
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Bantuan & Etika (2 Cols) */}
+            <div className="lg:col-span-2 space-y-3 font-heading">
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                Dukungan
+              </h4>
+              <ul className="space-y-2 text-xs font-nunito">
+                <li>
+                  <Link href="/help-center" className="hover:text-teal-400 transition-colors">
+                    Pusat Bantuan & FAQ
+                  </Link>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-teal-400 transition-colors">
+                    Kebijakan Privasi
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-xs sm:text-sm hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    About Us
+                  <a href="#" className="hover:text-teal-400 transition-colors">
+                    Syarat & Ketentuan
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-xs sm:text-sm hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs sm:text-sm hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    Testimonials
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs sm:text-sm hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    Contact
+                  <a href="#" className="hover:text-teal-400 transition-colors">
+                    Standar Etika
                   </a>
                 </li>
               </ul>
             </div>
 
-            {/* Support Links */}
-            <div>
-              <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 md:mb-5 font-poppins">
-                Support
+            {/* Emergency Hotline (3 Cols) */}
+            <div className="lg:col-span-3 space-y-3">
+              <h4 className="text-sm font-bold text-white font-heading uppercase tracking-wider flex items-center gap-1.5">
+                <HeartPulse size={16} className="text-rose-500" />
+                Bantuan Darurat Krisis
               </h4>
-              <ul className="space-y-2 sm:space-y-3 font-nunito">
-                <li>
-                  <a href="#" className="text-xs sm:text-sm hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    Help Center
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs sm:text-sm text-gray-600 hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    Privacy Policy
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs sm:text-sm text-gray-600 hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    Terms of Service
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs sm:text-sm text-gray-600 hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    FAQ
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-xs sm:text-sm text-gray-600 hover:text-primary transition-colors flex items-center">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
-                    Community Guidelines
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Contact Information */}
-            <div>
-              <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 md:mb-5 font-poppins">
-                Contact Us
-              </h4>
-              <ul className="space-y-2 sm:space-y-3 font-nunito">
-                <li>
-                  <a href="mailto:info@temanbicara.com" className="text-xs sm:text-sm text-gray-600 hover:text-primary transition-colors flex items-start">
-                    <Mail size={14} className="mr-2 mt-0.5 text-primary" />
-                    <span>info@temanbicara.com</span>
-                  </a>
-                </li>
-                <li>
-                  <a href="tel:+6281234567890" className="text-xs sm:text-sm text-gray-600 hover:text-primary transition-colors flex items-start">
-                    <Phone size={14} className="mr-2 mt-0.5 text-primary" />
-                    <span>+62 812 3456 7890</span>
-                  </a>
-                </li>
-                <li className="flex items-start">
-                  <MapPin size={14} className="mr-2 mt-0.5 text-primary" />
-                  <span className="text-xs sm:text-sm text-gray-600">Jl. Sudirman No. 123, Jakarta, Indonesia</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Newsletter Subscription */}
-          <div className="mt-8 sm:mt-10 md:mt-12 p-4 sm:p-6 bg-primary/30 rounded-xl shadow-sm text-white min-w-xs">
-            <div className="flex flex-col md:flex-row gap-4 sm:gap-6 items-center justify-between ">
-              <div className="md:text-start text-center">
-                <h5 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2 font-poppins">Subscribe to Our Newsletter</h5>
-                <p className="text-xs sm:text-sm text-gray-600 font-nunito">Stay updated with our latest news and announcements</p>
-              </div>
-              <div>
-                <div className="flex flex-nowrap">
-                  <input
-                    type="email"
-                    placeholder="Your email address"
-                    className=" px-3 py-2 text-xs sm:text-sm text-foreground bg-accent border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-primary/50 font-nunito"
-                  />
-                  <button className="bg-primary text-white px-3 py-2 rounded-r-md hover:bg-primary/90 transition-colors font-poppins text-xs sm:text-sm">
-                    Subscribe
-                  </button>
-                </div>
+              <p className="text-xs font-nunito text-slate-400 leading-relaxed">
+                Jika kamu atau kerabatmu sedang mengalami krisis emosional akut atau ancaman keselamatan diri, segera hubungi saluran bantuan nasional:
+              </p>
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                <p className="text-xs font-bold text-rose-400">Hotline Krisis Kemenkes RI</p>
+                <p className="text-sm font-mono font-bold text-white">119 (ext. 8) / Bebas Pulsa</p>
+                <p className="text-[11px] text-slate-500">Layanan SEJIWA 24 Jam</p>
               </div>
             </div>
           </div>
 
-          {/* Copyright Section */}
-          <div className="border-t border-foreground mt-8 sm:mt-10 md:mt-12 pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-xs text-gray-600 font-nunito mb-4 md:mb-0 text-center md:text-left">
-              © 2024 TemanBicara. All rights reserved.
-            </p>
-            <div className="flex space-x-4 sm:space-x-6">
-              <a href="#" className="text-xs text-gray-500 hover:text-primary transition-colors font-nunito">Privacy Policy</a>
-              <a href="#" className="text-xs text-gray-500 hover:text-primary transition-colors font-nunito">Terms of Service</a>
-              <a href="#" className="text-xs text-gray-500 hover:text-primary transition-colors font-nunito">Cookie Policy</a>
-            </div>
+          {/* Clinical Ethics Disclaimer */}
+          <div className="rounded-xl p-4 bg-slate-900/60 border border-slate-800 text-[11px] font-nunito text-slate-400 leading-relaxed">
+            <span className="font-semibold text-slate-300">Pemberitahuan Medis: </span>
+            TemanBicara menyediakan layanan konseling dan psikoterapi non-darurat. Layanan ini bukan pengganti instalasi gawat darurat psikiatri di rumah sakit. Percakapan dilindungi kerahasiaan konseling sesuai perundang-undangan dan kode etik profesi.
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-nunito text-slate-400">
+            <p>© {new Date().getFullYear()} TemanBicara. Seluruh Hak Cipta Dilindungi.</p>
+            <p className="text-slate-400">Dibangun dengan empati untuk kesehatan mental Indonesia.</p>
           </div>
         </div>
       </Layouts>

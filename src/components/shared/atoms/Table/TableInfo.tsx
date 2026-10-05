@@ -24,12 +24,12 @@ const PaginationInfo = ({
 
   return (
     <div className={cn("flex items-center space-x-2 w-full", className)}>
-      <span className="text-sm text-neutral-800">Displaying</span>
+      <span className="text-sm text-neutral-800 dark:text-slate-300">Displaying</span>
       <Select value={String(displayed)} onValueChange={handleValueChange}>
-        <SelectTrigger className="!h-10 w-[70px] text-sm py-0 focus-visible:border-border focus-visible:outline-0 focus-visible:ring-0 ">
+        <SelectTrigger className="!h-10 w-[70px] text-sm py-0 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200 focus-visible:border-border focus-visible:outline-0 focus-visible:ring-0">
           <SelectValue placeholder={String(displayed)} />
         </SelectTrigger>
-        <SelectContent className="w-fit min-w-fit">
+        <SelectContent className="w-fit min-w-fit dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200">
           {list.map((num) => (
             <SelectItem key={num} value={String(num)}>
               {num}
@@ -37,7 +37,7 @@ const PaginationInfo = ({
           ))}
         </SelectContent>
       </Select>
-      <span className="text-sm text-neutral-800">
+      <span className="text-sm text-neutral-800 dark:text-slate-300">
         of {total} {total === 1 ? "item" : "items"}
       </span>
     </div>
@@ -45,4 +45,3 @@ const PaginationInfo = ({
 }
 
 export default PaginationInfo
-

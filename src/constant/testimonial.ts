@@ -1,44 +1,60 @@
-export const testimonials = [
+export interface Testimonial {
+  id: number;
+  text: string;
+  author: string;
+  role: string;
+  avatar?: string;
+  rating: number;
+  initials: string;
+}
+
+export const testimonials: Testimonial[] = [
   {
     id: 1,
-    text: "I was going through a tough time and just needed someone to listen. TemanBicara gave me a space to breathe. Thank you for being here.",
-    author: "Anonymous Sharer",
-    role: "24 y.o.",
-    avatar: "/placeholder.svg?height=40&width=40",
+    text: "Kecemasan dan burnout pekerjaan yang selama ini saya pendam sendirian akhirnya terurai setelah beberapa sesi bersama psikolog di TemanBicara. Pendekatannya sangat menenangkan, logis, dan tanpa penghakiman sama sekali.",
+    author: "Rian K.",
+    role: "Software Engineer, 29 tahun",
+    rating: 5,
+    initials: "RK",
   },
   {
     id: 2,
-    text: "Listening to others has taught me so much about empathy and connection. This platform is not just helpful — it’s meaningful.",
-    author: "Dina",
-    role: "Volunteer Listener",
-    avatar: "/placeholder.svg?height=40&width=40",
+    text: "Sebagai seorang overthinker berat, fitur Curhat AI 24/7 sangat membantu meredakan serangan panik tengah malam sebelum lanjut sesi terjadwal dengan Bu Anita. Sekarang saya punya teknik grounding sendiri.",
+    author: "Sarah M.",
+    role: "Mahasiswi Tingkat Akhir, 23 tahun",
+    rating: 5,
+    initials: "SM",
   },
   {
     id: 3,
-    text: "I was skeptical at first, but the support I received felt genuine. I could talk anonymously and still feel safe. That meant everything.",
-    author: "R.",
-    role: "30, Jakarta",
-    avatar: "/placeholder.svg?height=40&width=40",
+    text: "Privasi anonimnya membuat saya berani terbuka. Sebagai laki-laki yang tadinya takut dianggap lemah, di sini saya merasa aman bercerita tentang duka dan tekanan keluarga yang saya hadapi.",
+    author: "Anonim",
+    role: "Karyawan Swasta, 34 tahun",
+    rating: 5,
+    initials: "AN",
   },
   {
     id: 4,
-    text: "Sometimes all you need is a stranger who listens without judgment. TemanBicara is that stranger — and somehow, also a friend.",
-    author: "Anonymous",
-    role: "",
-    avatar: "/placeholder.svg?height=40&width=40",
+    text: "Konseling pernikahan dengan psikolog keluarga di TemanBicara membuka cara pandang baru bagi saya dan pasangan. Komunikasi kami jauh lebih sehat dan penuh empati.",
+    author: "Dimas & Ratna",
+    role: "Pasangan Menikah 4 Tahun",
+    rating: 5,
+    initials: "DR",
   },
   {
     id: 5,
-    text: "I’m not a professional, but I care. Being able to help someone just by being there... it’s been incredibly rewarding.",
-    author: "Budi",
-    role: "Community Listener",
-    avatar: "/placeholder.svg?height=40&width=40",
+    text: "Awalnya skeptis dengan sesi psikologi online, tapi sistem reservasi, fleksibilitas waktu, dan ruang percakapan privatnya luar biasa nyaman. Seperti berada di ruang konsultasi sungguhan.",
+    author: "Nadia P.",
+    role: "Creative Director, 28 tahun",
+    rating: 5,
+    initials: "NP",
   },
   {
     id: 6,
-    text: "I love this platform. It's so easy to use and so helpful. I'm not sure how I would have done it without it.",
-    author: "Siti",
-    role: "35 y.o.",
-    avatar: "/placeholder.svg?height=40&width=40",
+    text: "Belajar menerima diri sendiri dan melepaskan trauma masa lalu secara bertahap. Psikolognya membimbing dengan penuh kehangatan dan memberikan tugas refleksi yang realistis.",
+    author: "Fajar W.",
+    role: "Entrepreneur, 31 tahun",
+    rating: 5,
+    initials: "FW",
   },
 ];

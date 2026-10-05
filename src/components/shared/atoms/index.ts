@@ -1,4 +1,3 @@
 // Atoms - Basic building blocks
-// Export atoms here when created
-
-export {};
+export * from "./Logo";
+export * from "./Table/Tables";

@@ -37,6 +37,12 @@ export const utilityItems = [
         icon: Coins,
     },
     {
+        title: "Mutasi & Riwayat",
+        description: "Arus keluar masuk koin & invoice",
+        url: "/top-up/history",
+        icon: History,
+    },
+    {
         title: "Pusat Bantuan",
         description: "FAQ dan kontak CS",
         url: "/help-center",

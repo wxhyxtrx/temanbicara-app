@@ -1,59 +1,74 @@
-import React from 'react'
-import Layouts from '@/components/shared/layouts'
-import { Button } from '@/components/ui/button'
-import Image from 'next/image'
+import React from "react";
+import Layouts from "@/components/shared/layouts";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ArrowRight, Sparkles, HeartPulse, ShieldCheck } from "lucide-react";
 
 export default function StartNowSection() {
-    return (
-        <Layouts>
-            <div className="relative overflow-hidden bg-background rounded-xl p-6 sm:p-8 md:p-10 my-4 sm:my-8">
-                {/* Background Patterns */}
-                <div className="absolute inset-0 z-0 overflow-hidden">
-                    {/* Circles */}
-                    <div className="absolute w-24 sm:w-32 h-24 sm:h-32 rounded-full border border-foreground opacity-10 -top-10 -left-10"></div>
-                    <div className="absolute w-32 sm:w-48 h-32 sm:h-48 rounded-full border border-foreground opacity-10 top-1/2 -right-10 transform -translate-y-1/2"></div>
-                    <div className="absolute w-12 sm:w-16 h-12 sm:h-16 rounded-full bg-primary opacity-10 bottom-10 left-1/4"></div>
+  return (
+    <Layouts>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-50 via-emerald-50/60 to-white dark:from-teal-950/50 dark:via-slate-900 dark:to-slate-950 border border-teal-200/80 dark:border-teal-800/60 p-8 sm:p-12 md:p-16 my-8 sm:my-12 shadow-sm">
+        {/* Soft background soundwave patterns */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-40">
+          <div className="absolute w-72 h-72 rounded-full border border-teal-300 dark:border-teal-700 -top-20 -left-20 opacity-30" />
+          <div className="absolute w-96 h-96 rounded-full border border-emerald-300 dark:border-emerald-700 top-1/2 -right-20 transform -translate-y-1/2 opacity-25" />
+          <div className="absolute w-48 h-48 rounded-full bg-teal-200/40 dark:bg-teal-700/20 bottom-0 left-1/3 blur-2xl" />
+        </div>
 
-                    {/* Dots */}
-                    <div className="absolute w-2 h-2 rounded-full bg-primary top-1/4 right-1/4 opacity-30"></div>
-                    <div className="absolute w-2 h-2 rounded-full bg-foreground bottom-1/3 right-1/3 opacity-20"></div>
-                    <div className="absolute w-3 h-3 rounded-full bg-secondary-background top-1/3 left-1/3 opacity-60"></div>
-
-                    {/* Lines */}
-                    <svg className="absolute top-0 left-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0,50 Q150,150 300,100 T600,150" fill="none" stroke="rgba(31,66,95,0.1)" strokeWidth="2" />
-                        <path d="M0,100 Q200,50 400,120 T800,100" fill="none" stroke="rgba(245,120,106,0.1)" strokeWidth="2" />
-                    </svg>
-                </div>
-
-                {/* Content */}
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8">
-                    <div className="space-y-3 md:space-y-4 max-w-xl text-center md:text-left">
-                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-poppins text-foreground">Start Talking Today</h2>
-                        <p className="text-sm sm:text-base text-foreground/80 font-nunito">
-                            Discover the power of simply being heard. Whether you're feeling overwhelmed, lonely, or just need someone to talk to — TemanBicara is here for you.
-                        </p>
-                        <div className="flex justify-center md:justify-start flex-wrap gap-4 pt-2">
-                            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                                Start Now
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Optional Illustration/Icon */}
-                    <div className="flex-shrink-0">
-                        <div className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 bg-secondary-background/70 rounded-full flex items-center justify-center">
-                            <Image
-                                src="/images/mascot1.png"
-                                alt="TemanBicara Mascot"
-                                width={120}
-                                height={120}
-                                className="object-contain w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32"
-                            />
-                        </div>
-                    </div>
-                </div>
+        {/* Content */}
+        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8 md:gap-12">
+          <div className="space-y-4 max-w-2xl text-center lg:text-left">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 text-xs font-semibold shadow-xs">
+              <Sparkles size={13} className="text-teal-600 dark:text-teal-400" />
+              <span>Ruang Konseling & Terapi Mental</span>
             </div>
-        </Layouts>
-    )
+
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-slate-900 dark:text-white leading-tight">
+              Langkah Pertama untuk Pulih Dimulai dengan Berbicara
+            </h2>
+
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
+              Beri dirimu izin untuk merasa lebih tenang. Mulai sesi pertamamu bersama psikolog klinis atau luapkan perasaanmu ke AI pendengar empatik kapan pun kamu butuh.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+              <Link href="/register" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-8 py-6 text-base shadow-md shadow-teal-700/20 cursor-pointer gap-2">
+                  Mulai Konseling Sekarang
+                  <ArrowRight size={17} />
+                </Button>
+              </Link>
+              <Link href="/login" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto border-slate-300 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl px-7 py-6 text-base cursor-pointer">
+                  Masuk ke Akun
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Quick Care Indicator Card */}
+          <div className="w-full lg:w-auto flex-shrink-0">
+            <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-3 max-w-sm mx-auto">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold font-heading text-slate-900 dark:text-white">Privasi Terjamin 100%</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">Terenkripsi & Bebas Stigma</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed border-t border-slate-100 dark:border-slate-800 pt-3">
+                "Setiap percakapan di TemanBicara berada dalam suaka perlindungan etika profesi psikolog. Kamu memegang kendali atas apa yang ingin kamu bagikan."
+              </p>
+              <div className="pt-1 flex items-center gap-1.5 text-[11px] text-teal-700 dark:text-teal-400 font-semibold">
+                <HeartPulse size={13} className="text-teal-600 dark:text-teal-400" />
+                <span>Siap Mendampingi 24 Jam</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Layouts>
+  );
 }
