@@ -22,6 +22,7 @@ import {
 
 import { usePayoutStore } from "@/store/payout-store";
 import { useVerificationStore } from "@/store/verification-store";
+import { useCrisisStore } from "@/store/crisis-store";
 
 export default function AdminBerandaPage() {
   const payouts = usePayoutStore((state) => state.payouts);
@@ -34,6 +35,12 @@ export default function AdminBerandaPage() {
   const pendingVerifications = React.useMemo(
     () => verifications.filter((v) => v.status === "pending"),
     [verifications]
+  );
+
+  const crisisReports = useCrisisStore((state) => state.reports);
+  const openCrisisCount = React.useMemo(
+    () => crisisReports.filter((r) => r.status === "open").length,
+    [crisisReports]
   );
 
   return (
@@ -65,13 +72,19 @@ export default function AdminBerandaPage() {
                   Verifikasi Lisensi ({pendingVerifications.length} Baru)
                 </Button>
               </Link>
+              <Link href="/admin/crisis-feed">
+                <Button className="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-4 sm:px-5 py-5 text-sm cursor-pointer shadow-md shadow-rose-600/30 gap-2">
+                  <AlertTriangle size={17} />
+                  <span>Feed Krisis ({openCrisisCount} Kasus)</span>
+                </Button>
+              </Link>
               <Link href="/admin/transactions">
-                <Button variant="outline" className="border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-5 py-5 text-sm cursor-pointer gap-2">
+                <Button variant="outline" className="border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-4 py-5 text-sm cursor-pointer gap-2">
                   <Coins size={17} />
-                  <span>Audit Transaksi Koin</span>
+                  <span>Audit Koin</span>
                   {pendingPayouts.length > 0 && (
                     <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-xs font-bold animate-pulse">
-                      {pendingPayouts.length} Payout Menunggu
+                      {pendingPayouts.length} Payout
                     </span>
                   )}
                 </Button>

@@ -53,7 +53,17 @@ export default function ListenerQueueRoomPage() {
   const user = useUserStore((state) => state.user);
   const updateProfile = useUserStore((state) => state.updateProfile);
 
-  const { posts, claimPost, closeSession } = usePeerVentStore();
+  const {
+    posts,
+    claimPost,
+    closeSession,
+    dailySessionsCompleted,
+    maxDailySessions,
+    isOnBreak,
+    toggleBreakMode,
+    reportCrisisIncident,
+    resetDailyQuota,
+  } = usePeerVentStore();
   const listenerId = user.id || "listener-dewi";
   const listenerName = user.fullName || "Dewi Lestari";
 
@@ -64,6 +74,7 @@ export default function ListenerQueueRoomPage() {
   );
   const activeCount = myActiveSessions.length;
   const isCapacityFull = activeCount >= 2;
+  const isDailyLimitReached = dailySessionsCompleted >= maxDailySessions;
 
   // Tabs: "queue" | "chat"
   const [activeTab, setActiveTab] = useState<"queue" | "chat">(
@@ -82,9 +93,47 @@ export default function ListenerQueueRoomPage() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [showEscalateModal, setShowEscalateModal] = useState(false);
+  const [escalateReason, setEscalateReason] = useState("Indikasi bahaya keselamatan jiwa / ide bunuh diri");
+  const [customEscalateNotes, setCustomEscalateNotes] = useState("");
   const [showEndModal, setShowEndModal] = useState(false);
   const [sessionEndSuccess, setSessionEndSuccess] = useState(false);
+  const [crisisAlertSuccess, setCrisisAlertSuccess] = useState(false);
+
+  // Box Breathing Exercise Modal State
+  const [showBreathingModal, setShowBreathingModal] = useState(false);
+  const [breathingPhase, setBreathingPhase] = useState<"Tarik Napas" | "Tahan Napas" | "Hembuskan" | "Jeda Rileks">("Tarik Napas");
+  const [breathingTimer, setBreathingTimer] = useState(4);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Box Breathing Timer Effect
+  useEffect(() => {
+    if (!showBreathingModal) return;
+
+    const interval = setInterval(() => {
+      setBreathingTimer((prev) => {
+        if (prev <= 1) {
+          setBreathingPhase((currentPhase) => {
+            switch (currentPhase) {
+              case "Tarik Napas":
+                return "Tahan Napas";
+              case "Tahan Napas":
+                return "Hembuskan";
+              case "Hembuskan":
+                return "Jeda Rileks";
+              case "Jeda Rileks":
+              default:
+                return "Tarik Napas";
+            }
+          });
+          return 4;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [showBreathingModal]);
 
   // Sync selected session with chat messages
   useEffect(() => {
@@ -114,6 +163,14 @@ export default function ListenerQueueRoomPage() {
   }, [chatMessages]);
 
   const handleOpenClaimModal = (post: VentingPost) => {
+    if (isOnBreak) {
+      alert("Mode Istirahat sedang aktif. Matikan mode rehat untuk mulai menerima curhatan kembali.");
+      return;
+    }
+    if (isDailyLimitReached) {
+      alert("Batas aman 4 sesi harian telah tercapai (Burnout Guard). Luangkan waktu untuk relaksasi demi menjaga kesehatan emosi Anda.");
+      return;
+    }
     if (isCapacityFull) {
       alert("Kapasitas penuh. Anda sedang mendampingi batas maksimal 2 sesi curhat aktif. Selesaikan salah satu sesi terlebih dahulu.");
       return;
@@ -283,9 +340,99 @@ export default function ListenerQueueRoomPage() {
         </div>
       )}
 
+      {crisisAlertSuccess && (
+        <div className="mb-3 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+          <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+          <span>Laporan krisis darurat berhasil diteruskan ke Dashboard Administrator &amp; Hotline SEJIWA 119!</span>
+        </div>
+      )}
+
+      {/* 2. Burnout Guard & Emotional Health Panel */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-sky-50 via-teal-50 to-slate-50 dark:from-sky-950/40 dark:via-teal-950/40 dark:to-slate-900 border border-sky-200/80 dark:border-sky-900/60 shadow-2xs mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-900/80 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+            <Heart size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold font-heading text-slate-900 dark:text-white">
+                Burnout Guard Relawan
+              </span>
+              <Badge
+                className={`text-[10px] font-bold border px-2 ${
+                  isOnBreak
+                    ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300"
+                    : isDailyLimitReached
+                    ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300"
+                    : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300"
+                }`}
+              >
+                {isOnBreak ? "Sedang Rehat Emosi" : isDailyLimitReached ? "Batas Harian Terpenuhi" : "Energi Siap Mendengar"}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito mt-0.5">
+              Beban Sesi Hari Ini: <strong>{dailySessionsCompleted} dari {maxDailySessions} Sesi Maksimal</strong>. Istirahat sejenak sangat dianjurkan untuk menjaga empati.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowBreathingModal(true)}
+            className="text-xs rounded-xl h-8 px-3 font-semibold gap-1.5 border-teal-300 dark:border-teal-800 text-teal-800 dark:text-teal-300 hover:bg-teal-50 cursor-pointer"
+          >
+            <Sparkles size={13} />
+            <span>Box Breathing (Relaksasi)</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant={isOnBreak ? "default" : "outline"}
+            onClick={() => toggleBreakMode()}
+            className={`text-xs rounded-xl h-8 px-3 font-semibold gap-1.5 cursor-pointer ${
+              isOnBreak
+                ? "bg-teal-600 hover:bg-teal-700 text-white"
+                : "border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+            }`}
+          >
+            <Clock size={13} />
+            <span>{isOnBreak ? "Akhiri Rehat & Aktif" : "Ambil Jeda / Istirahat"}</span>
+          </Button>
+        </div>
+      </div>
+
       {/* TAB 1: DAFTAR ANTREAN CURHATAN MASUK */}
       {activeTab === "queue" && (
         <div className="flex-1 overflow-y-auto space-y-4">
+          {isOnBreak && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-2.5 text-xs text-amber-800 dark:text-amber-300">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={17} className="shrink-0 text-amber-600" />
+                <span>
+                  <strong>Mode Istirahat Aktif:</strong> Anda sedang meluangkan waktu pemulihan energi emosi. Tombol pengambilan curhatan baru dijeda sementara.
+                </span>
+              </div>
+              <Button size="sm" onClick={() => toggleBreakMode(false)} className="text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-lg h-7 px-2.5 font-bold">
+                Kembali Aktif
+              </Button>
+            </div>
+          )}
+
+          {isDailyLimitReached && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex items-center justify-between gap-2.5 text-xs text-rose-800 dark:text-rose-300">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={17} className="shrink-0 text-rose-600" />
+                <span>
+                  <strong>Batas Kuota Harian Terpenuhi ({dailySessionsCompleted}/{maxDailySessions}):</strong> Burnout Guard aktif untuk melindungi kesehatan mental Anda hari ini.
+                </span>
+              </div>
+              <Button size="sm" variant="outline" onClick={resetDailyQuota} className="text-xs border-rose-300 text-rose-700 rounded-lg h-7 px-2.5 font-bold">
+                Reset Demo
+              </Button>
+            </div>
+          )}
           {isCapacityFull && (
             <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-300">
               <AlertCircle size={17} className="shrink-0 text-amber-600" />
@@ -338,12 +485,20 @@ export default function ListenerQueueRoomPage() {
 
                     <Button
                       size="sm"
-                      disabled={isCapacityFull}
+                      disabled={isCapacityFull || isOnBreak || isDailyLimitReached}
                       onClick={() => handleOpenClaimModal(post)}
                       className="text-xs bg-pink-600 hover:bg-pink-700 text-white rounded-xl px-4 py-1.5 h-8 font-semibold cursor-pointer shadow-xs gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Heart size={13} />
-                      <span>{isCapacityFull ? "Kapasitas Penuh" : "Dengarkan & Respon"}</span>
+                      <span>
+                        {isOnBreak
+                          ? "Sedang Rehat"
+                          : isDailyLimitReached
+                          ? "Kuota Penuh (4/4)"
+                          : isCapacityFull
+                          ? "Kapasitas Penuh (2/2)"
+                          : "Dengarkan & Respon"}
+                      </span>
                     </Button>
                   </div>
                 </CardContent>
@@ -588,23 +743,61 @@ export default function ListenerQueueRoomPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL 3: RUJUK KE PSIKOLOG */}
+      {/* MODAL 3: ESKALASI KRISIS & RUJUK KE ADMIN / SEJIWA 119 */}
       <Dialog open={showEscalateModal} onOpenChange={setShowEscalateModal}>
         <DialogContent className="max-w-md font-nunito p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
           <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <AlertTriangle size={18} className="text-rose-600" />
+              <AlertTriangle size={20} className="text-rose-600 animate-pulse" />
               <DialogTitle className="text-base font-bold font-heading text-slate-900 dark:text-white">
-                Rujuk ke Psikolog Klinis?
+                Eskalasi Krisis &amp; Alarm Bahaya
               </DialogTitle>
             </div>
             <DialogDescription className="text-xs text-slate-500">
-              Rujukan disarankan jika klien menunjukkan gejala klinis berat atau membutuhkan diagnosa medis.
+              Laporan ini langsung diteruskan ke Tim Administrator &amp; Psikolog Klinis Siaga untuk intervensi darurat.
             </DialogDescription>
           </DialogHeader>
-          <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed pt-2">
-            Pesan rujukan resmi akan dikirimkan ke ruang obrolan klien mengarahkan mereka ke hotline 119 ext. 8 dan daftar psikolog berlisensi.
-          </p>
+
+          <div className="space-y-3 pt-2 text-xs">
+            <label className="font-bold text-slate-700 dark:text-slate-300 block">
+              Pilih Alasan Indikator Bahaya (Red Flag):
+            </label>
+            <div className="space-y-1.5">
+              {[
+                "Indikasi bahaya keselamatan jiwa / ide bunuh diri",
+                "Perilaku melukai diri sendiri (self-harm akut)",
+                "Ancaman kekerasan fisik dalam rumah tangga",
+                "Serangan panik hebat / disosiasi parah",
+              ].map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => setEscalateReason(reason)}
+                  className={`w-full p-2.5 rounded-xl border text-left transition-all cursor-pointer font-medium ${
+                    escalateReason === reason
+                      ? "border-rose-600 bg-rose-50 dark:bg-rose-950/70 text-rose-900 dark:text-rose-200 font-bold"
+                      : "border-slate-200 dark:border-slate-800 bg-slate-50/40 text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-1 pt-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                Catatan Tambahan Relawan (Opsional):
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Tuliskan kata kunci yang disampaikan klien..."
+                value={customEscalateNotes}
+                onChange={(e) => setCustomEscalateNotes(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-900 dark:text-slate-100"
+              />
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-3">
             <Button
               variant="ghost"
@@ -617,20 +810,80 @@ export default function ListenerQueueRoomPage() {
             <Button
               size="sm"
               onClick={() => {
+                if (!selectedSessionId) return;
+                const fullReason = customEscalateNotes
+                  ? `${escalateReason} — ${customEscalateNotes}`
+                  : escalateReason;
+
+                reportCrisisIncident(selectedSessionId, fullReason);
+
                 setChatMessages((prev) => [
                   ...prev,
                   {
                     id: `m-esc-${Date.now()}`,
                     sender: "peer_listener",
-                    text: "[Sistem TemanBicara] Relawan menyarankan rujukan konsultasi lanjutan dengan Psikolog Klinis resmi HIMPSI. Silakan reservasi jadwal di portal TemanBicara atau hubungi SEJIWA 119 ext. 8 bila butuh pertolongan darurat.",
+                    text: "[🚨 PROTOKOL KRISIS DIAKTIFKAN]\nLaporan peringatan telah diteruskan ke Dashboard Administrator TemanBicara & Tim Hotline Nasional SEJIWA 119 ext. 8. Mohon tetap tenang, bantuan medis sedang disiapkan untukmu.",
                     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
                   },
                 ]);
+
                 setShowEscalateModal(false);
+                setCrisisAlertSuccess(true);
+                setTimeout(() => setCrisisAlertSuccess(false), 5000);
               }}
-              className="text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-xl px-4 font-bold"
+              className="text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-xl px-4 font-bold gap-1.5"
             >
-              Kirim Pesan Rujukan
+              <AlertTriangle size={13} />
+              <span>Kirim Peringatan Krisis</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 4: LATIHAN PERNAPASAN BOX BREATHING UNTUK BURNOUT GUARD */}
+      <Dialog open={showBreathingModal} onOpenChange={setShowBreathingModal}>
+        <DialogContent className="max-w-md font-nunito p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 text-center">
+          <DialogHeader className="space-y-1 pb-2">
+            <DialogTitle className="text-base font-bold font-heading text-slate-900 dark:text-white flex items-center justify-center gap-2">
+              <Sparkles size={18} className="text-teal-600 dark:text-teal-400" />
+              Latihan Pemulihan Napas (Box Breathing)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Teknik relaksasi klinis 4-4-4-4 untuk menenangkan sistem saraf parasimpatis relawan.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Visual Breathing Orb */}
+          <div className="py-6 flex flex-col items-center justify-center">
+            <div
+              className={`w-36 h-36 rounded-full flex flex-col items-center justify-center transition-all duration-1000 shadow-xl ${
+                breathingPhase === "Tarik Napas"
+                  ? "scale-110 bg-teal-500/20 border-4 border-teal-500 text-teal-800 dark:text-teal-200 shadow-teal-500/20"
+                  : breathingPhase === "Tahan Napas"
+                  ? "scale-110 bg-sky-500/20 border-4 border-sky-500 text-sky-800 dark:text-sky-200 shadow-sky-500/20"
+                  : breathingPhase === "Hembuskan"
+                  ? "scale-90 bg-indigo-500/20 border-4 border-indigo-500 text-indigo-800 dark:text-indigo-200 shadow-indigo-500/20"
+                  : "scale-90 bg-slate-500/10 border-4 border-slate-400 text-slate-700 dark:text-slate-300"
+              }`}
+            >
+              <span className="text-2xl font-bold font-mono">{breathingTimer}s</span>
+              <span className="text-xs font-bold uppercase tracking-wider mt-1">{breathingPhase}</span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito mt-4 max-w-xs">
+              {breathingPhase === "Tarik Napas" && "Tarik napas perlahan lewat hidung hingga paru-paru terisi penuh..."}
+              {breathingPhase === "Tahan Napas" && "Tahan napasmu dengan tenang, rasakan keheningan batin..."}
+              {breathingPhase === "Hembuskan" && "Hembuskan perlahan lewat mulut, lepaskan semua ketegangan beban emosi..."}
+              {breathingPhase === "Jeda Rileks" && "Istirahat sejenak dengan santai sebelum siklus napas berikutnya dimulai..."}
+            </p>
+          </div>
+
+          <div className="flex justify-center pt-2">
+            <Button
+              size="sm"
+              onClick={() => setShowBreathingModal(false)}
+              className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-6 font-bold"
+            >
+              Selesai &amp; Kembali Tenang
             </Button>
           </div>
         </DialogContent>

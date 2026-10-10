@@ -25,9 +25,13 @@ import { usePeerVentStore } from "@/store/peer-vent-store";
 
 export default function ListenerBerandaPage() {
   const user = useUserStore((state) => state.user);
-  const [isOnline, setIsOnline] = useState(true);
   const posts = usePeerVentStore((state) => state.posts);
-  const waitingPosts = posts.filter((p) => p.status === "menunggu");
+  const dailySessionsCompleted = usePeerVentStore((state) => state.dailySessionsCompleted);
+  const maxDailySessions = usePeerVentStore((state) => state.maxDailySessions);
+  const isOnBreak = usePeerVentStore((state) => state.isOnBreak);
+  const toggleBreakMode = usePeerVentStore((state) => state.toggleBreakMode);
+
+  const waitingPosts = React.useMemo(() => posts.filter((p) => p.status === "menunggu"), [posts]);
 
   const listenerData = {
     listenerBadge: user.listenerData?.listenerBadge || "Pendengar Empatik Terlatih",
@@ -45,8 +49,8 @@ export default function ListenerBerandaPage() {
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
           <div className="space-y-3.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/60 border border-teal-700/60 text-teal-200 text-xs font-semibold backdrop-blur-md">
-              <span className={`w-2 h-2 rounded-full ${isOnline ? "bg-emerald-400 animate-pulse" : "bg-slate-400"}`} />
-              <span>{isOnline ? "Status: Siaga Menerima Curhat" : "Status: Sedang Offline"}</span>
+              <span className={`w-2 h-2 rounded-full ${!isOnBreak ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+              <span>{!isOnBreak ? "Status: Siaga Menerima Curhat" : "Status: Sedang Istirahat Emosi (Break)"}</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white tracking-tight leading-snug">
@@ -73,19 +77,19 @@ export default function ListenerBerandaPage() {
             </div>
           </div>
 
-          {/* Toggle Online / Offline Card */}
+          {/* Burnout Guard Status Card */}
           <div className="rounded-2xl bg-teal-900/40 border border-teal-700/50 p-4 sm:p-5 backdrop-blur-md max-w-xs space-y-3 shrink-0">
             <div className="flex items-center justify-between gap-3">
               <div className="space-y-0.5">
-                <p className="text-xs font-bold text-emerald-300">Ketersediaan Relawan</p>
+                <p className="text-xs font-bold text-emerald-300">Burnout Guard Relawan</p>
                 <p className="text-[11px] text-teal-100/70 font-nunito">
-                  {isOnline ? "Tampil di antrean curhat" : "Istirahat sejenak"}
+                  {isOnBreak ? "Sedang istirahat sejenak" : `Beban: ${dailySessionsCompleted}/${maxDailySessions} sesi hari ini`}
                 </p>
               </div>
-              <Switch checked={isOnline} onCheckedChange={setIsOnline} className="cursor-pointer" />
+              <Switch checked={!isOnBreak} onCheckedChange={(checked) => toggleBreakMode(!checked)} className="cursor-pointer" />
             </div>
             <div className="pt-2 border-t border-teal-800/80 flex items-center justify-between text-[11px] text-teal-300">
-              <span>Tingkat: {listenerData.listenerBadge}</span>
+              <span>Batas Aman: {maxDailySessions} Sesi/Hari</span>
               <span className="flex items-center gap-1 text-amber-300 font-bold">
                 <Star size={12} className="fill-amber-300" /> {listenerData.rating}
               </span>

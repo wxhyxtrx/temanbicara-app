@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useNotificationStore } from "@/store/notification-store";
 import { useChatStore } from "@/store/chat-store";
+import { useCrisisStore } from "@/store/crisis-store";
 
 export interface VentingPost {
   id: string;
@@ -21,6 +22,7 @@ export interface VentingPost {
   rating?: number;
   reviewTags?: string[];
   tipCoins?: number;
+  isCrisisFlagged?: boolean;
 }
 
 const initialPosts: VentingPost[] = [
@@ -65,6 +67,11 @@ const initialPosts: VentingPost[] = [
 export interface PeerVentState {
   posts: VentingPost[];
   myActivePost: VentingPost | null;
+  dailySessionsCompleted: number;
+  maxDailySessions: number;
+  isOnBreak: boolean;
+  toggleBreakMode: (forceState?: boolean) => void;
+  resetDailyQuota: () => void;
   createPost: (data: {
     topic: string;
     emotion: string;
@@ -84,6 +91,10 @@ export interface PeerVentState {
     reviewTags?: string[],
     tipCoins?: number
   ) => void;
+  reportCrisisIncident: (
+    postId: string,
+    reason: string
+  ) => { success: boolean; message: string };
   getListenerActiveCount: (listenerId: string) => number;
 }
 
@@ -92,6 +103,25 @@ export const usePeerVentStore = create<PeerVentState>()(
     (set, get) => ({
       posts: initialPosts,
       myActivePost: null,
+      dailySessionsCompleted: 2,
+      maxDailySessions: 4,
+      isOnBreak: false,
+
+      toggleBreakMode: (forceState) => {
+        const nextState = forceState !== undefined ? forceState : !get().isOnBreak;
+        set({ isOnBreak: nextState });
+        useNotificationStore.getState().addNotification({
+          title: nextState ? "Mode Istirahat Aktif" : "Kembali Siap Mendengarkan",
+          message: nextState
+            ? "Anda sedang beristirahat. Antrean curhatan baru dijeda untuk pemulihan energi emosi Anda."
+            : "Status Anda kini aktif. Anda siap mendampingi teman curhat sebaya kembali.",
+          type: "sistem",
+        });
+      },
+
+      resetDailyQuota: () => {
+        set({ dailySessionsCompleted: 0 });
+      },
 
       getListenerActiveCount: (listenerId: string) => {
         return get().posts.filter(
@@ -139,6 +169,22 @@ export const usePeerVentStore = create<PeerVentState>()(
       },
 
       claimPost: (postId, listenerId, listenerName, firstResponse) => {
+        if (get().isOnBreak) {
+          return {
+            success: false,
+            message:
+              "Mode Istirahat sedang aktif. Matikan mode rehat untuk mulai menerima curhatan kembali.",
+          };
+        }
+
+        if (get().dailySessionsCompleted >= get().maxDailySessions) {
+          return {
+            success: false,
+            message:
+              "Batas aman 4 sesi harian telah tercapai. Istirahatkan pikiran Anda demi menjaga kesehatan mental pribadi (Burnout Guard).",
+          };
+        }
+
         const activeCount = get().getListenerActiveCount(listenerId);
         if (activeCount >= 2) {
           return {
@@ -248,6 +294,7 @@ export const usePeerVentStore = create<PeerVentState>()(
 
         set({
           posts: updatedPosts,
+          dailySessionsCompleted: get().dailySessionsCompleted + 1,
           myActivePost:
             get().myActivePost?.id === postId ? null : get().myActivePost,
         });
@@ -259,6 +306,37 @@ export const usePeerVentStore = create<PeerVentState>()(
             "Terima kasih telah berbagi beban emosi. Satu slot relawan pendengar telah kembali dibuka.",
           type: "sistem",
         });
+      },
+
+      reportCrisisIncident: (postId, reason) => {
+        const targetPost = get().posts.find((p) => p.id === postId);
+        if (!targetPost) return { success: false, message: "Curhatan tidak ditemukan." };
+
+        // Tandai post
+        set({
+          posts: get().posts.map((p) =>
+            p.id === postId ? { ...p, isCrisisFlagged: true } : p
+          ),
+        });
+
+        // Teruskan ke crisis store
+        useCrisisStore.getState().addReport({
+          patientId: `PT-${targetPost.patientAlias.replace(/\s+/g, "").toUpperCase()}`,
+          patientName: targetPost.patientAlias,
+          patientAlias: targetPost.patientAlias,
+          patientEmail: "pasien.anonim@temanbicara.id",
+          patientPhone: "+62 812-9900-1122",
+          emergencyContactName: "Kontak Darurat Terdaftar Pasien",
+          emergencyContactPhone: "0811-9876-5432",
+          source: "curhat_sebaya",
+          severity: "critical",
+          triggerExcerpt: `Dilaporkan oleh Relawan Pendengar: "${reason}" | Isi curhat: "${targetPost.content}"`,
+        });
+
+        return {
+          success: true,
+          message: "Laporan krisis darurat berhasil dikirimkan ke Tim Admin & Hotline SEJIWA 119.",
+        };
       },
     }),
     {

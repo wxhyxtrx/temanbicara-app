@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   FileCheck2,
   SlidersHorizontal,
+  AlertTriangle,
   LucideIcon,
 } from "lucide-react";
 import { UserRole } from "./mock-users";
@@ -193,6 +194,13 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         url: "/admin/verifications",
         icon: FileCheck2,
         badge: "3",
+      },
+      {
+        title: "Eskalasi Krisis",
+        description: "Alarm keselamatan & intervensi",
+        url: "/admin/crisis-feed",
+        icon: AlertTriangle,
+        badge: "Kritis",
       },
     ],
     utilityItems: [

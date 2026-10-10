@@ -19,7 +19,12 @@ export interface UserState {
   login: (email: string, name?: string) => UserProfile;
   loginWithRole: (role: UserRole) => UserProfile;
   switchRole: (role: UserRole) => void;
-  register: (fullName: string, email: string, role?: UserRole) => UserProfile;
+  register: (
+    fullName: string,
+    email: string,
+    role?: UserRole,
+    extraData?: Partial<UserProfile>
+  ) => UserProfile;
   updateProfile: (data: Partial<UserProfile>) => void;
   updateCoins: (newTotalOrDelta: number, isDelta?: boolean) => void;
   creditCounselorCoins: (coins: number) => void;
@@ -99,7 +104,7 @@ export const useUserStore = create<UserState>()(
         });
       },
 
-      register: (fullName, email, role = "patient") => {
+      register: (fullName, email, role = "patient", extraData?: Partial<UserProfile>) => {
         const initials = generateInitials(fullName);
         const base = mockUsers[role] || mockUsers.patient;
         const newUser: UserProfile = {
@@ -107,11 +112,12 @@ export const useUserStore = create<UserState>()(
           id: `usr-${Date.now()}`,
           role,
           fullName,
-          alias: fullName.split(" ")[0] || "Teman",
+          alias: extraData?.alias || fullName.split(" ")[0] || "Teman",
           email,
           avatarInitials: initials,
           patientId: `TB-${Math.floor(10000 + Math.random() * 90000)}`,
           coins: role === "patient" ? 50 : base.coins,
+          ...extraData,
         };
 
         const profiles = get().roleProfiles || { ...mockUsers };
