@@ -103,12 +103,42 @@ export interface ScheduleState {
   bookSession: (payload: BookingPayload) => { success: boolean; error?: string; item?: ScheduleItem };
   rescheduleSession: (id: string, newDate: string, newTime: string) => boolean;
   cancelSession: (id: string, reason?: string) => { success: boolean; refundedCoins: number };
+  updateSessionStatus: (id: string, status: "terjadwal" | "menunggu" | "selesai" | "dibatalkan") => void;
 }
 
 export const useScheduleStore = create<ScheduleState>()(
   persist(
     (set, get) => ({
       schedules: initialSchedules,
+
+      updateSessionStatus: (id, status) => {
+        const current = get().schedules;
+        const target = current.find((s) => s.id === id);
+        if (!target) return;
+
+        set({
+          schedules: current.map((s) => (s.id === id ? { ...s, status, roomReady: status === "terjadwal" } : s)),
+        });
+
+        if (status === "terjadwal") {
+          useNotificationStore.getState().addNotification({
+            title: "Sesi Dikonfirmasi Psikolog",
+            message: `Jadwal konseling bersama ${target.consultant} pada ${target.date} telah disetujui.`,
+            type: "jadwal",
+            actionUrl: "/patient/schedule",
+          });
+        } else if (status === "dibatalkan") {
+          if (target.coinFee > 0) {
+            useUserStore.getState().updateCoins(target.coinFee, true);
+          }
+          useNotificationStore.getState().addNotification({
+            title: "Sesi Konseling Dibatalkan",
+            message: `Jadwal bersama ${target.consultant} dibatalkan. ${target.coinFee} Koin telah dikembalikan ke dompet Anda.`,
+            type: "jadwal",
+            actionUrl: "/patient/schedule",
+          });
+        }
+      },
 
       bookSession: (payload) => {
         const userStore = useUserStore.getState();
@@ -170,7 +200,7 @@ export const useScheduleStore = create<ScheduleState>()(
           title: "Reservasi Sesi Berhasil",
           message: `Sesi ${payload.type} bersama ${payload.consultantName} pada ${payload.date} berhasil dijadwalkan.`,
           type: "jadwal",
-          actionUrl: "/schedule",
+          actionUrl: "/patient/schedule",
         });
 
         return { success: true, item: newSession };
@@ -199,7 +229,7 @@ export const useScheduleStore = create<ScheduleState>()(
           title: "Jadwal Berhasil Dipindahkan",
           message: `Sesi konseling bersama ${exists.consultant} dijadwalkan ulang ke ${newDate} pukul ${newTime}.`,
           type: "jadwal",
-          actionUrl: "/schedule",
+          actionUrl: "/patient/schedule",
         });
 
         return true;
@@ -245,7 +275,7 @@ export const useScheduleStore = create<ScheduleState>()(
             refundAmount > 0 ? ` ${refundAmount} Koin dikembalikan ke saldo dompetmu.` : ""
           }`,
           type: "jadwal",
-          actionUrl: "/schedule",
+          actionUrl: "/patient/schedule",
         });
 
         set({

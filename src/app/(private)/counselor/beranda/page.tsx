@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
+import { useScheduleStore } from "@/store/schedule-store";
 
 interface SessionRequest {
   id: string;
@@ -38,7 +39,7 @@ interface SessionRequest {
   status: "pending" | "accepted" | "declined";
 }
 
-const initialRequests: SessionRequest[] = [
+const defaultDemoRequests: SessionRequest[] = [
   {
     id: "req-1",
     patientName: "Budi Santoso (Anonim)",
@@ -67,14 +68,45 @@ const initialRequests: SessionRequest[] = [
 
 export default function CounselorBerandaPage() {
   const user = useUserStore((state) => state.user);
-  const [requests, setRequests] = useState<SessionRequest[]>(initialRequests);
-  const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
+  const rawSchedules = useScheduleStore((state) => state.schedules);
+  const updateSessionStatus = useScheduleStore((state) => state.updateSessionStatus);
+
+  const [mounted, setMounted] = useState(false);
+  const [requests, setRequests] = useState<SessionRequest[]>(defaultDemoRequests);
+
+  React.useEffect(() => {
+    setMounted(true);
+    // Sync any pending sessions from schedule store
+    const storePending = rawSchedules
+      .filter((s) => s.status === "menunggu")
+      .map((s) => ({
+        id: s.id,
+        patientName: "Wahyu Tricahyo (Klien Baru)",
+        patientAge: 27,
+        topic: s.topic,
+        dassScore: "Asesmen Mandiri",
+        type: s.type === "Voice Call" ? ("Voice Call" as const) : ("Chat Konseling" as const),
+        date: s.date,
+        time: s.time,
+        notes: s.notes || "Sesi baru dipesan oleh klien melalui katalog jadwal.",
+        status: "pending" as const,
+      }));
+
+    if (storePending.length > 0) {
+      setRequests([...storePending, ...defaultDemoRequests]);
+    }
+  }, [rawSchedules]);
 
   const handleAction = (id: string, action: "accepted" | "declined") => {
     setRequests((prev) =>
       prev.map((req) => (req.id === id ? { ...req, status: action } : req))
     );
+    updateSessionStatus(id, action === "accepted" ? "terjadwal" : "dibatalkan");
   };
+
+  const nextActiveSession = mounted
+    ? rawSchedules.find((s) => s.status === "terjadwal")
+    : null;
 
   const counselorProfile = {
     licenseNumber: user.counselorData?.licenseNumber || "198402-2019-01",
@@ -310,23 +342,32 @@ export default function CounselorBerandaPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-5 space-y-4">
-              <div className="p-3.5 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/40 space-y-2.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-teal-900 dark:text-teal-200">Sesi 14:00 WIB</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Siap Masuk
-                  </span>
+              {nextActiveSession ? (
+                <div className="p-3.5 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/40 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-teal-900 dark:text-teal-200">Sesi {nextActiveSession.time}</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Siap Masuk
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white font-heading">
+                    Klien: Pasien Terdaftar ({nextActiveSession.topic})
+                  </p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 font-nunito">
+                    Moda: {nextActiveSession.type} • {nextActiveSession.date}
+                  </p>
+                  <Link href="/counselor/clients">
+                    <Button className="w-full text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg py-2 h-8 font-semibold shadow-xs cursor-pointer">
+                      Buka Ruang Konseling & Catatan
+                    </Button>
+                  </Link>
                 </div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white font-heading">
-                  Klien: Budi Santoso (Anonim)
-                </p>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 font-nunito">
-                  Moda: Voice Call Terenkripsi • 50 Menit
-                </p>
-                <Button className="w-full text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg py-2 h-8 font-semibold shadow-xs cursor-pointer">
-                  Buka Ruang Konseling
-                </Button>
-              </div>
+              ) : (
+                <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-center py-5 space-y-1">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Belum ada sesi terjadwal</p>
+                  <p className="text-[11px] text-slate-400 font-nunito">Sesi akan muncul otomatis setelah Anda menyetujui permintaan klien.</p>
+                </div>
+              )}
 
               <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2 text-xs">
                 <p className="font-bold text-slate-800 dark:text-slate-200">Protokol Krisis Darurat Klien</p>
