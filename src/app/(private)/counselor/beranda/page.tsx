@@ -356,9 +356,9 @@ export default function CounselorBerandaPage() {
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 font-nunito">
                     Moda: {nextActiveSession.type} • {nextActiveSession.date}
                   </p>
-                  <Link href="/counselor/clients">
+                  <Link href="/counselor/room">
                     <Button className="w-full text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg py-2 h-8 font-semibold shadow-xs cursor-pointer">
-                      Buka Ruang Konseling & Catatan
+                      Buka Ruang Konseling & Catatan SOAP
                     </Button>
                   </Link>
                 </div>

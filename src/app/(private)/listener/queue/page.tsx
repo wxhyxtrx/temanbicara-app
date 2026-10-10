@@ -2,10 +2,18 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Send,
   Headphones,
@@ -17,7 +25,10 @@ import {
   Sparkles,
   PhoneCall,
   CheckCircle2,
+  Check,
+  Smile,
 } from "lucide-react";
+import { useUserStore } from "@/store/user-store";
 
 interface Message {
   id: string;
@@ -55,10 +66,16 @@ const empathyQuickPhrases = [
 ];
 
 export default function ListenerQueueRoomPage() {
+  const router = useRouter();
+  const user = useUserStore((state) => state.user);
+  const updateProfile = useUserStore((state) => state.updateProfile);
+
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputMessage, setInputMessage] = useState("");
   const [sessionMinutes, setSessionMinutes] = useState(14);
-  const [escalated, setEscalated] = useState(false);
+  const [showEscalateModal, setShowEscalateModal] = useState(false);
+  const [showEndModal, setShowEndModal] = useState(false);
+  const [sessionEndSuccess, setSessionEndSuccess] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,28 +90,67 @@ export default function ListenerQueueRoomPage() {
       id: `m-${Date.now()}`,
       sender: "peer_listener",
       text: inputMessage.trim(),
-      time: "20:05",
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
     setMessages((prev) => [...prev, newMsg]);
     setInputMessage("");
+
+    // Respon simulasi klien sebaya
+    setTimeout(() => {
+      const clientReplies = [
+        "Mendengar kakak bicara begitu rasanya sedikit lebih lega...",
+        "Iya kak, kadang aku ngerasa cuma butuh didengar tanpa dinasihati begini.",
+        "Terima kasih ya kak, aku bakal coba tarik napas perlahan.",
+      ];
+      const randomReply = clientReplies[Math.floor(Math.random() * clientReplies.length)];
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `m-${Date.now() + 1}`,
+          sender: "peer_client",
+          text: randomReply,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    }, 1800);
   };
 
   const handleUsePhrase = (phrase: string) => {
     setInputMessage(phrase);
   };
 
-  const handleEscalate = () => {
-    if (confirm("Apakah Anda ingin merujuk percakapan ini ke antrean darurat psikolog klinis berlisensi?")) {
-      setEscalated(true);
-      const referralMsg: Message = {
-        id: `m-sys-${Date.now()}`,
-        sender: "peer_listener",
-        text: "[Sistem TemanBicara] Pendengar menyarankan rujukan konsultasi dengan Psikolog Klinis berlisensi HIMPSI untuk pendampingan lebih mendalam. Hotline darurat: 119 ext. 8.",
-        time: "20:06",
-      };
-      setMessages((prev) => [...prev, referralMsg]);
-    }
+  const handleConfirmEscalate = () => {
+    const referralMsg: Message = {
+      id: `m-sys-${Date.now()}`,
+      sender: "peer_listener",
+      text: "[Sistem TemanBicara] Pendengar menyarankan rujukan konsultasi dengan Psikolog Klinis berlisensi HIMPSI untuk pendampingan lebih mendalam. Hotline darurat: 119 ext. 8.",
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+    setMessages((prev) => [...prev, referralMsg]);
+    setShowEscalateModal(false);
+  };
+
+  const handleConfirmEndSession = () => {
+    // Update listener stats
+    const currentSessions = user.listenerData?.sessionsCompleted || 64;
+    updateProfile({
+      listenerData: {
+        ...(user.listenerData || {
+          listenerBadge: "Pendengar Empatik Terlatih",
+          topicsHandled: ["Curhat Stres Kuliah", "Quarter Life Crisis"],
+          rating: 4.9,
+          status: "online",
+        }),
+        sessionsCompleted: currentSessions + 1,
+      },
+    });
+
+    setShowEndModal(false);
+    setSessionEndSuccess(true);
+    setTimeout(() => {
+      router.push("/listener/beranda");
+    }, 1800);
   };
 
   return (
@@ -136,24 +192,30 @@ export default function ListenerQueueRoomPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={handleEscalate}
+            onClick={() => setShowEscalateModal(true)}
             className="text-xs border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl px-3 h-8 font-semibold cursor-pointer gap-1.5"
           >
             <AlertTriangle size={14} />
             <span className="hidden sm:inline">Rujuk ke Psikolog</span>
           </Button>
 
-          <Link href="/listener/beranda">
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl px-3 h-8 font-semibold cursor-pointer"
-            >
-              Akhiri Sesi
-            </Button>
-          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowEndModal(true)}
+            className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl px-3 h-8 font-semibold cursor-pointer"
+          >
+            Akhiri Sesi
+          </Button>
         </div>
       </div>
+
+      {sessionEndSuccess && (
+        <div className="mb-3 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 size={16} className="text-emerald-600" />
+          <span>Sesi curhat berhasil diselesaikan! Jam relawan telah ditambahkan ke profil Anda. Mengalihkan ke beranda...</span>
+        </div>
+      )}
 
       {/* 2. Chat Log Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 rounded-2xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800 space-y-4">
@@ -216,6 +278,96 @@ export default function ListenerQueueRoomPage() {
           <span className="hidden sm:inline text-xs font-semibold">Kirim</span>
         </Button>
       </form>
+
+      {/* 5. MODAL: ESKALASI KRISIS KE PSIKOLOG */}
+      <Dialog open={showEscalateModal} onOpenChange={setShowEscalateModal}>
+        <DialogContent className="max-w-md font-nunito p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+          <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <AlertTriangle size={18} />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold font-heading text-slate-900 dark:text-white">
+                  Rujuk ke Psikolog Klinis?
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500">
+                  Eskalasi bila klien membutuhkan penanganan klinis atau menunjukkan tanda bahaya
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-3 pt-2 text-xs">
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-nunito">
+              Sebagai pendengar sebaya, peran Anda adalah mendampingi secara suportif. Jika masalah klien melebihi kapasitas dukungan sebaya (trauma berat, depresi klinis), sistem akan otomatis menampilkan tautan konsultasi psikolog berlisensi dan kontak SEJIWA 119 ext. 8 di ruang chat.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowEscalateModal(false)}
+                className="text-xs h-9 rounded-xl px-4 cursor-pointer"
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmEscalate}
+                className="text-xs h-9 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl px-4 cursor-pointer"
+              >
+                Kirim Pesan Rujukan
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 6. MODAL: AKHIRI SESI SEBAYA */}
+      <Dialog open={showEndModal} onOpenChange={setShowEndModal}>
+        <DialogContent className="max-w-md font-nunito p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
+          <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={18} />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold font-heading text-slate-900 dark:text-white">
+                  Akhiri Sesi Mendengar?
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500">
+                  Konfirmasi penyelesaian sesi curhat bersama Bunga Biru
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-3 pt-2 text-xs">
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-nunito">
+              Terima kasih telah meluangkan waktu dan empati Anda. Sesi ini akan ditandai selesai dan jam relawan Anda akan bertambah +1 di profil pendengar.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowEndModal(false)}
+                className="text-xs h-9 rounded-xl px-4 cursor-pointer"
+              >
+                Lanjutkan Mendengar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmEndSession}
+                className="text-xs h-9 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-4 cursor-pointer"
+              >
+                Selesaikan Sesi
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

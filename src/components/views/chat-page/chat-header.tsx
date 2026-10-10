@@ -57,7 +57,11 @@ export function ChatHeader({ onStartCall }: ChatHeaderProps) {
             <h2 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate leading-tight">
               {selectedConversation.name}
             </h2>
-            {!selectedConversation.isAI ? (
+            {selectedConversation.isPeerListener ? (
+              <Badge className="bg-pink-50 dark:bg-pink-950/70 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800 text-[10px] py-0 px-1.5 h-4 font-semibold shrink-0">
+                Sebaya PFA
+              </Badge>
+            ) : !selectedConversation.isAI ? (
               <MdVerified className="text-sky-500 text-sm shrink-0" />
             ) : (
               <Badge className="bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 text-[10px] py-0 px-1.5 h-4 font-semibold shrink-0">
@@ -76,7 +80,7 @@ export function ChatHeader({ onStartCall }: ChatHeaderProps) {
       {/* Aksi Samping: Voice Call (Psikolog saja) & Hotline */}
       <div className="flex items-center gap-2 shrink-0">
         {/* Jika Psikolog Klinis: Tombol Voice Call Berbayar 5 Koin */}
-        {!selectedConversation.isAI && onStartCall ? (
+        {!selectedConversation.isAI && !selectedConversation.isPeerListener && onStartCall ? (
           <Button
             size="sm"
             onClick={() => onStartCall("voice")}
@@ -87,9 +91,9 @@ export function ChatHeader({ onStartCall }: ChatHeaderProps) {
             <span className="text-xs font-semibold">Voice Call (5 Koin)</span>
           </Button>
         ) : (
-          /* Jika AI: Badge Layanan Gratis Tanpa Fitur Call */
+          /* Jika AI atau Pendengar Sebaya: Badge Layanan Curhat Gratis */
           <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 select-none">
-            Gratis 24/7
+            {selectedConversation.isPeerListener ? "Curhat Sebaya Gratis" : "Gratis 24/7"}
           </span>
         )}
 

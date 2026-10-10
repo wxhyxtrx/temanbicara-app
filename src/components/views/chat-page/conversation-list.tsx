@@ -132,6 +132,8 @@ export function ConversationList() {
                       className={`w-10 h-10 rounded-full font-bold text-xs flex items-center justify-center border font-heading ${
                         conv.isAI
                           ? "bg-teal-600 text-white border-teal-700"
+                          : conv.isPeerListener
+                          ? "bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800"
                           : "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800"
                       }`}
                     >
@@ -148,7 +150,11 @@ export function ConversationList() {
                       <p className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white font-heading truncate">
                         {conv.name}
                       </p>
-                      {!conv.isAI && <MdVerified className="text-sky-500 text-xs shrink-0" />}
+                      {conv.isPeerListener ? (
+                        <span className="text-[10px] text-pink-600 dark:text-pink-400 font-bold shrink-0">🤝</span>
+                      ) : !conv.isAI ? (
+                        <MdVerified className="text-sky-500 text-xs shrink-0" />
+                      ) : null}
                     </div>
 
                     <p className="text-[11px] text-teal-700 dark:text-teal-400 font-medium truncate mt-0.5">

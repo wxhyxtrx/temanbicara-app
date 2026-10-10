@@ -71,7 +71,7 @@ export function ChatArea() {
       title: "Panggilan Suara Terhubung",
       message: `Sesi Voice Call privat 60 menit bersama ${selectedConversation.name} telah dimulai (Biaya: 5 Koin).`,
       type: "chat",
-      actionUrl: "/room",
+      actionUrl: "/patient/room",
     });
 
     setShowCallPayConfirm(false);

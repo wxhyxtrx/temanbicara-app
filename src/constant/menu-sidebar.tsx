@@ -97,6 +97,13 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         icon: Home,
       },
       {
+        title: "Ruang Konseling",
+        description: "Sesi privat & catatan SOAP",
+        url: "/counselor/room",
+        icon: MessageCircle,
+        badge: "Live",
+      },
+      {
         title: "Jadwal Konseling",
         description: "Konfirmasi & kalender sesi",
         url: "/counselor/schedule",
