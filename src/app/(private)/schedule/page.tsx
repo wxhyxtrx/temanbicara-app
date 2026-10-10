@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
 import TableInfo from "@/components/shared/atoms/Table/TableInfo";
 import TablePagination from "@/components/shared/atoms/Table/TablePagination";
 import Tables from "@/components/shared/atoms/Table/Tables";
@@ -25,7 +25,7 @@ import { ScheduleItem, useScheduleStore } from "@/store/schedule-store";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
 import { SessionDetailModal } from "@/components/views/schedule/session-detail-modal";
 
-export default function SchedulePage() {
+function ScheduleContent() {
   const searchParams = useSearchParams();
   const rawSchedules = useScheduleStore((state) => state.schedules);
 
@@ -419,5 +419,13 @@ export default function SchedulePage() {
         onClose={() => setIsDetailOpen(false)}
       />
     </div>
+  );
+}
+
+export default function SchedulePage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Memuat jadwal...</div>}>
+      <ScheduleContent />
+    </Suspense>
   );
 }
