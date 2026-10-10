@@ -31,6 +31,8 @@ import { useUserStore } from "@/store/user-store";
 import { useScheduleStore } from "@/store/schedule-store";
 import { usePeerVentStore } from "@/store/peer-vent-store";
 import { VentingModalForm } from "@/components/views/patient/venting-modal-form";
+import { PsychologistProfileModal } from "@/components/views/patient/psychologist-profile-modal";
+import { BookingModal } from "@/components/views/schedule/booking-modal";
 
 export default function PatientBerandaPage() {
   const [mounted, setMounted] = useState<boolean>(false);
@@ -38,6 +40,12 @@ export default function PatientBerandaPage() {
   const rawSchedules = useScheduleStore((state) => state.schedules);
   const [ventingModalOpen, setVentingModalOpen] = useState(false);
   const myActivePost = usePeerVentStore((state) => state.myActivePost);
+
+  // Modal states for psychologist profile & booking
+  const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [bookingConsultantId, setBookingConsultantId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     setMounted(true);
@@ -437,14 +445,30 @@ export default function PatientBerandaPage() {
                     </div>
                   </div>
 
-                  <Link href="/patient/schedule?booking=true" className="shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <Button
                       size="sm"
-                      className="text-xs bg-teal-50 dark:bg-teal-950/70 hover:bg-teal-600 dark:hover:bg-teal-600 hover:text-white text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 font-semibold rounded-lg px-3 py-1 h-8 transition-colors cursor-pointer"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedConsultant(consultant);
+                        setIsProfileModalOpen(true);
+                      }}
+                      className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold rounded-lg px-2.5 py-1 h-8 cursor-pointer"
+                      title="Lihat detail sertifikasi, pendekatan terapi & biografi"
                     >
-                      {consultant.available ? "Jadwal" : "Profil"}
+                      Profil
                     </Button>
-                  </Link>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setBookingConsultantId(consultant.id);
+                        setIsBookingModalOpen(true);
+                      }}
+                      className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg px-3 py-1 h-8 shadow-2xs cursor-pointer"
+                    >
+                      Jadwal
+                    </Button>
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -528,6 +552,24 @@ export default function PatientBerandaPage() {
 
       {/* Modal Form: Keluh Kesah Pasien */}
       <VentingModalForm open={ventingModalOpen} onOpenChange={setVentingModalOpen} />
+
+      {/* Modal Detail Profil Psikolog */}
+      <PsychologistProfileModal
+        consultant={selectedConsultant}
+        open={isProfileModalOpen}
+        onOpenChange={setIsProfileModalOpen}
+        onBookSession={(consultant) => {
+          setBookingConsultantId(consultant.id);
+          setIsBookingModalOpen(true);
+        }}
+      />
+
+      {/* Modal Reservasi Sesi Psikolog */}
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        initialConsultantId={bookingConsultantId}
+      />
     </div>
   );
 }

@@ -11,14 +11,20 @@ export interface Consultant {
   initials: string;
   available: boolean;
   nextSlot: string;
+  almamater?: string;
+  bio?: string;
+  approaches?: string[];
+  handledTopics?: string[];
+  hourlyRateCoins?: number;
+  consultationMethods?: ("Chat Eksklusif" | "Voice Call")[];
 }
 
 export const verifiedConsultants: Consultant[] = [
   {
     id: 1,
-    name: "Dr. Anita Wijaya, M.Psi.",
-    title: "Psikolog Klinis Dewasa",
-    specialty: "Kecemasan, Burnout & Trauma",
+    name: "Dr. Anita Wijaya, M.Psi., Psikolog",
+    title: "Psikolog Klinis Dewasa (SIPPK Aktif)",
+    specialty: "Kecemasan, Burnout & Trauma Recovery",
     licenseNumber: "SIPPK-2021-0481",
     experienceYears: 9,
     rating: 4.9,
@@ -26,11 +32,26 @@ export const verifiedConsultants: Consultant[] = [
     initials: "AW",
     available: true,
     nextSlot: "Hari ini, 15:00 WIB",
+    almamater: "Magister Profesi Psikologi Klinis - Universitas Indonesia (UI)",
+    bio: "Psikolog klinis terdaftar HIMPSI dengan dedikasi 9+ tahun membantu dewasa muda dan profesional memproses kecemasan berlebih, kejenuhan karier (burnout), serta luka emosional masa lalu melalui ruang aman tanpa penghakiman.",
+    approaches: [
+      "Cognitive Behavioral Therapy (CBT)",
+      "Mindfulness-Based Stress Reduction (MBSR)",
+      "Acceptance & Commitment Therapy (ACT)",
+    ],
+    handledTopics: [
+      "Panic Attack & Kecemasan",
+      "Workplace Burnout",
+      "Overthinking & Insomnia",
+      "Trauma & Regulasi Emosi",
+    ],
+    hourlyRateCoins: 15,
+    consultationMethods: ["Chat Eksklusif", "Voice Call"],
   },
   {
     id: 2,
     name: "Budi Santoso, M.Psi., Psikolog",
-    title: "Psikolog Klinis & Karier",
+    title: "Psikolog Klinis & Pengembangan Diri",
     specialty: "Manajemen Stres & Krisis Identitas",
     licenseNumber: "SIPPK-2019-1102",
     experienceYears: 7,
@@ -39,12 +60,27 @@ export const verifiedConsultants: Consultant[] = [
     initials: "BS",
     available: true,
     nextSlot: "Besok, 10:00 WIB",
+    almamater: "Magister Profesi Psikologi - Universitas Gadjah Mada (UGM)",
+    bio: "Fokus mendampingi individu yang mengalami krisis arah hidup (quarter-life crisis), tekanan karier, dan konflik identitas. Mengutamakan solusi praktis dan restrukturisasi pola pikir adaptif.",
+    approaches: [
+      "Solution-Focused Brief Therapy (SFBT)",
+      "Cognitive Behavioral Therapy (CBT)",
+      "Rational Emotive Behavior Therapy (REBT)",
+    ],
+    handledTopics: [
+      "Quarter-Life Crisis",
+      "Ekspektasi Karier & Burnout",
+      "Manajemen Konflik & Komunikasi",
+      "Rasa Percaya Diri (Self-Esteem)",
+    ],
+    hourlyRateCoins: 15,
+    consultationMethods: ["Chat Eksklusif", "Voice Call"],
   },
   {
     id: 3,
-    name: "Siti Rahayu, S.Psi., M.A.",
-    title: "Konselor Hubungan & Keluarga",
-    specialty: "Komunikasi Pasangan & Parenting",
+    name: "Siti Rahayu, S.Psi., M.A., Psikolog",
+    title: "Konselor Hubungan Interpersonal & Keluarga",
+    specialty: "Komunikasi Pasangan & Dinamika Emosi",
     licenseNumber: "SIPPK-2022-0934",
     experienceYears: 6,
     rating: 4.9,
@@ -52,6 +88,21 @@ export const verifiedConsultants: Consultant[] = [
     initials: "SR",
     available: false,
     nextSlot: "Kamis, 14:00 WIB",
+    almamater: "Magister Psikologi Perkembangan - Universitas Padjadjaran (UNPAD)",
+    bio: "Berpengalaman memfasilitasi rekonsiliasi emosi dalam relasi romantis, mengatasi attachment anxiety, serta menavigasi batasan sehat (boundaries) dengan keluarga dan lingkungan sosial.",
+    approaches: [
+      "Emotion-Focused Therapy (EFT)",
+      "Systemic Family Counseling",
+      "Nonviolent Communication (NVC)",
+    ],
+    handledTopics: [
+      "Dinamika Asmara & Pasangan",
+      "Healthy Boundaries & Keluarga",
+      "Kesepian & Hubungan Sosial",
+      "Duka & Pemulihan Kehilangan",
+    ],
+    hourlyRateCoins: 15,
+    consultationMethods: ["Chat Eksklusif"],
   },
 ];
 
