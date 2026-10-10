@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { useChatStore, Message } from "@/store/chat-store";
 import { useScheduleStore } from "@/store/schedule-store";
+import { useClinicalRecordsStore } from "@/store/clinical-records-store";
 import { CallRoomModal } from "@/components/views/chat-page/call-room-modal";
 
 const clinicalQuickPrompts = [
@@ -102,8 +103,17 @@ export default function CounselorRoomPage() {
     setReplyText("");
   };
 
+  const saveSoapToRecord = useClinicalRecordsStore((state) => state.saveSoapNote);
+
   const handleSaveSoap = () => {
     updateClinicalNote(activeConvId, {
+      s: soapS,
+      o: soapO,
+      a: soapA,
+      p: soapP,
+    });
+    saveSoapToRecord("cl-wahyu", {
+      sessionNumber: 3,
       s: soapS,
       o: soapO,
       a: soapA,
