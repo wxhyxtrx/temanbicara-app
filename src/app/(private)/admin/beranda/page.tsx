@@ -21,9 +21,20 @@ import {
 } from "lucide-react";
 
 import { usePayoutStore } from "@/store/payout-store";
+import { useVerificationStore } from "@/store/verification-store";
 
 export default function AdminBerandaPage() {
-  const pendingPayouts = usePayoutStore((state) => state.payouts.filter((p) => p.status === "Diproses"));
+  const payouts = usePayoutStore((state) => state.payouts);
+  const pendingPayouts = React.useMemo(
+    () => payouts.filter((p) => p.status === "Diproses"),
+    [payouts]
+  );
+
+  const verifications = useVerificationStore((state) => state.verifications);
+  const pendingVerifications = React.useMemo(
+    () => verifications.filter((v) => v.status === "pending"),
+    [verifications]
+  );
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -51,7 +62,7 @@ export default function AdminBerandaPage() {
               <Link href="/admin/verifications">
                 <Button className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-5 py-5 text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-2">
                   <FileCheck2 size={17} />
-                  Verifikasi Lisensi SIPPK (3 Baru)
+                  Verifikasi Lisensi ({pendingVerifications.length} Baru)
                 </Button>
               </Link>
               <Link href="/admin/transactions">
@@ -175,30 +186,34 @@ export default function AdminBerandaPage() {
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-3">
-              {[
-                { name: "Dr. Dimas Prasetyo, M.Psi", sippk: "202104-1082-03", univ: "Universitas Indonesia", status: "Tinjauan Berkas" },
-                { name: "Fitri Handayani, S.Psi, M.Psi", sippk: "201908-0914-02", univ: "Universitas Gadjah Mada", status: "Validasi HIMPSI" },
-                { name: "Rendra Kurniawan, M.Psi", sippk: "202301-1402-05", univ: "Universitas Padjadjaran", status: "Tinjauan Berkas" },
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-3 text-xs"
-                >
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="font-bold text-slate-900 dark:text-white font-heading truncate">
-                      {item.name}
-                    </p>
-                    <p className="text-[11px] text-teal-700 dark:text-teal-400 font-mono">
-                      SIPPK: {item.sippk} • {item.univ}
-                    </p>
-                  </div>
-                  <Link href="/admin/verifications" className="shrink-0">
-                    <Button size="sm" className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg h-7 px-3 font-semibold">
-                      Tinjau
-                    </Button>
-                  </Link>
+              {pendingVerifications.length === 0 ? (
+                <div className="text-center py-6 text-slate-500 dark:text-slate-400 space-y-1">
+                  <CheckCircle2 size={24} className="mx-auto text-emerald-500 mb-1" />
+                  <p className="text-xs font-semibold">Semua Permohonan Telah Ditinjau</p>
+                  <p className="text-[11px]">Tidak ada berkas kredensial yang menunggu tindakan.</p>
                 </div>
-              ))}
+              ) : (
+                pendingVerifications.slice(0, 4).map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="font-bold text-slate-900 dark:text-white font-heading truncate">
+                        {item.applicantName}
+                      </p>
+                      <p className="text-[11px] text-teal-700 dark:text-teal-400 font-mono truncate">
+                        {item.credentialNumber} • {item.institution}
+                      </p>
+                    </div>
+                    <Link href="/admin/verifications" className="shrink-0">
+                      <Button size="sm" className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg h-7 px-3 font-semibold">
+                        Tinjau
+                      </Button>
+                    </Link>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>
