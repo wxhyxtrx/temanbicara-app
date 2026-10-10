@@ -23,9 +23,14 @@ import {
   XCircle,
   RotateCcw,
   Coins,
+  Star,
+  Sparkles,
+  HeartHandshake,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import Link from "next/link";
+import { useReviewStore } from "@/store/review-store";
+import { SessionReviewModal } from "./session-review-modal";
 
 interface SessionDetailModalProps {
   session: ScheduleItem | null;
@@ -40,9 +45,11 @@ export function SessionDetailModal({
 }: SessionDetailModalProps) {
   const rescheduleSession = useScheduleStore((state) => state.rescheduleSession);
   const cancelSession = useScheduleStore((state) => state.cancelSession);
+  const hasReviewed = useReviewStore((state) => state.hasReviewed);
 
   // Sub-dialog view mode: 'detail' | 'reschedule' | 'cancel'
   const [viewMode, setViewMode] = useState<"detail" | "reschedule" | "cancel">("detail");
+  const [isReviewOpen, setIsReviewOpen] = useState<boolean>(false);
   
   // Reschedule form states
   const rescheduleDates = [
@@ -125,7 +132,8 @@ export function SessionDetailModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
         <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between gap-3">
@@ -220,6 +228,18 @@ export function SessionDetailModal({
                 </div>
               )}
 
+              {session.status === "selesai" && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-teal-800 dark:text-teal-300">
+                    <Sparkles size={13} className="text-teal-600 dark:text-teal-400" />
+                    <span>Panduan & Latihan Mandiri Pasca Sesi:</span>
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 bg-teal-50/60 dark:bg-teal-950/40 p-2.5 rounded-lg border border-teal-200/80 dark:border-teal-800/60 leading-relaxed font-nunito">
+                    Latihan pernapasan diafragma harian 5 menit, restrukturisasi kognitif (CBT thought record), serta penjadwalan aktivitas istirahat berkualitas.
+                  </p>
+                </div>
+              )}
+
               {session.cancellationReason && (
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-rose-700 dark:text-rose-400 text-xs">
                   <strong className="font-semibold">Alasan Pembatalan: </strong>
@@ -255,6 +275,25 @@ export function SessionDetailModal({
                       <span>Batalkan</span>
                     </Button>
                   </>
+                )}
+
+                {session.status === "selesai" && (
+                  hasReviewed(session.id) ? (
+                    <Badge className="bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800 text-xs py-1.5 px-3 gap-1.5">
+                      <Star size={12} className="fill-amber-500 text-amber-500" />
+                      <span>Sudah Memberikan Ulasan</span>
+                    </Badge>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setIsReviewOpen(true)}
+                      className="text-xs bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl h-9 px-3.5 gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Star size={13} className="fill-white" />
+                      <span>Beri Ulasan & Rating</span>
+                    </Button>
+                  )
                 )}
               </div>
 
@@ -413,5 +452,12 @@ export function SessionDetailModal({
         )}
       </DialogContent>
     </Dialog>
-  );
+
+    <SessionReviewModal
+      session={session}
+      isOpen={isReviewOpen}
+      onClose={() => setIsReviewOpen(false)}
+    />
+  </>
+);
 }

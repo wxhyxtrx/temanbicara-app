@@ -17,17 +17,20 @@ import {
   Clock,
   CalendarCheck,
   Eye,
+  Star,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ScheduleItem, useScheduleStore } from "@/store/schedule-store";
+import { useReviewStore } from "@/store/review-store";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
 import { SessionDetailModal } from "@/components/views/schedule/session-detail-modal";
 
 function PatientScheduleContent() {
   const searchParams = useSearchParams();
   const rawSchedules = useScheduleStore((state) => state.schedules);
+  const hasReviewed = useReviewStore((state) => state.hasReviewed);
 
   const [mounted, setMounted] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -185,6 +188,34 @@ function PatientScheduleContent() {
                 <Eye size={13} />
               </Button>
             </>
+          ) : row.status === "selesai" ? (
+            <div className="flex items-center gap-1.5 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openSessionDetail(row)}
+                className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2.5 py-1.5 h-8 font-semibold cursor-pointer"
+              >
+                Catatan Sesi
+              </Button>
+              {hasReviewed(row.id) ? (
+                <span
+                  className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800 flex items-center justify-center shrink-0"
+                  title="Ulasan Anda Telah Dikirimkan"
+                >
+                  <Star size={13} className="fill-amber-500 text-amber-500" />
+                </span>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => openSessionDetail(row)}
+                  className="text-xs bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg px-2.5 py-1.5 h-8 cursor-pointer shadow-2xs gap-1"
+                >
+                  <Star size={12} className="fill-white" />
+                  <span>Ulas</span>
+                </Button>
+              )}
+            </div>
           ) : (
             <Button
               variant="outline"
@@ -192,7 +223,7 @@ function PatientScheduleContent() {
               onClick={() => openSessionDetail(row)}
               className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-3 py-1.5 h-8 font-semibold cursor-pointer"
             >
-              {row.status === "selesai" ? "Catatan Sesi" : "Detail Janji"}
+              Detail Janji
             </Button>
           )}
         </div>
