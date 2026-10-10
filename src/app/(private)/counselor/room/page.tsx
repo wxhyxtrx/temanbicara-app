@@ -38,6 +38,7 @@ import { useChatStore, Message } from "@/store/chat-store";
 import { useScheduleStore } from "@/store/schedule-store";
 import { useClinicalRecordsStore } from "@/store/clinical-records-store";
 import { CallRoomModal } from "@/components/views/chat-page/call-room-modal";
+import { SessionTimerBar } from "@/components/views/chat-page/session-timer-bar";
 
 const clinicalQuickPrompts = [
   "Mari kita ambil jeda napas diafragma 2 menit bersama-sama.",
@@ -185,6 +186,14 @@ export default function CounselorRoomPage() {
           </Button>
         </div>
       </div>
+
+      {/* 2. Real-time Session Guard & Countdown Timer */}
+      <SessionTimerBar
+        initialMinutes={45}
+        sessionTitle="Sesi Telekonseling Aktif: Wahyu Tricahyo"
+        isCounselor={true}
+        onSessionFinish={() => setShowFinishConfirm(true)}
+      />
 
       {sessionCompletedMsg && (
         <div className="flex items-center justify-between gap-2 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in">

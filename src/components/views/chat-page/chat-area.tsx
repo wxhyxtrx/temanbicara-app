@@ -19,6 +19,7 @@ import { MessageInput } from "./message-input";
 import { MessageList } from "./message-list";
 import { CallRoomModal } from "./call-room-modal";
 import { SessionReviewTipModal } from "./session-review-tip-modal";
+import { SessionTimerBar } from "./session-timer-bar";
 import { Phone, Coins, AlertCircle, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
@@ -86,6 +87,16 @@ export function ChatArea() {
         onStartCall={handleStartCallClick}
         onEndSession={() => setIsReviewTipModalOpen(true)}
       />
+      {!selectedConversation.isAI && (
+        <div className="px-3 sm:px-4 py-2 bg-slate-50/70 dark:bg-slate-850/50 border-b border-slate-100 dark:border-slate-800">
+          <SessionTimerBar
+            initialMinutes={selectedConversation.isPeerListener ? 30 : 50}
+            sessionTitle={`Sesi Aktif: ${selectedConversation.name}`}
+            isCounselor={false}
+            onSessionFinish={() => setIsReviewTipModalOpen(true)}
+          />
+        </div>
+      )}
       <MessageList />
       <MessageInput />
 
