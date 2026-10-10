@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import Link from "next/link";
+import { notify } from "@/lib/toast";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -136,6 +137,10 @@ export function BookingModal({
       setSubmitting(false);
 
       if (result.success) {
+        notify.success(
+          "Jadwal Konseling Terkonfirmasi!",
+          `Sesi bersama ${selectedConsultant.name} pada ${selectedDate} (${selectedTime}) berhasil dijadwalkan.`
+        );
         setSuccessInfo(`Sesi bersama ${selectedConsultant.name} berhasil dijadwalkan.`);
         if (onSuccess) onSuccess();
         setTimeout(() => {
@@ -143,6 +148,7 @@ export function BookingModal({
           onClose();
         }, 1500);
       } else {
+        notify.error("Gagal Menjadwalkan Sesi", result.error || "Saldo koin tidak mencukupi.");
         setErrorMessage(result.error || "Gagal menjadwalkan sesi. Silakan coba kembali.");
       }
     }, 600);

@@ -28,6 +28,7 @@ import {
   ClientClinicalRecord,
   SoapEntry,
 } from "@/store/clinical-records-store";
+import { notify } from "@/lib/toast";
 
 export default function CounselorClientsPage() {
   const rawClients = useClinicalRecordsStore((state) => state.clients);
@@ -68,7 +69,7 @@ export default function CounselorClientsPage() {
     if (!selectedClient) return;
 
     if (!soapS.trim() || !soapA.trim()) {
-      alert("Mohon lengkapi minimal Subjective (S) dan Assessment (A).");
+      notify.warning("Data SOAP Kurang", "Mohon lengkapi minimal Subjective (S) dan Assessment (A).");
       return;
     }
 
@@ -79,6 +80,7 @@ export default function CounselorClientsPage() {
       p: soapP.trim() || "Pemantauan berkala dan kelanjutan latihan regulasi diri.",
     });
 
+    notify.success("Catatan SOAP Tersimpan", `Rekam medis klinis untuk ${selectedClient.name} berhasil diperbarui.`);
     setSoapS("");
     setSoapO("");
     setSoapA("");

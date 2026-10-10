@@ -21,6 +21,7 @@ import { MdVerified } from "react-icons/md";
 
 
 import { useVerificationStore, VerificationItem } from "@/store/verification-store";
+import { notify } from "@/lib/toast";
 
 export default function AdminVerificationsPage() {
   const items = useVerificationStore((state) => state.verifications);
@@ -31,6 +32,11 @@ export default function AdminVerificationsPage() {
 
   const handleAction = (id: string, action: "approved" | "rejected", name: string) => {
     updateStatus(id, action);
+    if (action === "approved") {
+      notify.success("Kredensial Disetujui!", `Lisensi ${name} telah diverifikasi. Akun mitra kini aktif.`);
+    } else {
+      notify.warning("Permohonan Ditolak", `Verifikasi kredensial untuk ${name} ditolak.`);
+    }
     setActionNotice(
       action === "approved"
         ? `Kredensial untuk ${name} berhasil disetujui. Akun mitra kini aktif dan dapat melayani pasien.`

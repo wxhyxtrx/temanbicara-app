@@ -27,6 +27,7 @@ import {
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
 import { useNotificationStore } from "@/store/notification-store";
+import { notify } from "@/lib/toast";
 
 export default function PatientSettingsPage() {
   const user = useUserStore((state) => state.user);
@@ -90,6 +91,7 @@ export default function PatientSettingsPage() {
       actionUrl: "/patient/settings",
     });
 
+    notify.success("Profil Diperbarui", "Data identitas pasien dan preferensi akun berhasil disimpan.");
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
@@ -171,7 +173,7 @@ export default function PatientSettingsPage() {
                     className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 shadow-xs cursor-pointer"
                     title="Ganti foto avatar"
                     type="button"
-                    onClick={() => alert("Fitur unggah avatar khusus segera hadir. Inisial otomatis diperbarui dari nama Anda.")}
+                    onClick={() => notify.info("Unggah Avatar", "Fitur unggah avatar khusus segera hadir. Inisial otomatis diperbarui dari nama Anda.")}
                   >
                     <Camera size={13} />
                   </Button>
@@ -365,7 +367,7 @@ export default function PatientSettingsPage() {
                   variant="outline"
                   size="sm"
                   className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-3 h-8 font-semibold shrink-0 gap-1.5"
-                  onClick={() => alert("Permintaan unduh arsip data konseling sedang diproses.")}
+                  onClick={() => notify.info("Ekspor PDF", "Permintaan unduh arsip data konseling sedang diproses.")}
                 >
                   <Download size={13} />
                   Ekspor PDF

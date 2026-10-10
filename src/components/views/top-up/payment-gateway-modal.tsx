@@ -27,6 +27,7 @@ import {
 import { useUserStore } from "@/store/user-store";
 import { useTransactionStore, TransactionRecord } from "@/store/transaction-store";
 import { useNotificationStore } from "@/store/notification-store";
+import { notify } from "@/lib/toast";
 
 interface PaymentGatewayModalProps {
   isOpen: boolean;
@@ -66,6 +67,7 @@ export function PaymentGatewayModal({
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
+    notify.info("Tersalin", "Nomor pembayaran disalin ke papan klip.");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -106,6 +108,11 @@ export function PaymentGatewayModal({
         type: "transaksi",
         actionUrl: "/top-up/history",
       });
+
+      notify.success(
+        "Top Up Koin Berhasil!",
+        `+${coinAmount} Koin telah ditambahkan ke dompet akun Anda (Rp ${finalPrice.toLocaleString("id-ID")}).`
+      );
 
       setProcessing(false);
       setSuccessRecord(record);

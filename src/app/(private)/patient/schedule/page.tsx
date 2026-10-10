@@ -26,6 +26,7 @@ import { ScheduleItem, useScheduleStore } from "@/store/schedule-store";
 import { useReviewStore } from "@/store/review-store";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
 import { SessionDetailModal } from "@/components/views/schedule/session-detail-modal";
+import { notify } from "@/lib/toast";
 
 function PatientScheduleContent() {
   const searchParams = useSearchParams();
@@ -248,7 +249,7 @@ function PatientScheduleContent() {
           <Button
             variant="outline"
             className="text-xs border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-3.5 py-2 h-9 font-semibold gap-1.5 cursor-pointer"
-            onClick={() => alert("Jadwal Anda berhasil disinkronkan dengan Google Calendar & Apple Calendar.")}
+            onClick={() => notify.success("Sinkronisasi Kalender Berhasil", "Jadwal Anda berhasil disinkronkan dengan Google Calendar & Apple Calendar.")}
           >
             <CalendarCheck size={15} className="text-teal-600 dark:text-teal-400" />
             Sinkronkan Kalender

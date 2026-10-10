@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { usePayoutStore, PayoutRecord } from "@/store/payout-store";
 import { useTransactionStore } from "@/store/transaction-store";
+import { notify } from "@/lib/toast";
 
 export default function AdminTransactionsPage() {
   const [mounted, setMounted] = useState(false);
@@ -75,6 +76,10 @@ export default function AdminTransactionsPage() {
     if (!selectedPayout) return;
     const ok = approvePayout(selectedPayout.id);
     if (ok) {
+      notify.success(
+        "Penarikan Honor Disetujui!",
+        `Transfer ${selectedPayout.invoiceNo} sebesar Rp ${selectedPayout.amountRupiah.toLocaleString("id-ID")} ke ${selectedPayout.counselorName} telah diproses.`
+      );
       setFeedback({
         type: "success",
         message: `Transfer honor ${selectedPayout.invoiceNo} sebesar Rp ${selectedPayout.amountRupiah.toLocaleString("id-ID")} berhasil disetujui & dicatat.`,
@@ -89,6 +94,10 @@ export default function AdminTransactionsPage() {
     if (!selectedPayout) return;
     const ok = rejectPayout(selectedPayout.id, rejectReason);
     if (ok) {
+      notify.warning(
+        "Pengajuan Payout Ditolak",
+        `Pengajuan ${selectedPayout.invoiceNo} ditolak. ${selectedPayout.coinsDeducted} Koin dikembalikan ke dompet psikolog.`
+      );
       setFeedback({
         type: "error",
         message: `Pengajuan ${selectedPayout.invoiceNo} ditolak. ${selectedPayout.coinsDeducted} Koin telah dikembalikan ke dompet psikolog.`,
@@ -135,7 +144,7 @@ export default function AdminTransactionsPage() {
         </div>
 
         <Button
-          onClick={() => alert("Mengunduh laporan audit finansial format CSV...")}
+          onClick={() => notify.info("Ekspor Dimulai", "Mengunduh file laporan audit finansial format CSV...")}
           className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-4 py-2 h-9 font-semibold shadow-xs gap-1.5 cursor-pointer self-start sm:self-auto"
         >
           <Download size={15} />

@@ -25,6 +25,7 @@ import {
 
 import { usePayoutStore, PayoutRecord } from "@/store/payout-store";
 import { useUserStore } from "@/store/user-store";
+import { notify } from "@/lib/toast";
 
 const payoutChannels = [
   { id: "bca", name: "Bank Central Asia (BCA)", type: "bank", icon: Building2 },
@@ -136,12 +137,12 @@ export default function CounselorEarningsPage() {
   const handleRequestPayout = (e: React.FormEvent) => {
     e.preventDefault();
     if (withdrawAmountCoins <= 0 || withdrawAmountCoins > balanceCoins) {
-      alert("Jumlah koin penarikan tidak mencukupi saldo.");
+      notify.warning("Saldo Koin Tidak Cukup", "Jumlah koin penarikan melebihi saldo koin honor Anda.");
       return;
     }
 
     if (!accountNumber.trim()) {
-      alert("Nomor rekening atau ponsel e-wallet wajib diisi.");
+      notify.warning("Data Rekening Kurang", "Nomor rekening atau nomor ponsel e-wallet wajib diisi.");
       return;
     }
 
@@ -162,6 +163,10 @@ export default function CounselorEarningsPage() {
 
       setIsProcessing(false);
       setPayoutSuccessMsg(true);
+      notify.payout(
+        "Pengajuan Penarikan Terkirim!",
+        `Pencairan Rp ${(withdrawAmountCoins * 10000).toLocaleString("id-ID")} ke ${selectedChannel} sedang diverifikasi Admin Keuangan.`
+      );
       setTimeout(() => setPayoutSuccessMsg(false), 4000);
     }, 450);
   };

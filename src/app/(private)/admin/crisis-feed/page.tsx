@@ -33,6 +33,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { useCrisisStore, CrisisReport, CrisisSeverity, CrisisStatus } from "@/store/crisis-store";
+import { notify } from "@/lib/toast";
 
 export default function AdminCrisisFeedPage() {
   const reports = useCrisisStore((state) => state.reports);
@@ -84,6 +85,7 @@ export default function AdminCrisisFeedPage() {
     if (!reportToAssign) return;
     const psychName = selectedPsychologist.split(" (")[0];
     assignToPsychologist(reportToAssign.id, psychName);
+    notify.success("Psikolog Ditugaskan", `Kasus #${reportToAssign.id} berhasil ditugaskan ke ${psychName}.`);
     setBannerNotice(`Kasus #${reportToAssign.id} berhasil ditugaskan ke ${psychName}.`);
     setReportToAssign(null);
     setTimeout(() => setBannerNotice(null), 4000);
@@ -93,6 +95,7 @@ export default function AdminCrisisFeedPage() {
     if (!reportToResolve) return;
     const notes = resolutionNoteText.trim() || "Kasus krisis tertangani. Pasien telah terhubung dengan tim dukungan medis.";
     resolveReport(reportToResolve.id, notes);
+    notify.success("Kasus Ditandai Selesai", `Kasus #${reportToResolve.id} telah ditandai stabil dan selesai ditangani.`);
     setBannerNotice(`Kasus #${reportToResolve.id} ditandai sebagai stabil dan selesai ditangani.`);
     setReportToResolve(null);
     setResolutionNoteText("");
@@ -101,6 +104,7 @@ export default function AdminCrisisFeedPage() {
 
   const handleDirectEscalate119 = (reportId: string) => {
     escalateToHotline119(reportId);
+    notify.crisis("Rujukan SEJIWA 119 Terkirim", `Rujukan darurat kasus #${reportId} telah dikirimkan ke Hotline Kemenkes SEJIWA 119.`);
     setBannerNotice(`Rujukan darurat kasus #${reportId} telah dikirimkan ke Hotline Kemenkes SEJIWA 119.`);
     setTimeout(() => setBannerNotice(null), 4000);
   };

@@ -23,6 +23,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useUserStore, UserRole } from "@/store/user-store";
+import { notify } from "@/lib/toast";
 import { mockUsers } from "@/constant/mock-users";
 
 const loginSchema = z.object({
@@ -77,6 +78,7 @@ export default function Login() {
 
     setTimeout(() => {
       const loggedUser = login(data.email);
+      notify.success("Masuk Berhasil", `Selamat datang kembali, ${loggedUser.fullName}!`);
       router.push(getPortalHome(loggedUser.role));
     }, 400);
   };
@@ -91,6 +93,7 @@ export default function Login() {
     setLoading(true);
     setTimeout(() => {
       const loggedUser = loginWithRole(role);
+      notify.success("Mode Demo Aktif", `Beralih ke akun ${loggedUser.fullName} (${loggedUser.role}).`);
       router.push(getPortalHome(loggedUser.role));
     }, 350);
   };
@@ -99,6 +102,7 @@ export default function Login() {
     setLoading(true);
     setTimeout(() => {
       const loggedUser = login(`${provider.toLowerCase()}.user@temanbicara.id`, `${provider} User`);
+      notify.success("Masuk via Google", `Selamat datang, ${loggedUser.fullName}!`);
       router.push(getPortalHome(loggedUser.role));
     }, 400);
   };
@@ -266,7 +270,7 @@ export default function Login() {
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert("Tautan pemulihan kata sandi telah dikirim ke email terdaftar Anda.");
+                  notify.info("Pemulihan Akun", "Tautan pemulihan kata sandi telah dikirim ke email terdaftar Anda.");
                 }}
                 className="text-[11px] text-teal-700 dark:text-teal-400 hover:underline font-semibold"
               >

@@ -33,6 +33,7 @@ import {
 import { useUserStore } from "@/store/user-store";
 import { usePeerVentStore, VentingPost } from "@/store/peer-vent-store";
 import { useChatStore } from "@/store/chat-store";
+import { notify } from "@/lib/toast";
 
 interface ChatMessage {
   id: string;
@@ -164,15 +165,15 @@ export default function ListenerQueueRoomPage() {
 
   const handleOpenClaimModal = (post: VentingPost) => {
     if (isOnBreak) {
-      alert("Mode Istirahat sedang aktif. Matikan mode rehat untuk mulai menerima curhatan kembali.");
+      notify.warning("Mode Rehat Aktif", "Mode Istirahat sedang aktif. Matikan mode rehat untuk mulai menerima curhatan kembali.");
       return;
     }
     if (isDailyLimitReached) {
-      alert("Batas aman 4 sesi harian telah tercapai (Burnout Guard). Luangkan waktu untuk relaksasi demi menjaga kesehatan emosi Anda.");
+      notify.warning("Batas Harian Terpenuhi", "Batas aman 4 sesi harian telah tercapai (Burnout Guard). Luangkan waktu untuk relaksasi.");
       return;
     }
     if (isCapacityFull) {
-      alert("Kapasitas penuh. Anda sedang mendampingi batas maksimal 2 sesi curhat aktif. Selesaikan salah satu sesi terlebih dahulu.");
+      notify.warning("Kapasitas Penuh", "Anda sedang mendampingi batas maksimal 2 sesi curhat aktif. Selesaikan salah satu sesi terlebih dahulu.");
       return;
     }
     setPostToClaim(post);
@@ -192,13 +193,16 @@ export default function ListenerQueueRoomPage() {
     const result = claimPost(postToClaim.id, listenerId, listenerName, firstResponseText);
     if (!result.success) {
       setClaimError(result.message);
+      notify.error("Gagal Mengambil Curhat", result.message);
       return;
     }
 
     const claimedId = postToClaim.id;
+    const patientAlias = postToClaim.patientAlias;
     setPostToClaim(null);
     setSelectedSessionId(claimedId);
     setActiveTab("chat");
+    notify.info("Ruang Dengar Terhubung", `Anda terhubung dengan ${patientAlias}. Sesi pendampingan empati aktif.`);
   };
 
   const handleSendReply = (e: React.FormEvent) => {
@@ -256,6 +260,7 @@ export default function ListenerQueueRoomPage() {
 
     setShowEndModal(false);
     setSessionEndSuccess(true);
+    notify.success("Sesi Curhat Selesai", "Terima kasih telah mendengarkan dengan penuh empati. Slot pendampingan Anda kini kembali terbuka.");
 
     setTimeout(() => {
       setSessionEndSuccess(false);
@@ -390,7 +395,14 @@ export default function ListenerQueueRoomPage() {
           <Button
             size="sm"
             variant={isOnBreak ? "default" : "outline"}
-            onClick={() => toggleBreakMode()}
+            onClick={() => {
+              toggleBreakMode();
+              if (isOnBreak) {
+                notify.info("Kembali Aktif", "Anda siap mendengarkan cerita teman bicara.");
+              } else {
+                notify.info("Mode Rehat Aktif", "Istirahatkan emosi Anda sejenak.");
+              }
+            }}
             className={`text-xs rounded-xl h-8 px-3 font-semibold gap-1.5 cursor-pointer ${
               isOnBreak
                 ? "bg-teal-600 hover:bg-teal-700 text-white"
@@ -816,6 +828,10 @@ export default function ListenerQueueRoomPage() {
                   : escalateReason;
 
                 reportCrisisIncident(selectedSessionId, fullReason);
+                notify.crisis(
+                  "Eskalasi Krisis Terkirim ke Admin",
+                  "Tiket darurat diteruskan ke Admin & SEJIWA 119. Tetap dampingi teman bicara di ruang obrolan."
+                );
 
                 setChatMessages((prev) => [
                   ...prev,

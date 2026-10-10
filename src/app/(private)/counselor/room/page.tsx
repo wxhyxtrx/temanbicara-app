@@ -41,6 +41,7 @@ import { useChatStore, Message, Conversation } from "@/store/chat-store";
 import { useScheduleStore } from "@/store/schedule-store";
 import { useClinicalRecordsStore } from "@/store/clinical-records-store";
 import { CallRoomModal } from "@/components/views/chat-page/call-room-modal";
+import { notify } from "@/lib/toast";
 
 interface QuickIntervention {
   id: string;
@@ -54,37 +55,42 @@ const quickInterventions: QuickIntervention[] = [
   {
     id: "diaphragm",
     category: "Relaksasi Somatik",
-    label: "🌬️ Napas Diafragma 2 Mnt",
+    label: "Napas Diafragma 2 Mnt",
     text: "Mari kita ambil jeda napas diafragma 2 menit bersama-sama. Tarik napas 4 detik, tahan 4 detik, dan hembuskan perlahan 6 detik.",
-    simulatedReply: "Baik Dok, saya coba ikuti... Tarik napas 4 detik, hembuskan perlahan. Dada mulai terasa agak lebih lega dan tidak seberat tadi.",
+    simulatedReply:
+      "Baik Dok, saya coba ikuti... Tarik napas 4 detik, hembuskan perlahan. Dada mulai terasa agak lebih lega dan tidak seberat tadi.",
   },
   {
     id: "somatic",
     category: "Kesadaran Tubuh",
-    label: "🧠 Eksplorasi Sensasi Somatik",
+    label: "Eksplorasi Sensasi Somatik",
     text: "Apa yang kamu rasakan secara spesifik di tubuhmu saat sensasi cemas itu mulai memuncak di pagi hari?",
-    simulatedReply: "Dada terasa seperti diikat tali kencang Dok, telapak tangan saya berkeringat dingin, dan kepala bagian belakang agak tegang.",
+    simulatedReply:
+      "Dada terasa seperti diikat tali kencang Dok, telapak tangan saya berkeringat dingin, dan kepala bagian belakang agak tegang.",
   },
   {
     id: "cbt-evidence",
     category: "Restrukturisasi Kognitif",
-    label: "⚖️ Uji Bukti Nyata (CBT)",
+    label: "Uji Bukti Nyata (CBT)",
     text: "Mari kita uji bukti nyata: Apa bukti konkret yang mendukung bahwa kekhawatiranmu pasti terjadi, dan apa fakta yang membuktikan sebaliknya?",
-    simulatedReply: "Kalau dipikirkan dengan jernih, selama ini presentasi saya selalu diapresiasi atasan. Kekhawatiran dipecat itu lebih karena pikiran saya yang melebih-lebihkan kemungkinan buruk.",
+    simulatedReply:
+      "Kalau dipikirkan dengan jernih, selama ini presentasi saya selalu diapresiasi atasan. Kekhawatiran dipecat itu lebih karena pikiran saya yang melebih-lebihkan kemungkinan buruk.",
   },
   {
     id: "grounding",
     category: "Stabilisasi Akut",
-    label: "👁️ Grounding 5-4-3-2-1",
+    label: "Grounding 5-4-3-2-1",
     text: "Mari kita grounding indra kita sejenak. Coba sebutkan 5 benda yang kamu lihat di sekitarmu sekarang, dan 4 tekstur yang bisa kamu sentuh.",
-    simulatedReply: "Saya melihat laptop, cangkir kopi, buku catatan, jendela, dan jam dinding. Saya menyentuh meja kayu halus dan sandaran kursi.",
+    simulatedReply:
+      "Saya melihat laptop, cangkir kopi, buku catatan, jendela, dan jam dinding. Saya menyentuh meja kayu halus dan sandaran kursi.",
   },
   {
     id: "validation",
     category: "Afirmasi Terapeutik",
-    label: "🛡️ Validasi & Normalisasi Emosi",
+    label: "Validasi & Normalisasi Emosi",
     text: "Reaksi cemas yang kamu alami sangat wajar mengingat tingginya tuntutan kuartal ini. Kamu tidak lemah, sistem sarafmu hanya sedang protektif.",
-    simulatedReply: "Mendengar itu membuat saya merasa jauh lebih tenang Dok. Saya sering menyalahkan diri sendiri karena merasa terlalu cemas.",
+    simulatedReply:
+      "Mendengar itu membuat saya merasa jauh lebih tenang Dok. Saya sering menyalahkan diri sendiri karena merasa terlalu cemas.",
   },
 ];
 
@@ -98,8 +104,12 @@ export default function CounselorRoomPage() {
     clinicalNotes,
     updateClinicalNote,
   } = useChatStore();
-  const updateSessionStatus = useScheduleStore((state) => state.updateSessionStatus);
-  const saveSoapToRecord = useClinicalRecordsStore((state) => state.saveSoapNote);
+  const updateSessionStatus = useScheduleStore(
+    (state) => state.updateSessionStatus,
+  );
+  const saveSoapToRecord = useClinicalRecordsStore(
+    (state) => state.saveSoapNote,
+  );
 
   // Active client session (conversation 2: Wahyu Tricahyo)
   const activeConvId = 2;
@@ -131,7 +141,9 @@ export default function CounselorRoomPage() {
   const [soapA, setSoapA] = useState(existingNote.a);
   const [soapP, setSoapP] = useState(existingNote.p);
   const [soapSavedMsg, setSoapSavedMsg] = useState(false);
-  const [lastSavedTime, setLastSavedTime] = useState<string>(existingNote.updatedAt || "14:15 WIB");
+  const [lastSavedTime, setLastSavedTime] = useState<string>(
+    existingNote.updatedAt || "14:15 WIB",
+  );
 
   // Modals
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
@@ -171,9 +183,12 @@ export default function CounselorRoomPage() {
     if (!customText) setReplyText("");
 
     // Realistic patient response simulation
-    const matchedPrompt = quickInterventions.find((item) =>
-      content.toLowerCase().includes(item.label.slice(3).toLowerCase().slice(0, 8)) ||
-      item.text.slice(0, 20) === content.slice(0, 20)
+    const matchedPrompt = quickInterventions.find(
+      (item) =>
+        content
+          .toLowerCase()
+          .includes(item.label.slice(3).toLowerCase().slice(0, 8)) ||
+        item.text.slice(0, 20) === content.slice(0, 20),
     );
 
     setIsPatientTyping(true);
@@ -191,7 +206,11 @@ export default function CounselorRoomPage() {
   };
 
   const handleSaveSoap = () => {
-    const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB";
+    const timeString =
+      new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }) + " WIB";
     updateClinicalNote(activeConvId, {
       s: soapS,
       o: soapO,
@@ -233,7 +252,11 @@ export default function CounselorRoomPage() {
   };
 
   if (!mounted) {
-    return <div className="p-6 text-sm text-slate-500 font-nunito">Memuat ruang telekonseling...</div>;
+    return (
+      <div className="p-6 text-sm text-slate-500 font-nunito">
+        Memuat ruang telekonseling...
+      </div>
+    );
   }
 
   return (
@@ -254,7 +277,9 @@ export default function CounselorRoomPage() {
               <h1 className="text-base font-bold font-heading text-slate-900 dark:text-white tracking-tight truncate">
                 Wahyu Tricahyo
               </h1>
-              <span className="text-xs text-slate-400 font-medium">(27 th)</span>
+              <span className="text-xs text-slate-400 font-medium">
+                (27 th)
+              </span>
               <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 text-[10px] py-0 px-2 font-medium">
                 Sesi #3 · CBT Ansietas
               </Badge>
@@ -329,10 +354,16 @@ export default function CounselorRoomPage() {
         <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-semibold animate-in fade-in">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-            <span>Sesi konseling telah selesai. Catatan SOAP telah diarsipkan otomatis ke berkas rekam medis klien.</span>
+            <span>
+              Sesi konseling telah selesai. Catatan SOAP telah diarsipkan
+              otomatis ke berkas rekam medis klien.
+            </span>
           </div>
           <Link href="/counselor/clients">
-            <Button size="sm" className="h-7 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl">
+            <Button
+              size="sm"
+              className="h-7 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl"
+            >
               Buka Berkas Klien
             </Button>
           </Link>
@@ -346,14 +377,18 @@ export default function CounselorRoomPage() {
           {/* Header Dialog */}
           <div className="p-3 sm:px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-900/90">
             <div className="flex items-center gap-2">
-              <MessageSquare size={15} className="text-teal-700 dark:text-teal-400" />
+              <MessageSquare
+                size={15}
+                className="text-teal-700 dark:text-teal-400"
+              />
               <span className="text-xs font-bold font-heading text-slate-800 dark:text-slate-200">
                 Percakapan Langsung dengan Pasien
               </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Terhubung
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />{" "}
+                Terhubung
               </span>
             </div>
           </div>
@@ -362,9 +397,12 @@ export default function CounselorRoomPage() {
           <div className="p-2 sm:px-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/50">
             <div className="flex items-center justify-between gap-2 mb-1.5 px-1">
               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles size={11} className="text-teal-600" /> Panduan Intervensi Terapeutik Cepat
+                <Sparkles size={11} className="text-teal-600" /> Panduan
+                Intervensi Terapeutik Cepat
               </span>
-              <span className="text-[10px] text-slate-400">Klik untuk mengirim ke pasien</span>
+              <span className="text-[10px] text-slate-400">
+                Klik untuk mengirim ke pasien
+              </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {quickInterventions.map((item) => (
@@ -390,9 +428,13 @@ export default function CounselorRoomPage() {
             </div>
 
             {currentMessages.map((msg: Message, idx: number) => {
-              const isPsychologist = msg.senderRole === "counselor" || msg.sender.includes("Anita");
+              const isPsychologist =
+                msg.senderRole === "counselor" || msg.sender.includes("Anita");
               const prevMsg = currentMessages[idx - 1];
-              const prevSender = prevMsg ? (prevMsg.senderRole === "counselor" || prevMsg.sender.includes("Anita")) : null;
+              const prevSender = prevMsg
+                ? prevMsg.senderRole === "counselor" ||
+                  prevMsg.sender.includes("Anita")
+                : null;
               const isConsecutive = prevSender === isPsychologist;
 
               return (
@@ -417,10 +459,20 @@ export default function CounselorRoomPage() {
                     {/* Header Pengirim hanya jika bukan pesan beruntun */}
                     {!isConsecutive && (
                       <div className="flex items-center justify-between gap-3 text-[10px] font-medium pb-0.5 border-b border-black/5 dark:border-white/5">
-                        <span className={isPsychologist ? "text-teal-300 font-semibold" : "text-slate-600 dark:text-slate-300 font-bold"}>
-                          {isPsychologist ? "Dr. Anita Wijaya, M.Psi. (Anda)" : "Wahyu Tricahyo (Klien)"}
+                        <span
+                          className={
+                            isPsychologist
+                              ? "text-teal-300 font-semibold"
+                              : "text-slate-600 dark:text-slate-300 font-bold"
+                          }
+                        >
+                          {isPsychologist
+                            ? "Dr. Anita Wijaya, M.Psi. (Anda)"
+                            : "Wahyu Tricahyo (Klien)"}
                         </span>
-                        <span className="font-mono opacity-70 text-[9px]">{msg.time}</span>
+                        <span className="font-mono opacity-70 text-[9px]">
+                          {msg.time}
+                        </span>
                       </div>
                     )}
 
@@ -445,7 +497,9 @@ export default function CounselorRoomPage() {
                   WT
                 </div>
                 <div className="p-2.5 px-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 rounded-bl-xs shadow-2xs flex items-center gap-1.5">
-                  <span className="text-[11px] font-medium">Wahyu sedang mengetik respons</span>
+                  <span className="text-[11px] font-medium">
+                    Wahyu sedang mengetik respons
+                  </span>
                   <span className="flex gap-1">
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
@@ -545,7 +599,10 @@ export default function CounselorRoomPage() {
               {soapSavedMsg && (
                 <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in">
                   <Check size={14} className="text-emerald-600 shrink-0" />
-                  <span>Catatan SOAP berhasil disimpan dan diarsipkan ke Rekam Medis Klien.</span>
+                  <span>
+                    Catatan SOAP berhasil disimpan dan diarsipkan ke Rekam Medis
+                    Klien.
+                  </span>
                 </div>
               )}
 
@@ -560,7 +617,13 @@ export default function CounselorRoomPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setSoapS((prev) => prev + " Pasien juga melaporkan sensasi tegang di leher.")}
+                    onClick={() =>
+                      setSoapS(
+                        (prev) =>
+                          prev +
+                          " Pasien juga melaporkan sensasi tegang di leher.",
+                      )
+                    }
                     className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-medium cursor-pointer"
                   >
                     + Tag Somatisasi
@@ -586,7 +649,13 @@ export default function CounselorRoomPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setSoapO((prev) => prev + " Pasien kooperatif dan responsif terhadap arahan.")}
+                    onClick={() =>
+                      setSoapO(
+                        (prev) =>
+                          prev +
+                          " Pasien kooperatif dan responsif terhadap arahan.",
+                      )
+                    }
                     className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-medium cursor-pointer"
                   >
                     + Tag Observasi
@@ -612,7 +681,12 @@ export default function CounselorRoomPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setSoapA((prev) => prev + " Pola distorsi pikiran: Catastrophizing.")}
+                    onClick={() =>
+                      setSoapA(
+                        (prev) =>
+                          prev + " Pola distorsi pikiran: Catastrophizing.",
+                      )
+                    }
                     className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-medium cursor-pointer"
                   >
                     + Tag Diagnostik
@@ -634,11 +708,17 @@ export default function CounselorRoomPage() {
                     <span className="w-5 h-5 rounded-md bg-teal-100 dark:bg-teal-900/80 text-teal-800 dark:text-teal-300 text-[11px] flex items-center justify-center font-mono">
                       P
                     </span>
-                    <span>Plan (Tugas Mandiri / PR Terapi & Sesi Lanjutan)</span>
+                    <span>
+                      Plan (Tugas Mandiri / PR Terapi & Sesi Lanjutan)
+                    </span>
                   </label>
                   <button
                     type="button"
-                    onClick={() => setSoapP((prev) => prev + "\n4. Jaga jadwal istirahat rutin.")}
+                    onClick={() =>
+                      setSoapP(
+                        (prev) => prev + "\n4. Jaga jadwal istirahat rutin.",
+                      )
+                    }
                     className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-medium cursor-pointer"
                   >
                     + Tambah PR
@@ -670,16 +750,28 @@ export default function CounselorRoomPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Pekerjaan:</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-200">Software Engineer (Tech Startup)</span>
+                    <span className="text-slate-400 block text-[10px]">
+                      Pekerjaan:
+                    </span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                      Software Engineer (Tech Startup)
+                    </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Sesi Terlaksana:</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-200">2 dari 6 sesi terencana</span>
+                    <span className="text-slate-400 block text-[10px]">
+                      Sesi Terlaksana:
+                    </span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                      2 dari 6 sesi terencana
+                    </span>
                   </div>
                   <div className="col-span-2 pt-1 border-t border-slate-200/60 dark:border-slate-700">
-                    <span className="text-slate-400 block text-[10px]">Kontak Darurat Terverifikasi:</span>
-                    <span className="font-mono text-slate-800 dark:text-slate-200">0811-9876-5432 (Istri - Ny. Rina Tricahyo)</span>
+                    <span className="text-slate-400 block text-[10px]">
+                      Kontak Darurat Terverifikasi:
+                    </span>
+                    <span className="font-mono text-slate-800 dark:text-slate-200">
+                      0811-9876-5432 (Istri - Ny. Rina Tricahyo)
+                    </span>
                   </div>
                 </div>
               </div>
@@ -698,12 +790,17 @@ export default function CounselorRoomPage() {
 
                 <div className="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-300">
                   <p>
-                    <strong className="text-slate-800 dark:text-slate-200">Diagnosis Kerja: </strong>
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      Diagnosis Kerja:{" "}
+                    </strong>
                     F41.1 Ansietas Menyeluruh & Work-related Burnout
                   </p>
                   <p>
-                    <strong className="text-slate-800 dark:text-slate-200">Keluhan Utama: </strong>
-                    Sering terbangun jam 03.00 pagi dengan palpitasi dan kekhawatiran berlebih terhadap target pekerjaan.
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      Keluhan Utama:{" "}
+                    </strong>
+                    Sering terbangun jam 03.00 pagi dengan palpitasi dan
+                    kekhawatiran berlebih terhadap target pekerjaan.
                   </p>
                 </div>
 
@@ -734,21 +831,28 @@ export default function CounselorRoomPage() {
                 <div className="space-y-2 text-[11px]">
                   <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
                     <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
-                      <span className="font-bold text-slate-700 dark:text-slate-300">Sesi #2 (3 Okt 2026)</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300">
+                        Sesi #2 (3 Okt 2026)
+                      </span>
                       <span>14:00 WIB</span>
                     </div>
                     <p className="text-slate-600 dark:text-slate-300">
-                      Formulasi akumulasi stres kerja fase 3. Dilatihkan boundary setting aktif dan latihan pernapasan kotak 4-4-4-4.
+                      Formulasi akumulasi stres kerja fase 3. Dilatihkan
+                      boundary setting aktif dan latihan pernapasan kotak
+                      4-4-4-4.
                     </p>
                   </div>
 
                   <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
                     <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
-                      <span className="font-bold text-slate-700 dark:text-slate-300">Sesi #1 (26 Sep 2026)</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300">
+                        Sesi #1 (26 Sep 2026)
+                      </span>
                       <span>14:00 WIB</span>
                     </div>
                     <p className="text-slate-600 dark:text-slate-300">
-                      Initial assessment. Skrining insomnia dan ketegangan somatis. Edukasi Sleep Hygiene terstruktur.
+                      Initial assessment. Skrining insomnia dan ketegangan
+                      somatis. Edukasi Sleep Hygiene terstruktur.
                     </p>
                   </div>
                 </div>
@@ -791,7 +895,8 @@ export default function CounselorRoomPage() {
                   Protokol Krisis & Rujukan Darurat
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500">
-                  Panduan eskalasi kegawatdaruratan psikiatris & risiko melukai diri
+                  Panduan eskalasi kegawatdaruratan psikiatris & risiko melukai
+                  diri
                 </DialogDescription>
               </div>
             </div>
@@ -801,15 +906,25 @@ export default function CounselorRoomPage() {
             <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-300 space-y-1.5">
               <p className="font-bold">Langkah Tindakan Cepat:</p>
               <ul className="list-disc pl-4 space-y-1 text-[11px]">
-                <li>Tetap dampingi klien di sesi tanpa memutus komunikasi secara sepihak.</li>
-                <li>Arahkan klien ke Hotline Kemenkes <strong>SEJIWA: 119 ext. 8</strong>.</li>
+                <li>
+                  Tetap dampingi klien di sesi tanpa memutus komunikasi secara
+                  sepihak.
+                </li>
+                <li>
+                  Arahkan klien ke Hotline Kemenkes{" "}
+                  <strong>SEJIWA: 119 ext. 8</strong>.
+                </li>
                 <li>Hubungi kontak darurat keluarga terdaftar di bawah.</li>
               </ul>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
-              <p className="font-semibold text-slate-700 dark:text-slate-300">Kontak Darurat Terdaftar Pasien:</p>
-              <p className="font-mono text-slate-900 dark:text-white">0811-9876-5432 (Istri - Ny. Rina Tricahyo)</p>
+              <p className="font-semibold text-slate-700 dark:text-slate-300">
+                Kontak Darurat Terdaftar Pasien:
+              </p>
+              <p className="font-mono text-slate-900 dark:text-white">
+                0811-9876-5432 (Istri - Ny. Rina Tricahyo)
+              </p>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -824,7 +939,10 @@ export default function CounselorRoomPage() {
               <Button
                 type="button"
                 onClick={() => {
-                  alert("Protokol eskalasi darurat telah dicatat ke tim audit medis TemanBicara.");
+                  notify.crisis(
+                    "Eskalasi ke Supervisor Medis Terkirim",
+                    "Protokol darurat telah dicatat ke tim audit medis & supervisor TemanBicara."
+                  );
                   setShowCrisisModal(false);
                 }}
                 className="text-xs h-9 bg-rose-700 hover:bg-rose-800 text-white font-semibold rounded-xl px-4 cursor-pointer"
@@ -849,7 +967,8 @@ export default function CounselorRoomPage() {
                   Akhiri & Arsipkan Sesi Konseling Ini?
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500">
-                  Konfirmasi pengakhiran konsultasi dan sinkronisasi catatan SOAP
+                  Konfirmasi pengakhiran konsultasi dan sinkronisasi catatan
+                  SOAP
                 </DialogDescription>
               </div>
             </div>
@@ -857,7 +976,10 @@ export default function CounselorRoomPage() {
 
           <div className="space-y-3 pt-2 text-xs">
             <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-nunito">
-              Dengan mengakhiri sesi, konsultasi bersama <strong>Wahyu Tricahyo</strong> akan ditandai selesai. Catatan SOAP akan otomatis diperbarui ke berkas rekam medis, dan honor sesi akan dicatat di dompet penarikan Anda.
+              Dengan mengakhiri sesi, konsultasi bersama{" "}
+              <strong>Wahyu Tricahyo</strong> akan ditandai selesai. Catatan
+              SOAP akan otomatis diperbarui ke berkas rekam medis, dan honor
+              sesi akan dicatat di dompet penarikan Anda.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">

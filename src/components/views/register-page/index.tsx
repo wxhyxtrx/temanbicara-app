@@ -24,6 +24,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
+import { notify } from "@/lib/toast";
 
 const issueTopics = [
   "Kecemasan & Overthinking",
@@ -78,14 +79,17 @@ export default function Register() {
 
     if (!fullName.trim() || fullName.length < 3) {
       setStepError("Nama lengkap / nama samaran minimal 3 karakter.");
+      notify.warning("Data Belum Lengkap", "Nama lengkap / nama samaran minimal 3 karakter.");
       return;
     }
     if (!email.trim() || !email.includes("@")) {
       setStepError("Format email tidak valid (contoh: nama@email.com).");
+      notify.warning("Email Tidak Valid", "Format email tidak valid (contoh: nama@email.com).");
       return;
     }
     if (!password || password.length < 8) {
       setStepError("Kata sandi minimal 8 karakter demi keamanan data medis.");
+      notify.warning("Kata Sandi Terlalu Pendek", "Kata sandi minimal 8 karakter demi keamanan data medis.");
       return;
     }
 
@@ -98,14 +102,17 @@ export default function Register() {
 
     if (!emergencyName.trim()) {
       setStepError("Nama kontak darurat wajib diisi untuk keselamatan pasien.");
+      notify.warning("Kontak Darurat Kosong", "Nama kontak darurat wajib diisi untuk keselamatan pasien.");
       return;
     }
     if (!emergencyPhone.trim() || emergencyPhone.length < 8) {
       setStepError("Nomor telepon kontak darurat tidak valid.");
+      notify.warning("Nomor Darurat Tidak Valid", "Nomor telepon kontak darurat tidak valid.");
       return;
     }
     if (selectedTopics.length === 0) {
       setStepError("Pilih minimal satu fokus kebutuhan konseling.");
+      notify.warning("Fokus Belum Dipilih", "Pilih minimal satu fokus kebutuhan konseling.");
       return;
     }
 
@@ -118,6 +125,7 @@ export default function Register() {
 
     if (!consentNonEmergency || !consentEmergencyContact || !consentPrivacy) {
       setStepError("Anda wajib menyetujui seluruh ketentuan informed consent medis untuk melanjutkan.");
+      notify.warning("Informed Consent Wajib", "Anda wajib menyetujui seluruh ketentuan informed consent medis untuk melanjutkan.");
       return;
     }
 
@@ -130,6 +138,7 @@ export default function Register() {
         emergencyContact: `${emergencyName}: ${emergencyPhone}`,
         mentalNotes: `Fokus: ${selectedTopics.join(", ")} | Usia: ${ageGroup}`,
       });
+      notify.success("Pendaftaran Berhasil!", `Selamat datang di TemanBicara, ${fullName}! Akun pasien Anda telah aktif.`);
       router.push("/patient/beranda");
     }, 500);
   };
@@ -147,6 +156,7 @@ export default function Register() {
           mentalNotes: "Pendaftaran Cepat via Google",
         }
       );
+      notify.success("Pendaftaran Google Berhasil!", "Selamat datang di TemanBicara! Akun pasien Anda telah aktif.");
       router.push("/patient/beranda");
     }, 450);
   };

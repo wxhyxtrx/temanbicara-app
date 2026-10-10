@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserStore } from "@/store/user-store";
 import { PaymentGatewayModal } from "@/components/views/top-up/payment-gateway-modal";
+import { notify } from "@/lib/toast";
 import {
   Coins,
   CreditCard,
@@ -175,17 +176,20 @@ export default function PatientTopUpPage() {
     if (promoCode.trim().toUpperCase() === "SEHATMENTAL") {
       setPromoApplied(true);
       setPromoDiscountPercent(10);
+      notify.success("Promo Berhasil!", "Kupon diskon 10% (SEHATMENTAL) berhasil diterapkan.");
     } else if (promoCode.trim().toUpperCase() === "TEMANBICARA") {
       setPromoApplied(true);
       setPromoDiscountPercent(15);
+      notify.success("Promo Berhasil!", "Kupon diskon 15% (TEMANBICARA) berhasil diterapkan.");
     } else {
-      alert("Kode promo tidak valid atau telah kedaluwarsa.");
+      notify.error("Promo Tidak Ditemukan", "Kode promo tidak valid atau masa berlaku telah kedaluwarsa.");
     }
   };
 
   const handleCopyAccount = () => {
     navigator.clipboard.writeText(selectedPaymentInfo.account.replace(/\s/g, ""));
     setCopiedAccount(true);
+    notify.info("Tersalin", "Nomor rekening telah disalin ke papan klip.");
     setTimeout(() => setCopiedAccount(false), 2000);
   };
 

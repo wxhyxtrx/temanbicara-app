@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useReviewStore } from "@/store/review-store";
 import { useUserStore } from "@/store/user-store";
+import { notify } from "@/lib/toast";
 import { ScheduleItem } from "@/store/schedule-store";
 
 const reviewTagOptions = [
@@ -84,7 +85,7 @@ export function SessionReviewModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) {
-      alert("Mohon berikan sedikit catatan ulasan atau pengalaman konsultasi Anda.");
+      notify.warning("Ulasan Kosong", "Mohon berikan sedikit catatan ulasan atau pengalaman konsultasi Anda.");
       return;
     }
 
@@ -102,6 +103,11 @@ export function SessionReviewModal({
         aspectTags: selectedTags,
         comment: comment.trim(),
       });
+
+      notify.success(
+        "Ulasan Berhasil Dikirim!",
+        `Terima kasih atas penilaian ${rating} bintang untuk ${session.consultant}. Ulasan Anda membantu meningkatkan mutu layanan.`
+      );
 
       setIsSubmitting(false);
       setIsSuccess(true);

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { usePeerVentStore } from "@/store/peer-vent-store";
 import { useUserStore } from "@/store/user-store";
+import { notify } from "@/lib/toast";
 
 const topicsList = [
   "Pekerjaan & Burnout",
@@ -62,7 +63,7 @@ export function VentingModalForm({ open, onOpenChange, onSuccess }: VentingModal
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim() || content.trim().length < 10) {
-      alert("Harap tuliskan cerita keluh kesah minimal 10 karakter agar pendengar memahami perasaanmu.");
+      notify.warning("Cerita Terlalu Singkat", "Harap tuliskan cerita keluh kesah minimal 10 karakter agar pendengar memahami perasaanmu.");
       return;
     }
 
@@ -76,6 +77,7 @@ export function VentingModalForm({ open, onOpenChange, onSuccess }: VentingModal
         alias: isAnonymous ? pseudonym : user.fullName || "Wahyu",
       });
 
+      notify.info("Curhat Terkirim ke Antrean", "Relawan pendengar sebaya terlatih PFA akan segera menyambut ceritamu.");
       setIsSubmitting(false);
       setContent("");
       onOpenChange(false);
