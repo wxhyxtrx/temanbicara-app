@@ -97,7 +97,7 @@ export default function CounselorClientsPage() {
             Catatan Klinis & Rekam Medis Klien
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Dossier riwayat sesi, asesmen DASS-21, dan formulasi SOAP (Subjective, Objective, Assessment, Plan) terenkripsi
+            Dossier riwayat sesi, rekam perkembangan klinis, dan formulasi SOAP (Subjective, Objective, Assessment, Plan) terenkripsi
           </p>
         </div>
 
@@ -214,36 +214,28 @@ export default function CounselorClientsPage() {
               </CardHeader>
 
               <CardContent className="p-4 sm:p-6 space-y-6">
-                {/* DASS-21 Score Strip */}
-                {selectedClient.dassScores && (
+                {/* Target Terapi & Fokus Klinis Strip */}
+                {selectedClient.treatmentGoals && selectedClient.treatmentGoals.length > 0 && (
                   <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Activity size={14} className="text-teal-600 dark:text-teal-400" />
-                        <span>Skor Baseline Asesmen DASS-21:</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 font-heading">
+                        <HeartPulse size={14} className="text-teal-600 dark:text-teal-400" />
+                        <span>Fokus Intervensi & Sasaran Terapi:</span>
                       </span>
-                      <Badge variant="outline" className="text-[10px] bg-teal-50 text-teal-800 border-teal-200">
-                        Tren: {selectedClient.dassTrend}
+                      <Badge variant="outline" className="text-[10px] bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800">
+                        Total {selectedClient.totalSessions} Sesi
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 pt-1 text-center font-mono text-xs">
-                      <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700">
-                        <span className="text-[10px] text-slate-400 uppercase block font-sans">Depresi</span>
-                        <strong className="text-slate-800 dark:text-slate-200 text-sm">
-                          {selectedClient.dassScores.depression} / 42
-                        </strong>
-                      </div>
-                      <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-amber-200/80 dark:border-amber-800 text-amber-700 dark:text-amber-400">
-                        <span className="text-[10px] text-slate-400 uppercase block font-sans">Ansietas</span>
-                        <strong className="text-sm">{selectedClient.dassScores.anxiety} / 42</strong>
-                      </div>
-                      <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700">
-                        <span className="text-[10px] text-slate-400 uppercase block font-sans">Stres</span>
-                        <strong className="text-slate-800 dark:text-slate-200 text-sm">
-                          {selectedClient.dassScores.stress} / 42
-                        </strong>
-                      </div>
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {selectedClient.treatmentGoals.map((goal, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[11px] px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-medium"
+                        >
+                          ✓ {goal}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}

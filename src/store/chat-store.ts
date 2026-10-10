@@ -17,7 +17,6 @@ export interface Conversation {
   statusText: string;
   online: boolean;
   clientDiagnosis?: string;
-  dassScore?: string;
   primaryNotes?: string;
 }
 
@@ -81,7 +80,6 @@ const initialConversations: Conversation[] = [
     statusText: "Praktik Aktif • Sesi Terverifikasi",
     online: true,
     clientDiagnosis: "F41.1 Ansietas Menyeluruh & Work-related Burnout",
-    dassScore: "Depresi: 6 (Normal) | Ansietas: 16 (Tinggi) | Stres: 18 (Sedang)",
     primaryNotes: "Klien melaporkan sesak napas dan insomnia jelang review kuartal kerja.",
   },
   {
@@ -97,7 +95,6 @@ const initialConversations: Conversation[] = [
     statusText: "Jadwal Praktik Berikutnya: Besok",
     online: false,
     clientDiagnosis: "Burnout Akademik & Karier",
-    dassScore: "Stres: 14 (Sedang)",
   },
   {
     id: 4,

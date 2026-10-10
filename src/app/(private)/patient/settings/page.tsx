@@ -358,7 +358,7 @@ export default function PatientSettingsPage() {
                     Unduh Catatan Rekam Medis Konseling
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
-                    Ekspor seluruh catatan refleksi, hasil asesmen DASS-21, dan ringkasan sesi dalam format PDF terenkripsi sandi.
+                    Ekspor seluruh catatan refleksi dan ringkasan sesi dalam format PDF terenkripsi sandi.
                   </p>
                 </div>
                 <Button

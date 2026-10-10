@@ -22,12 +22,7 @@ export interface ClientClinicalRecord {
   totalSessions: number;
   lastSession: string;
   primaryDiagnosis: string;
-  dassTrend: "Membaik" | "Stabil" | "Butuh Perhatian";
-  dassScores?: {
-    depression: number;
-    anxiety: number;
-    stress: number;
-  };
+  treatmentGoals?: string[];
   soapHistory: SoapEntry[];
 }
 
@@ -41,12 +36,11 @@ const initialClients: ClientClinicalRecord[] = [
     totalSessions: 3,
     lastSession: "10 Okt 2026",
     primaryDiagnosis: "F41.1 Ansietas Menyeluruh & Work-related Burnout",
-    dassTrend: "Membaik",
-    dassScores: {
-      depression: 6,
-      anxiety: 14,
-      stress: 16,
-    },
+    treatmentGoals: [
+      "Mengurangi somatisasi cemas di pagi hari",
+      "Restrukturisasi kognitif terhadap target kuartal",
+      "Edukasi sleep hygiene teratur",
+    ],
     soapHistory: [
       {
         id: "soap-w-3",
@@ -75,7 +69,7 @@ const initialClients: ClientClinicalRecord[] = [
         s: "Initial interview. Keluhan sulit tidur sejak 2 bulan terakhir, sering terbangun jam 3 pagi dengan kepala berdenyut.",
         o: "Pasien kooperatif, orientasi ruang/waktu penuh. Afek tampak tegang.",
         a: "Susp. Insomnia Sekunder ec. Stres Akut Karier.",
-        p: "Edukasi Sleep Hygiene dan penjadwalan asesmen berkala DASS-21.",
+        p: "Edukasi Sleep Hygiene dan penjadwalan evaluasi sesi konseling berkala.",
         updatedAt: "26 Sep 2026",
       },
     ],
@@ -89,12 +83,10 @@ const initialClients: ClientClinicalRecord[] = [
     totalSessions: 4,
     lastSession: "8 Okt 2026",
     primaryDiagnosis: "Generalised Anxiety & Work Burnout",
-    dassTrend: "Membaik",
-    dassScores: {
-      depression: 8,
-      anxiety: 12,
-      stress: 14,
-    },
+    treatmentGoals: [
+      "Regulasi pernapasan saat rapat kerja",
+      "Perbaikan kualitas tidur",
+    ],
     soapHistory: [
       {
         id: "soap-b-4",
@@ -117,12 +109,10 @@ const initialClients: ClientClinicalRecord[] = [
     totalSessions: 2,
     lastSession: "5 Okt 2026",
     primaryDiagnosis: "Penyesuaian Diri & Komunikasi Interpersonal",
-    dassTrend: "Stabil",
-    dassScores: {
-      depression: 5,
-      anxiety: 9,
-      stress: 11,
-    },
+    treatmentGoals: [
+      "Latihan komunikasi asertif",
+      "Mengurangi distorsi rasa bersalah",
+    ],
     soapHistory: [
       {
         id: "soap-n-2",
@@ -145,12 +135,10 @@ const initialClients: ClientClinicalRecord[] = [
     totalSessions: 6,
     lastSession: "1 Okt 2026",
     primaryDiagnosis: "Episode Depresif Ringan (Dalam Remisi)",
-    dassTrend: "Membaik",
-    dassScores: {
-      depression: 4,
-      anxiety: 6,
-      stress: 7,
-    },
+    treatmentGoals: [
+      "Aktivasi perilaku bertahap",
+      "Pemulihan motivasi hobi & karier",
+    ],
     soapHistory: [
       {
         id: "soap-a-6",

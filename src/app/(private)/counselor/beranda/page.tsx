@@ -34,7 +34,7 @@ interface SessionRequest {
   patientName: string;
   patientAge: number;
   topic: string;
-  dassScore: string;
+  category: string;
   type: "Voice Call" | "Chat Konseling";
   date: string;
   time: string;
@@ -48,7 +48,7 @@ const defaultDemoRequests: SessionRequest[] = [
     patientName: "Budi Santoso (Anonim)",
     patientAge: 26,
     topic: "Kecemasan Karier & Burnout",
-    dassScore: "Ansietas Sedang (14/42)",
+    category: "Ansietas Klinis",
     type: "Voice Call",
     date: "Hari Ini, 10 Okt",
     time: "14:00 - 15:00 WIB",
@@ -60,7 +60,7 @@ const defaultDemoRequests: SessionRequest[] = [
     patientName: "Nadia Putri",
     patientAge: 23,
     topic: "Dinamika Hubungan & Family Conflict",
-    dassScore: "Stres Ringan (11/42)",
+    category: "Konseling Relasi",
     type: "Chat Konseling",
     date: "Besok, 11 Okt",
     time: "10:00 - 11:00 WIB",
@@ -98,7 +98,7 @@ export default function CounselorBerandaPage() {
         patientName: "Wahyu Tricahyo (Klien Baru)",
         patientAge: 27,
         topic: s.topic,
-        dassScore: "Asesmen Mandiri",
+        category: "Konseling Terjadwal",
         type: s.type === "Voice Call" ? ("Voice Call" as const) : ("Chat Konseling" as const),
         date: s.date,
         time: s.time,
@@ -285,8 +285,8 @@ export default function CounselorBerandaPage() {
                         Topik: {req.topic}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-slate-500 dark:text-slate-400 font-nunito">
-                        <span className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 font-semibold">
-                          {req.dassScore}
+                        <span className="px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-900 font-semibold">
+                          {req.category}
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1">

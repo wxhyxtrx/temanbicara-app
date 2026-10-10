@@ -512,7 +512,7 @@ export default function CounselorRoomPage() {
                 }`}
               >
                 <Activity size={13} />
-                <span>Berkas Klien & DASS</span>
+                <span>Berkas & Riwayat Klien</span>
               </button>
             </div>
 
@@ -655,7 +655,7 @@ export default function CounselorRoomPage() {
             </div>
           )}
 
-          {/* TAB 2: BERKAS KLIEN & ASESMEN (DASS-21) */}
+          {/* TAB 2: BERKAS & RIWAYAT KLIEN */}
           {activeTab === "dossier" && (
             <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[580px]">
               {/* Profil Singkat */}
@@ -684,56 +684,45 @@ export default function CounselorRoomPage() {
                 </div>
               </div>
 
-              {/* Skor DASS-21 dengan Visual Bar */}
-              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-3">
+              {/* Target & Fokus Klinis Pasien */}
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold font-heading text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Activity size={14} className="text-teal-600" />
-                    Hasil Asesmen Mandiri Berkala (DASS-21)
+                    <HeartPulse size={14} className="text-teal-600" />
+                    Fokus Klinis & Target Konseling
                   </span>
-                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
-                    <TrendingDown size={12} /> Tren Membaik
-                  </span>
+                  <Badge className="bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border-teal-200 text-[10px]">
+                    CBT Aktif
+                  </Badge>
                 </div>
 
-                <div className="space-y-2.5">
-                  {/* Depresi */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="font-medium text-slate-700 dark:text-slate-300">Depresi</span>
-                      <span className="font-bold text-emerald-700 dark:text-emerald-400">6 / 42 (Normal)</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: "14%" }} />
-                    </div>
-                  </div>
-
-                  {/* Ansietas */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="font-medium text-slate-700 dark:text-slate-300">Ansietas</span>
-                      <span className="font-bold text-rose-700 dark:text-rose-400">16 / 42 (Tinggi - Fokus Utama)</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-rose-500 rounded-full" style={{ width: "38%" }} />
-                    </div>
-                  </div>
-
-                  {/* Stres */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="font-medium text-slate-700 dark:text-slate-300">Stres</span>
-                      <span className="font-bold text-amber-700 dark:text-amber-400">18 / 42 (Sedang)</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-amber-500 rounded-full" style={{ width: "42%" }} />
-                    </div>
-                  </div>
+                <div className="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-300">
+                  <p>
+                    <strong className="text-slate-800 dark:text-slate-200">Diagnosis Kerja: </strong>
+                    F41.1 Ansietas Menyeluruh & Work-related Burnout
+                  </p>
+                  <p>
+                    <strong className="text-slate-800 dark:text-slate-200">Keluhan Utama: </strong>
+                    Sering terbangun jam 03.00 pagi dengan palpitasi dan kekhawatiran berlebih terhadap target pekerjaan.
+                  </p>
                 </div>
 
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 leading-relaxed">
-                  <strong>Keluhan Utama Intake:</strong> Sering terbangun jam 03.00 pagi dengan palpitasi dan ketakutan tidak mampu memenuhi ekspektasi rilis sprint pekerjaan.
-                </p>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                    Sasaran Intervensi Sesi Ini:
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                      ✓ Restrukturisasi Pikiran Otomatis (CBT)
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                      ✓ Regulasi Napas Diafragma
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                      ✓ Boundary Setting Jam Kerja
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Riwayat Sesi Terdahulu */}

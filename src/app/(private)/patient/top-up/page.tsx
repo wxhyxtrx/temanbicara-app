@@ -80,7 +80,7 @@ export default function PatientTopUpPage() {
       popular: true,
       benefits: [
         "2x Konseling Psikolog Klinis",
-        "Lembar Asesmen Kecemasan (DASS-21)",
+        "Lembar Refleksi Mandiri & Rangkuman Sesi",
         "Prioritas Reservasi Jadwal",
       ],
     },
