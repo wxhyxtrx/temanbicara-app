@@ -18,6 +18,7 @@ import { ChatHeader } from "./chat-header";
 import { MessageInput } from "./message-input";
 import { MessageList } from "./message-list";
 import { CallRoomModal } from "./call-room-modal";
+import { SessionReviewTipModal } from "./session-review-tip-modal";
 import { Phone, Coins, AlertCircle, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
@@ -28,6 +29,7 @@ export function ChatArea() {
 
   const [showCallPayConfirm, setShowCallPayConfirm] = useState<boolean>(false);
   const [isCallModalOpen, setIsCallModalOpen] = useState<boolean>(false);
+  const [isReviewTipModalOpen, setIsReviewTipModalOpen] = useState<boolean>(false);
 
   if (!selectedConversation) return null;
 
@@ -80,7 +82,10 @@ export function ChatArea() {
 
   return (
     <Card className="h-full flex flex-col bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs rounded-2xl overflow-hidden gap-0 transition-colors duration-200">
-      <ChatHeader onStartCall={handleStartCallClick} />
+      <ChatHeader
+        onStartCall={handleStartCallClick}
+        onEndSession={() => setIsReviewTipModalOpen(true)}
+      />
       <MessageList />
       <MessageInput />
 
@@ -182,6 +187,13 @@ export function ChatArea() {
       <CallRoomModal
         isOpen={isCallModalOpen}
         onClose={() => setIsCallModalOpen(false)}
+        conversation={selectedConversation}
+      />
+
+      {/* 3. Modal Akhiri Sesi & Kirim Tip Koin Apresiasi */}
+      <SessionReviewTipModal
+        open={isReviewTipModalOpen}
+        onOpenChange={setIsReviewTipModalOpen}
         conversation={selectedConversation}
       />
     </Card>

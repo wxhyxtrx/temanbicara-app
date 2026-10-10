@@ -38,6 +38,8 @@ import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
 import { useScheduleStore } from "@/store/schedule-store";
 import { useAssessmentStore } from "@/store/assessment-store";
+import { usePeerVentStore } from "@/store/peer-vent-store";
+import { VentingModalForm } from "@/components/views/patient/venting-modal-form";
 
 export default function PatientBerandaPage() {
   const [selectedMood, setSelectedMood] = useState<string>("calm");
@@ -51,6 +53,8 @@ export default function PatientBerandaPage() {
   const saveMoodLog = useAssessmentStore((state) => state.saveMoodLog);
   const [selectedTriggers, setSelectedTriggers] = useState<string[]>(["Pekerjaan", "Deadline"]);
   const [triggerSaved, setTriggerSaved] = useState(false);
+  const [ventingModalOpen, setVentingModalOpen] = useState(false);
+  const myActivePost = usePeerVentStore((state) => state.myActivePost);
 
   useEffect(() => {
     setMounted(true);
@@ -113,12 +117,14 @@ export default function PatientBerandaPage() {
                   Mulai Curhat AI Instan (24/7)
                 </Button>
               </Link>
-              <Link href="/patient/room?type=peer">
-                <Button className="border border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 font-semibold rounded-xl px-5 py-5 text-sm cursor-pointer gap-2 backdrop-blur-md shadow-xs">
-                  <HeartHandshake size={17} className="text-pink-400" />
-                  Curhat Pendengar Sebaya (Anonim)
-                </Button>
-              </Link>
+              <Button
+                type="button"
+                onClick={() => setVentingModalOpen(true)}
+                className="border border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 font-semibold rounded-xl px-5 py-5 text-sm cursor-pointer gap-2 backdrop-blur-md shadow-xs"
+              >
+                <HeartHandshake size={17} className="text-pink-400" />
+                Curhat Pendengar Sebaya (Anonim)
+              </Button>
               <Link href="/patient/schedule?booking=true">
                 <Button variant="outline" className="border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-5 py-5 text-sm cursor-pointer gap-2">
                   <Calendar size={17} />
@@ -368,33 +374,92 @@ export default function PatientBerandaPage() {
           </Card>
 
           {/* Banner: Curhat Pendengar Sebaya (Peer Listener) */}
-          <div className="relative overflow-hidden rounded-2xl border border-pink-200/90 dark:border-pink-900/60 bg-gradient-to-br from-pink-50/80 via-white to-rose-50/50 dark:from-pink-950/40 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-2 max-w-xl">
+          {myActivePost && myActivePost.status === "menunggu" ? (
+            <div className="relative overflow-hidden rounded-2xl border border-amber-200/90 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/40 dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300">
-                    <HeartHandshake size={16} />
-                  </span>
-                  <Badge className="bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 border-pink-200 text-[10px] font-semibold">
-                    100% Anonim & Bebas Biaya
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                  <Badge className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 text-[10px] font-semibold">
+                    Status: Menunggu Pendengar Sebaya
                   </Badge>
+                  <span className="text-[11px] text-slate-400">{myActivePost.createdAt}</span>
                 </div>
-                <h3 className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white">
-                  Butuh Teman Cerita Tanpa Takut Dihakimi?
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
-                  Ceritakan beban hari ini kepada Relawan Pendengar Sebaya terlatih PFA (Psychological First Aid). Ruang aman untuk meluapkan uneg-uneg, rasa kesepian, dan burnout kerja.
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVentingModalOpen(true)}
+                  className="text-xs border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-xl self-start sm:self-auto"
+                >
+                  Tulis Cerita Baru
+                </Button>
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white font-heading">
+                  Topik: {myActivePost.topic} ({myActivePost.isAnonymous ? myActivePost.patientAlias : "Kamu"})
+                </h4>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed italic line-clamp-2">
+                  "{myActivePost.content}"
                 </p>
               </div>
-
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium pt-1">
+                Relawan PFA sedang meninjau antrean. Kamu akan menerima pemberitahuan begitu ada pendengar yang merespons.
+              </p>
+            </div>
+          ) : myActivePost && myActivePost.status === "ditangani" ? (
+            <div className="relative overflow-hidden rounded-2xl border border-emerald-200/90 dark:border-emerald-900/60 bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/40 dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1.5 max-w-xl">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                  <Badge className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 text-[10px] font-semibold">
+                    Telah Direspons oleh {myActivePost.handledByListenerName || "Dewi"}
+                  </Badge>
+                </div>
+                <h3 className="text-base font-bold font-heading text-slate-900 dark:text-white">
+                  Ruang Curhat Sebaya Sedang Aktif
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito line-clamp-2 leading-relaxed">
+                  Tanggapan pertama: "{myActivePost.firstResponse}"
+                </p>
+              </div>
               <Link href="/patient/room?type=peer" className="shrink-0 self-start sm:self-center">
-                <Button className="bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl px-4 py-2.5 text-xs shadow-xs cursor-pointer gap-1.5">
-                  <Users size={14} />
-                  <span>Curhat Sebaya Sekarang</span>
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl px-4 py-2 text-xs shadow-xs cursor-pointer gap-1.5">
+                  <MessageCircle size={14} />
+                  <span>Masuk Ruang Chat</span>
                 </Button>
               </Link>
             </div>
-          </div>
+          ) : (
+            <div className="relative overflow-hidden rounded-2xl border border-pink-200/90 dark:border-pink-900/60 bg-gradient-to-br from-pink-50/80 via-white to-rose-50/50 dark:from-pink-950/40 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-2 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300">
+                      <HeartHandshake size={16} />
+                    </span>
+                    <Badge className="bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 border-pink-200 text-[10px] font-semibold">
+                      100% Anonim & Bebas Biaya
+                    </Badge>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white">
+                    Butuh Teman Cerita Tanpa Takut Dihakimi?
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
+                    Ceritakan beban hari ini kepada Relawan Pendengar Sebaya terlatih PFA (Psychological First Aid). Ruang aman untuk meluapkan uneg-uneg, rasa kesepian, dan burnout kerja.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={() => setVentingModalOpen(true)}
+                  className="bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl px-4 py-2.5 text-xs shadow-xs cursor-pointer gap-1.5 shrink-0 self-start sm:self-center"
+                >
+                  <Users size={14} />
+                  <span>Curhat Sebaya Sekarang</span>
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* 3. Upcoming Counseling Sessions Card */}
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
@@ -828,6 +893,9 @@ export default function PatientBerandaPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Form: Keluh Kesah Pasien */}
+      <VentingModalForm open={ventingModalOpen} onOpenChange={setVentingModalOpen} />
     </div>
   );
 }

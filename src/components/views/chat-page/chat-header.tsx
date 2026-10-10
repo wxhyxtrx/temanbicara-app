@@ -3,7 +3,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, HeartPulse, Bot, Phone } from "lucide-react";
+import { ArrowLeft, HeartPulse, Bot, Phone, CheckCircle2 } from "lucide-react";
 import { useChatStore } from "@/store/chat-store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MdVerified } from "react-icons/md";
@@ -11,9 +11,10 @@ import Link from "next/link";
 
 interface ChatHeaderProps {
   onStartCall?: (type: "voice") => void;
+  onEndSession?: () => void;
 }
 
-export function ChatHeader({ onStartCall }: ChatHeaderProps) {
+export function ChatHeader({ onStartCall, onEndSession }: ChatHeaderProps) {
   const { selectedConversation, setSelectedConversation } = useChatStore();
   const isMobile = useIsMobile();
 
@@ -80,7 +81,7 @@ export function ChatHeader({ onStartCall }: ChatHeaderProps) {
       {/* Aksi Samping: Voice Call (Psikolog saja) & Hotline */}
       <div className="flex items-center gap-2 shrink-0">
         {/* Jika Psikolog Klinis: Tombol Voice Call Berbayar 5 Koin */}
-        {!selectedConversation.isAI && !selectedConversation.isPeerListener && onStartCall ? (
+        {!selectedConversation.isAI && !selectedConversation.isPeerListener && onStartCall && (
           <Button
             size="sm"
             onClick={() => onStartCall("voice")}
@@ -90,11 +91,20 @@ export function ChatHeader({ onStartCall }: ChatHeaderProps) {
             <Phone size={13} />
             <span className="text-xs font-semibold">Voice Call (5 Koin)</span>
           </Button>
-        ) : (
-          /* Jika AI atau Pendengar Sebaya: Badge Layanan Curhat Gratis */
-          <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 select-none">
-            {selectedConversation.isPeerListener ? "Curhat Sebaya Gratis" : "Gratis 24/7"}
-          </span>
+        )}
+
+        {/* Tombol Akhiri Sesi & Beri Apresiasi (Untuk Psikolog & Pendengar Sebaya) */}
+        {!selectedConversation.isAI && onEndSession && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onEndSession}
+            className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl h-8 px-2.5 text-xs font-semibold cursor-pointer gap-1"
+            title="Akhiri sesi dan berikan evaluasi / tip"
+          >
+            <CheckCircle2 size={13} />
+            <span className="hidden sm:inline">Akhiri Sesi</span>
+          </Button>
         )}
 
         <Link

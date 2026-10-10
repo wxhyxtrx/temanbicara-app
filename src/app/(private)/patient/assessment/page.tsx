@@ -256,12 +256,14 @@ export default function PatientAssessmentPage() {
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Skala Depresi</span>
-                <Badge className={`text-xs font-semibold ${
+                <Badge className={`text-xs font-semibold border ${
                   resultToShow.depressionSeverity === "Normal"
-                    ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
                     : resultToShow.depressionSeverity === "Ringan"
-                    ? "bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-300"
-                    : "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                    ? "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-800"
+                    : resultToShow.depressionSeverity === "Sedang"
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                    : "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
                 }`}>
                   {resultToShow.depressionSeverity}
                 </Badge>
@@ -272,7 +274,7 @@ export default function PatientAssessmentPage() {
                 </span>
                 <span className="text-xs text-slate-400">/ 42 Skor</span>
               </div>
-              <p className="text-[11px] text-slate-500 font-nunito leading-relaxed">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
                 Tingkat kehilangan minat, antusiasme, dan pandangan optimisme terhadap masa depan.
               </p>
             </div>
@@ -281,12 +283,14 @@ export default function PatientAssessmentPage() {
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Skala Ansietas</span>
-                <Badge className={`text-xs font-semibold ${
+                <Badge className={`text-xs font-semibold border ${
                   resultToShow.anxietySeverity === "Normal"
-                    ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
                     : resultToShow.anxietySeverity === "Ringan"
-                    ? "bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-300"
-                    : "bg-rose-50 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                    ? "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-800"
+                    : resultToShow.anxietySeverity === "Sedang"
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                    : "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
                 }`}>
                   {resultToShow.anxietySeverity}
                 </Badge>
@@ -297,7 +301,7 @@ export default function PatientAssessmentPage() {
                 </span>
                 <span className="text-xs text-slate-400">/ 42 Skor</span>
               </div>
-              <p className="text-[11px] text-slate-500 font-nunito leading-relaxed">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
                 Tingkat reaksi fisiologis kegelisahan (palpitasi, gemetar, sesak napas antisipatif).
               </p>
             </div>
@@ -306,12 +310,14 @@ export default function PatientAssessmentPage() {
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Skala Stres</span>
-                <Badge className={`text-xs font-semibold ${
+                <Badge className={`text-xs font-semibold border ${
                   resultToShow.stressSeverity === "Normal"
-                    ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
                     : resultToShow.stressSeverity === "Ringan"
-                    ? "bg-teal-50 text-teal-800 dark:bg-teal-950 dark:text-teal-300"
-                    : "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                    ? "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-800"
+                    : resultToShow.stressSeverity === "Sedang"
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                    : "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
                 }`}>
                   {resultToShow.stressSeverity}
                 </Badge>
@@ -355,60 +361,60 @@ export default function PatientAssessmentPage() {
               {/* 3 Call-to-Action Pillars */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 {/* Pillar 1: Booking Psikolog */}
-                <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-850 space-y-3 flex flex-col justify-between">
+                <div className="p-4 rounded-2xl border border-teal-200/60 dark:border-slate-800 bg-white dark:bg-slate-900/90 space-y-3 flex flex-col justify-between shadow-2xs">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-400">
+                      <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-400">
                         <Calendar size={16} />
                       </span>
                       <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">Psikolog Klinis</h4>
                     </div>
-                    <p className="text-[11px] text-slate-500 font-nunito leading-snug">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito leading-snug">
                       Konseling mendalam berlisensi SIPPK untuk restrukturisasi kecemasan & trauma.
                     </p>
                   </div>
                   <Link href="/patient/schedule?booking=true">
-                    <Button className="w-full text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl h-8 font-semibold cursor-pointer">
+                    <Button className="w-full text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl h-9 font-semibold cursor-pointer shadow-xs">
                       Jadwalkan Konsultasi
                     </Button>
                   </Link>
                 </div>
 
                 {/* Pillar 2: Curhat Sebaya */}
-                <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-850 space-y-3 flex flex-col justify-between">
+                <div className="p-4 rounded-2xl border border-pink-200/60 dark:border-slate-800 bg-white dark:bg-slate-900/90 space-y-3 flex flex-col justify-between shadow-2xs">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950 text-pink-700 dark:text-pink-400">
+                      <span className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/80 text-pink-700 dark:text-pink-400">
                         <HeartHandshake size={16} />
                       </span>
                       <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">Pendengar Sebaya</h4>
                     </div>
-                    <p className="text-[11px] text-slate-500 font-nunito leading-snug">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito leading-snug">
                       Curhat 100% anonim dan gratis dengan relawan terlatih Psychological First Aid.
                     </p>
                   </div>
                   <Link href="/patient/room?type=peer">
-                    <Button variant="outline" className="w-full text-xs border-pink-200 dark:border-pink-900 text-pink-700 dark:text-pink-300 hover:bg-pink-50 rounded-xl h-8 font-semibold cursor-pointer">
+                    <Button className="w-full text-xs bg-pink-600 hover:bg-pink-700 text-white rounded-xl h-9 font-semibold cursor-pointer shadow-xs">
                       Mulai Curhat Sebaya
                     </Button>
                   </Link>
                 </div>
 
                 {/* Pillar 3: AI Grounding */}
-                <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-850 space-y-3 flex flex-col justify-between">
+                <div className="p-4 rounded-2xl border border-indigo-200/60 dark:border-slate-800 bg-white dark:bg-slate-900/90 space-y-3 flex flex-col justify-between shadow-2xs">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400">
+                      <span className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-400">
                         <Brain size={16} />
                       </span>
                       <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">Refleksi AI</h4>
                     </div>
-                    <p className="text-[11px] text-slate-500 font-nunito leading-snug">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito leading-snug">
                       Panduan napas diafragma dan grounding instan 24 jam gratis kapan saja.
                     </p>
                   </div>
                   <Link href="/patient/beranda">
-                    <Button variant="outline" className="w-full text-xs rounded-xl h-8 font-semibold cursor-pointer">
+                    <Button variant="outline" className="w-full text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl h-9 font-semibold cursor-pointer">
                       Latihan Pernapasan
                     </Button>
                   </Link>

@@ -7,7 +7,7 @@ export interface TransactionRecord {
   date: string;
   timestamp: number;
   type: "topup" | "usage" | "refund";
-  category: "Top Up Koin" | "Konseling Chat" | "Voice Call" | "Refund Pembatalan" | "Bonus Selamat Datang";
+  category: "Top Up Koin" | "Konseling Chat" | "Voice Call" | "Refund Pembatalan" | "Bonus Selamat Datang" | "Tip Apresiasi";
   title: string;
   targetParty: string; // e.g. "Dr. Anita Wijaya, M.Psi." / "TemanBicara Gateway"
   amountRupiah?: number; // Nilai IDR jika transaksi uang tunai

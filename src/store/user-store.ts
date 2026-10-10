@@ -23,6 +23,8 @@ export interface UserState {
   updateProfile: (data: Partial<UserProfile>) => void;
   updateCoins: (newTotalOrDelta: number, isDelta?: boolean) => void;
   creditCounselorCoins: (coins: number) => void;
+  creditListenerCoins: (coins: number) => void;
+  sendTip: (recipientRole: "counselor" | "peer_listener", amount: number) => boolean;
   logout: () => void;
 }
 
@@ -177,6 +179,52 @@ export const useUserStore = create<UserState>()(
           },
           user: currentUser.role === "counselor" ? updatedCounselor : currentUser,
         });
+      },
+
+      creditListenerCoins: (coins: number) => {
+        const profiles = get().roleProfiles || { ...mockUsers };
+        const currentListener = profiles.peer_listener || mockUsers.peer_listener;
+        const nextCoins = Math.max(0, currentListener.coins + coins);
+        const updatedListener = {
+          ...currentListener,
+          coins: nextCoins,
+        };
+        const currentUser = get().user;
+        set({
+          roleProfiles: {
+            ...profiles,
+            peer_listener: updatedListener,
+          },
+          user: currentUser.role === "peer_listener" ? updatedListener : currentUser,
+        });
+      },
+
+      sendTip: (recipientRole: "counselor" | "peer_listener", amount: number) => {
+        const currentUser = get().user;
+        if (currentUser.coins < amount) return false;
+
+        // Potong koin pengirim (pasien)
+        const updatedSender = {
+          ...currentUser,
+          coins: currentUser.coins - amount,
+        };
+
+        const profiles = get().roleProfiles || { ...mockUsers };
+        const targetProfile = profiles[recipientRole] || mockUsers[recipientRole];
+        const updatedTarget = {
+          ...targetProfile,
+          coins: targetProfile.coins + amount,
+        };
+
+        set({
+          user: updatedSender,
+          roleProfiles: {
+            ...profiles,
+            [currentUser.role]: updatedSender,
+            [recipientRole]: updatedTarget,
+          },
+        });
+        return true;
       },
 
       logout: () => {

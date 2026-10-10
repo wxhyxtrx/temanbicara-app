@@ -21,51 +21,13 @@ import {
   Users,
 } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
-
-interface VentingQueueItem {
-  id: string;
-  alias: string;
-  emotion: string;
-  emotionColor: string;
-  waitTime: string;
-  snippet: string;
-  preferredTopic: string;
-}
-
-const mockQueue: VentingQueueItem[] = [
-  {
-    id: "q-1",
-    alias: "Bunga Biru",
-    emotion: "Merasa Kesepian",
-    emotionColor: "bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200",
-    waitTime: "Menunggu 3 mnt lalu",
-    snippet: "Sedang ngerasa sepi banget malam ini, butuh teman cerita yang mau mendengarkan tanpa menghakimi...",
-    preferredTopic: "Kesepian & Hubungan",
-  },
-  {
-    id: "q-2",
-    alias: "Langit Senja",
-    emotion: "Kelelahan Mental",
-    emotionColor: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200",
-    waitTime: "Menunggu 7 mnt lalu",
-    snippet: "Beban skripsi dan ekspektasi keluarga bikin dada sesak. Cuma ingin meluapkan uneg-uneg...",
-    preferredTopic: "Akademik & Ekspektasi",
-  },
-  {
-    id: "q-3",
-    alias: "Rintik Hujan",
-    emotion: "Kecemasan Ringan",
-    emotionColor: "bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border-teal-200",
-    waitTime: "Menunggu 12 mnt lalu",
-    snippet: "Gak tahu harus mulai dari mana, tapi rasanya overthinking terus soal masa depan...",
-    preferredTopic: "Karier & Overthinking",
-  },
-];
+import { usePeerVentStore } from "@/store/peer-vent-store";
 
 export default function ListenerBerandaPage() {
   const user = useUserStore((state) => state.user);
   const [isOnline, setIsOnline] = useState(true);
-  const [queue, setQueue] = useState<VentingQueueItem[]>(mockQueue);
+  const posts = usePeerVentStore((state) => state.posts);
+  const waitingPosts = posts.filter((p) => p.status === "menunggu");
 
   const listenerData = {
     listenerBadge: user.listenerData?.listenerBadge || "Pendengar Empatik Terlatih",
@@ -206,13 +168,13 @@ export default function ListenerBerandaPage() {
                   </CardDescription>
                 </div>
                 <Badge variant="outline" className="border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 text-xs">
-                  {queue.length} Menunggu
+                  {waitingPosts.length} Menunggu
                 </Badge>
               </div>
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-4">
-              {queue.map((item) => (
+              {waitingPosts.map((item) => (
                 <div
                   key={item.id}
                   className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3"
@@ -220,13 +182,13 @@ export default function ListenerBerandaPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 font-bold text-xs flex items-center justify-center">
-                        {item.alias.slice(0, 2).toUpperCase()}
+                        {item.patientAlias.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
                         <p className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white font-heading">
-                          {item.alias}
+                          {item.patientAlias}
                         </p>
-                        <span className="text-[10px] text-slate-400 font-nunito">{item.waitTime}</span>
+                        <span className="text-[10px] text-slate-400 font-nunito">{item.createdAt}</span>
                       </div>
                     </div>
 
@@ -235,17 +197,17 @@ export default function ListenerBerandaPage() {
                         {item.emotion}
                       </span>
                       <span className="text-[10px] text-slate-500 font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                        {item.preferredTopic}
+                        {item.topic}
                       </span>
                     </div>
                   </div>
 
                   <p className="text-xs text-slate-700 dark:text-slate-300 font-nunito bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-100 dark:border-slate-800 italic leading-relaxed">
-                    "{item.snippet}"
+                    "{item.content}"
                   </p>
 
                   <div className="flex justify-end pt-1">
-                    <Link href={`/listener/queue?sessionId=${item.id}`}>
+                    <Link href="/listener/queue">
                       <Button
                         size="sm"
                         className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg px-4 py-1.5 h-8 gap-1.5 cursor-pointer shadow-xs"
