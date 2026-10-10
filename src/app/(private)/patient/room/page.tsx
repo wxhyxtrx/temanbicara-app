@@ -1,22 +1,35 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { ConversationList } from "@/components/views/chat-page/conversation-list";
 import { ChatArea } from "@/components/views/chat-page/chat-area";
 import { useChatStore } from "@/store/chat-store";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageSquareHeart, ShieldCheck } from "lucide-react";
 
-export default function PatientRoomChatPage() {
-  const { selectedConversation, setSelectedConversation, conversations } = useChatStore();
+function RoomChatContent() {
+  const { selectedConversation, setSelectedConversation, conversations, setIsAnonymous } = useChatStore();
   const isMobile = useIsMobile();
+  const searchParams = useSearchParams();
+  const type = searchParams.get("type");
 
-  // Otomatis pilih percakapan pertama di desktop jika belum ada yang dipilih
+  // Jika pasien datang dari tautan Curhat Sebaya (?type=peer), otomatis pilih Dewi & aktifkan mode anonim
   useEffect(() => {
+    if (type === "peer") {
+      const peerConv = conversations.find((c) => c.isPeerListener || c.id === 4);
+      if (peerConv) {
+        setSelectedConversation(peerConv);
+        setIsAnonymous(true);
+        return;
+      }
+    }
+
+    // Otomatis pilih percakapan pertama di desktop jika belum ada yang dipilih
     if (!isMobile && !selectedConversation && conversations.length > 0) {
       setSelectedConversation(conversations[0]);
     }
-  }, [isMobile, selectedConversation, setSelectedConversation, conversations]);
+  }, [type, isMobile, selectedConversation, setSelectedConversation, setIsAnonymous, conversations]);
 
   return (
     <div className="h-[calc(100vh-115px)] min-h-[520px] font-nunito transition-colors duration-200">
@@ -50,7 +63,7 @@ export default function PatientRoomChatPage() {
                   Ruang Konseling TemanBicara
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
-                  Pilih sesi percakapan di sebelah kiri untuk mulai curhat dengan AI empatik atau berkonsultasi dengan psikolog klinis.
+                  Pilih sesi percakapan di sebelah kiri untuk mulai curhat dengan AI empatik, konseling psikolog klinis, atau pendengar sebaya.
                 </p>
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-teal-700 dark:text-teal-400 font-medium pt-2">
@@ -62,5 +75,13 @@ export default function PatientRoomChatPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PatientRoomChatPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat ruang percakapan...</div>}>
+      <RoomChatContent />
+    </Suspense>
   );
 }

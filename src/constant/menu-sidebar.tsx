@@ -16,6 +16,7 @@ import {
   FileCheck2,
   SlidersHorizontal,
   LucideIcon,
+  Activity,
 } from "lucide-react";
 import { UserRole } from "./mock-users";
 
@@ -51,6 +52,13 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         url: "/patient/room",
         icon: MessageCircle,
         badge: "15",
+      },
+      {
+        title: "Asesmen DASS-21",
+        description: "Ukur depresi, cemas & stres",
+        url: "/patient/assessment",
+        icon: Activity,
+        badge: "Baru",
       },
       {
         title: "Jadwal Bicara",

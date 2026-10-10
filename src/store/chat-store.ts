@@ -439,7 +439,22 @@ export const useChatStore = create<ChatState>()(
       },
     }),
     {
-      name: "tb_chat_store_v2",
+      name: "tb_chat_store_v3",
+      version: 3,
+      migrate: (persistedState: unknown) => {
+        const state = persistedState as Partial<ChatState> | undefined;
+        if (!state) return state as unknown as ChatState;
+        if (state.conversations && !state.conversations.some((c) => c.isPeerListener || c.id === 4)) {
+          const peerConv = initialConversations.find((c) => c.id === 4);
+          if (peerConv) {
+            state.conversations = [...state.conversations, peerConv];
+          }
+        }
+        if (state.messagesByConversation && !state.messagesByConversation[4]) {
+          state.messagesByConversation[4] = initialMessagesByConv[4] || [];
+        }
+        return state as unknown as ChatState;
+      },
     }
   )
 );
