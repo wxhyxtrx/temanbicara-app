@@ -9,11 +9,22 @@ import { FaFacebook } from "react-icons/fa";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/shared/atoms/Logo";
-import { ShieldCheck, ArrowLeft, ArrowRight, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  ShieldCheck,
+  ArrowLeft,
+  ArrowRight,
+  AlertCircle,
+  Sparkles,
+  User,
+  Stethoscope,
+  Headphones,
+  ShieldAlert,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useUserStore } from "@/store/user-store";
+import { useUserStore, UserRole } from "@/store/user-store";
+import { mockUsers } from "@/constant/mock-users";
 
 const loginSchema = z.object({
   email: z
@@ -29,8 +40,9 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const router = useRouter();
-  const { login } = useUserStore();
+  const { login, loginWithRole } = useUserStore();
   const [loading, setLoading] = useState(false);
+  const [activeRoleSelected, setActiveRoleSelected] = useState<UserRole>("patient");
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -46,28 +58,82 @@ export default function Login() {
     },
   });
 
+  const getPortalHome = (role: UserRole) => {
+    switch (role) {
+      case "counselor":
+        return "/counselor/beranda";
+      case "peer_listener":
+        return "/listener/beranda";
+      case "admin":
+        return "/admin/beranda";
+      case "patient":
+      default:
+        return "/patient/beranda";
+    }
+  };
+
   const onSubmit = (data: LoginFormData) => {
     setLoading(true);
     setServerError(null);
 
     setTimeout(() => {
-      login(data.email);
-      router.push("/beranda");
-    }, 450);
+      const loggedUser = login(data.email);
+      router.push(getPortalHome(loggedUser.role));
+    }, 400);
+  };
+
+  const handleQuickDemoRole = (role: UserRole) => {
+    setActiveRoleSelected(role);
+    const mock = mockUsers[role];
+    setValue("email", mock.email, { shouldValidate: true });
+    setValue("password", "password123", { shouldValidate: true });
+
+    // Instan login dan alihkan
+    setLoading(true);
+    setTimeout(() => {
+      const loggedUser = loginWithRole(role);
+      router.push(getPortalHome(loggedUser.role));
+    }, 350);
   };
 
   const handleSocialLogin = (provider: string) => {
     setLoading(true);
     setTimeout(() => {
-      login(`${provider.toLowerCase()}.user@temanbicara.id`, `${provider} User`);
-      router.push("/beranda");
-    }, 450);
+      const loggedUser = login(`${provider.toLowerCase()}.user@temanbicara.id`, `${provider} User`);
+      router.push(getPortalHome(loggedUser.role));
+    }, 400);
   };
 
-  const handleUseDemoAccount = () => {
-    setValue("email", "wahyu@temanbicara.id", { shouldValidate: true });
-    setValue("password", "password123", { shouldValidate: true });
-  };
+  const demoRoles = [
+    {
+      role: "patient" as UserRole,
+      title: "Pasien",
+      name: "Wahyu",
+      badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
+      icon: User,
+    },
+    {
+      role: "counselor" as UserRole,
+      title: "Psikolog",
+      name: "Dr. Anita",
+      badgeColor: "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800",
+      icon: Stethoscope,
+    },
+    {
+      role: "peer_listener" as UserRole,
+      title: "Pendengar",
+      name: "Rian",
+      badgeColor: "bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800",
+      icon: Headphones,
+    },
+    {
+      role: "admin" as UserRole,
+      title: "Admin",
+      name: "Siti",
+      badgeColor: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800",
+      icon: ShieldAlert,
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden bg-gradient-to-br from-teal-50/70 via-slate-50 to-emerald-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-teal-950/40 text-slate-900 dark:text-slate-100 font-nunito transition-colors duration-200">
@@ -76,7 +142,7 @@ export default function Login() {
       <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full bg-emerald-200/25 dark:bg-emerald-900/10 blur-3xl pointer-events-none" />
 
       {/* Top Bar: Back to Home Button & Theme Toggle */}
-      <div className="w-full max-w-md mb-4 flex items-center justify-between relative z-10">
+      <div className="w-full max-w-lg mb-4 flex items-center justify-between relative z-10">
         <Link
           href="/"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-teal-700 dark:hover:text-teal-400 transition-colors"
@@ -89,58 +155,80 @@ export default function Login() {
       </div>
 
       {/* Main Login Card */}
-      <div className="w-full max-w-md bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 rounded-3xl shadow-xl shadow-teal-900/5 dark:shadow-black/40 p-6 sm:p-8 space-y-6 relative z-10 backdrop-blur-xs">
+      <div className="w-full max-w-lg bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 rounded-3xl shadow-xl shadow-teal-900/5 dark:shadow-black/40 p-6 sm:p-8 space-y-5 relative z-10 backdrop-blur-xs">
         {/* Brand & Heading */}
         <div className="flex flex-col items-center text-center space-y-2">
           <Logo size="lg" showTagline />
 
           <div className="pt-2">
             <h1 className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white leading-tight">
-              Masuk ke Ruang Tenangmu
+              Masuk ke Ruang TemanBicara
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-1">
-              Lanjutkan sesi konseling privat dan pendampingan kesehatan mental
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-0.5">
+              Pilih akun demonstrasi atau masuk dengan email terdaftar
             </p>
           </div>
         </div>
 
-        {/* Demo Account Quick Pill */}
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-teal-50/80 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-xs">
-          <div className="flex items-center gap-1.5 text-teal-900 dark:text-teal-300 font-medium">
-            <Sparkles size={14} className="text-teal-600 dark:text-teal-400 shrink-0" />
-            <span>Akun Pasien Terverifikasi Demo</span>
+        {/* Multi-Role Quick Demo Selector */}
+        <div className="p-3 rounded-2xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+              <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
+              <span>Coba Demo 4 Role (1-Klik Langsung Masuk)</span>
+            </div>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-semibold">Demo Cepat</span>
           </div>
-          <button
-            type="button"
-            onClick={handleUseDemoAccount}
-            className="text-[11px] font-bold text-teal-700 dark:text-teal-400 hover:underline cursor-pointer"
-          >
-            Pasang Otomatis
-          </button>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+            {demoRoles.map((item) => {
+              const Icon = item.icon;
+              const isSelected = activeRoleSelected === item.role;
+              return (
+                <button
+                  key={item.role}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => handleQuickDemoRole(item.role)}
+                  className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                    isSelected
+                      ? "ring-2 ring-teal-500 shadow-xs " + item.badgeColor
+                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-teal-300 dark:hover:border-teal-700 text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-1 text-xs font-bold font-heading">
+                    <Icon size={13} className="shrink-0" />
+                    <span>{item.title}</span>
+                  </div>
+                  <span className="text-[10px] opacity-80 mt-0.5 truncate">{item.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Social Quick Login */}
-        <div className="space-y-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           <Button
             type="button"
             variant="outline"
-            className="w-full flex items-center justify-center gap-2.5 h-10 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 h-10 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer"
             onClick={() => handleSocialLogin("Google")}
             disabled={loading}
           >
             <FcGoogle className="h-4 w-4" />
-            <span>Masuk dengan Google</span>
+            <span>Google</span>
           </Button>
 
           <Button
             type="button"
             variant="outline"
-            className="w-full flex items-center justify-center gap-2.5 h-10 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 h-10 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer"
             onClick={() => handleSocialLogin("Facebook")}
             disabled={loading}
           >
             <FaFacebook className="h-4 w-4 text-blue-600" />
-            <span>Masuk dengan Facebook</span>
+            <span>Facebook</span>
           </Button>
         </div>
 
@@ -151,7 +239,7 @@ export default function Login() {
           </div>
           <div className="relative flex justify-center text-xs">
             <span className="bg-white dark:bg-slate-900 px-3 text-slate-400 dark:text-slate-500 font-medium">
-              atau gunakan email terdaftar
+              atau gunakan formulir email
             </span>
           </div>
         </div>
@@ -164,7 +252,7 @@ export default function Login() {
         )}
 
         {/* Validated Email Form */}
-        <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form className="space-y-3.5" onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Email Akun</label>
             <Input
@@ -220,7 +308,7 @@ export default function Login() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs sm:text-sm cursor-pointer shadow-md shadow-teal-700/20 gap-2 mt-2"
+            className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs sm:text-sm cursor-pointer shadow-md shadow-teal-700/20 gap-2 mt-1"
           >
             <span>{loading ? "Memverifikasi..." : "Masuk ke Akun"}</span>
             <ArrowRight size={16} />
