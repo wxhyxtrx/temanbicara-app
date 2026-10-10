@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/shared/atoms/theme-toggle";
 import { FcGoogle } from "react-icons/fc";
-import { FaFacebook } from "react-icons/fa";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/shared/atoms/Logo";
@@ -120,29 +119,16 @@ export default function Register() {
         </div>
 
         {/* Social Quick Sign-Up */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full flex items-center justify-center gap-2 h-10 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer"
-            onClick={() => handleSocialRegister("Google")}
-            disabled={loading}
-          >
-            <FcGoogle className="h-4 w-4" />
-            <span>Google</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full flex items-center justify-center gap-2 h-10 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs font-semibold text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer"
-            onClick={() => handleSocialRegister("Facebook")}
-            disabled={loading}
-          >
-            <FaFacebook className="h-4 w-4 text-blue-600" />
-            <span>Facebook</span>
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full flex items-center justify-center gap-2.5 h-11 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer transition-colors shadow-xs"
+          onClick={() => handleSocialRegister("Google")}
+          disabled={loading}
+        >
+          <FcGoogle className="h-5 w-5" />
+          <span>Daftar Cepat dengan Google</span>
+        </Button>
 
         {/* Divider */}
         <div className="relative">
