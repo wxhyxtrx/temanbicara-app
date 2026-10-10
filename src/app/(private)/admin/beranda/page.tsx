@@ -20,7 +20,11 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { usePayoutStore } from "@/store/payout-store";
+
 export default function AdminBerandaPage() {
+  const pendingPayouts = usePayoutStore((state) => state.payouts.filter((p) => p.status === "Diproses"));
+
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Header Hero Admin */}
@@ -53,7 +57,12 @@ export default function AdminBerandaPage() {
               <Link href="/admin/transactions">
                 <Button variant="outline" className="border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-5 py-5 text-sm cursor-pointer gap-2">
                   <Coins size={17} />
-                  Audit Transaksi Koin
+                  <span>Audit Transaksi Koin</span>
+                  {pendingPayouts.length > 0 && (
+                    <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-xs font-bold animate-pulse">
+                      {pendingPayouts.length} Payout Menunggu
+                    </span>
+                  )}
                 </Button>
               </Link>
             </div>

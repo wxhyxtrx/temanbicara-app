@@ -151,8 +151,17 @@ export const useScheduleStore = create<ScheduleState>()(
           };
         }
 
-        // Deduct coins
+        // Economy breakdown: 10% Platform Commission, 90% Counselor Honor
+        const platformCommissionCoins = Math.round(payload.coinFee * 0.1);
+        const counselorHonorCoins = payload.coinFee - platformCommissionCoins;
+
+        // Deduct coins from patient
         userStore.updateCoins(-payload.coinFee, true);
+
+        // Credit 90% honor to counselor balance
+        if (counselorHonorCoins > 0) {
+          userStore.creditCounselorCoins(counselorHonorCoins);
+        }
 
         const newSession: ScheduleItem = {
           id: `sch-${Date.now()}`,
@@ -167,7 +176,7 @@ export const useScheduleStore = create<ScheduleState>()(
           roomReady: true,
           coinFee: payload.coinFee,
           consultantId: payload.consultantId,
-          notes: payload.notes || "Sesi baru dijadwalkan oleh pasien.",
+          notes: payload.notes || `Sesi baru dijadwalkan oleh pasien. Honor: ${counselorHonorCoins} Koin, Komisi Platfom: ${platformCommissionCoins} Koin.`,
           createdAt: new Date().toISOString(),
         };
 
@@ -192,13 +201,13 @@ export const useScheduleStore = create<ScheduleState>()(
           coinBalanceAfter: currentCoins - payload.coinFee,
           paymentMethod: "Saldo Koin Pasien",
           status: "berhasil",
-          notes: payload.topic,
+          notes: `${payload.topic || "Konseling"} (Honor Psikolog: ${counselorHonorCoins} Koin, Komisi Platform: ${platformCommissionCoins} Koin)`,
         });
 
         // Catat notifikasi aktivitas pasien
         useNotificationStore.getState().addNotification({
           title: "Reservasi Sesi Berhasil",
-          message: `Sesi ${payload.type} bersama ${payload.consultantName} pada ${payload.date} berhasil dijadwalkan.`,
+          message: `Sesi ${payload.type} bersama ${payload.consultantName} pada ${payload.date} berhasil dijadwalkan (${payload.coinFee} Koin terpotong).`,
           type: "jadwal",
           actionUrl: "/patient/schedule",
         });
@@ -246,6 +255,10 @@ export const useScheduleStore = create<ScheduleState>()(
 
         if (refundAmount > 0) {
           useUserStore.getState().updateCoins(refundAmount, true);
+          const counselorHonor = Math.round(refundAmount * 0.9);
+          if (counselorHonor > 0) {
+            useUserStore.getState().creditCounselorCoins(-counselorHonor);
+          }
 
           // Catat pengembalian koin ke transaction store
           const currentBal = useUserStore.getState().user.coins;

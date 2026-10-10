@@ -17,84 +17,56 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
-interface PayoutHistory {
-  id: string;
-  invoiceNo: string;
-  date: string;
-  amountRupiah: number;
-  coinsDeducted: number;
-  bankName: string;
-  accountNo: string;
-  status: "Berhasil" | "Diproses";
-}
-
-const mockPayouts: PayoutHistory[] = [
-  {
-    id: "po-1",
-    invoiceNo: "PAY-20261001-081",
-    date: "1 Okt 2026",
-    amountRupiah: 5000000,
-    coinsDeducted: 500,
-    bankName: "Bank Central Asia (BCA)",
-    accountNo: "8820****12",
-    status: "Berhasil",
-  },
-  {
-    id: "po-2",
-    invoiceNo: "PAY-20260915-044",
-    date: "15 Sep 2026",
-    amountRupiah: 7200000,
-    coinsDeducted: 720,
-    bankName: "Bank Central Asia (BCA)",
-    accountNo: "8820****12",
-    status: "Berhasil",
-  },
-  {
-    id: "po-3",
-    invoiceNo: "PAY-20260901-019",
-    date: "1 Sep 2026",
-    amountRupiah: 4800000,
-    coinsDeducted: 480,
-    bankName: "Bank Central Asia (BCA)",
-    accountNo: "8820****12",
-    status: "Berhasil",
-  },
-];
+import { usePayoutStore, PayoutRecord } from "@/store/payout-store";
+import { useUserStore } from "@/store/user-store";
 
 export default function CounselorEarningsPage() {
-  const [balanceCoins, setBalanceCoins] = useState(620);
-  const [payouts, setPayouts] = useState<PayoutHistory[]>(mockPayouts);
-  const [withdrawAmountCoins, setWithdrawAmountCoins] = useState(200);
+  const user = useUserStore((state) => state.user);
+  const updateCoins = useUserStore((state) => state.updateCoins);
+  const payouts = usePayoutStore((state) => state.payouts);
+  const requestPayout = usePayoutStore((state) => state.requestPayout);
+
+  const [mounted, setMounted] = useState(false);
+  const [withdrawAmountCoins, setWithdrawAmountCoins] = useState(50);
   const [isProcessing, setIsProcessing] = useState(false);
   const [payoutSuccessMsg, setPayoutSuccessMsg] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const balanceCoins = mounted ? (user.coins || 620) : 620;
+
+  const totalWithdrawnRupiah = payouts
+    .filter((p) => p.status === "Berhasil")
+    .reduce((acc, curr) => acc + curr.amountRupiah, 0);
 
   const handleRequestPayout = (e: React.FormEvent) => {
     e.preventDefault();
     if (withdrawAmountCoins <= 0 || withdrawAmountCoins > balanceCoins) {
-      alert("Jumlah koin penarikan tidak mencukupi.");
+      alert("Jumlah koin penarikan tidak mencukupi saldo.");
       return;
     }
 
     setIsProcessing(true);
     setTimeout(() => {
-      const newBalance = balanceCoins - withdrawAmountCoins;
-      const newPayout: PayoutHistory = {
-        id: `po-${Date.now()}`,
-        invoiceNo: `PAY-20261010-${Math.floor(100 + Math.random() * 900)}`,
-        date: "Hari Ini, 10 Okt 2026",
-        amountRupiah: withdrawAmountCoins * 10000,
-        coinsDeducted: withdrawAmountCoins,
-        bankName: "Bank Central Asia (BCA)",
-        accountNo: "8820****12",
-        status: "Diproses",
-      };
+      // Deduct coins from counselor wallet
+      updateCoins(-withdrawAmountCoins, true);
 
-      setBalanceCoins(newBalance);
-      setPayouts([newPayout, ...payouts]);
+      // Add to central payout store
+      requestPayout({
+        counselorName: user.fullName || "Dr. Sarah Alatas, M.Psi",
+        coinsDeducted: withdrawAmountCoins,
+        amountRupiah: withdrawAmountCoins * 10000,
+        bankName: "Bank Central Asia (BCA)",
+        accountNo: "8820491823",
+        accountHolder: user.fullName ? user.fullName.toUpperCase() : "DR. SARAH ALATAS",
+      });
+
       setIsProcessing(false);
       setPayoutSuccessMsg(true);
       setTimeout(() => setPayoutSuccessMsg(false), 3500);
-    }, 600);
+    }, 400);
   };
 
   return (
@@ -260,11 +232,18 @@ export default function CounselorEarningsPage() {
                             className={`text-[10px] ${
                               p.status === "Berhasil"
                                 ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200"
-                                : "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200"
+                                : p.status === "Diproses"
+                                ? "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200"
+                                : "bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200"
                             }`}
                           >
                             {p.status}
                           </Badge>
+                          {p.notes && (
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 max-w-[200px] ml-auto truncate" title={p.notes}>
+                              {p.notes}
+                            </p>
+                          )}
                         </td>
                       </tr>
                     ))}

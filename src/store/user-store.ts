@@ -14,6 +14,7 @@ function generateInitials(name: string): string {
 
 export interface UserState {
   user: UserProfile;
+  roleProfiles: Record<UserRole, UserProfile>;
   isAuthenticated: boolean;
   login: (email: string, name?: string) => UserProfile;
   loginWithRole: (role: UserRole) => UserProfile;
@@ -21,6 +22,7 @@ export interface UserState {
   register: (fullName: string, email: string, role?: UserRole) => UserProfile;
   updateProfile: (data: Partial<UserProfile>) => void;
   updateCoins: (newTotalOrDelta: number, isDelta?: boolean) => void;
+  creditCounselorCoins: (coins: number) => void;
   logout: () => void;
 }
 
@@ -28,6 +30,7 @@ export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
       user: mockUsers.patient,
+      roleProfiles: { ...mockUsers },
       isAuthenticated: true,
 
       login: (email, name) => {
@@ -57,15 +60,21 @@ export const useUserStore = create<UserState>()(
           role: currentUser.role || "patient",
         };
 
+        const profiles = get().roleProfiles || { ...mockUsers };
         set({
           isAuthenticated: true,
           user: customUser,
+          roleProfiles: {
+            ...profiles,
+            [customUser.role]: customUser,
+          },
         });
         return customUser;
       },
 
       loginWithRole: (role: UserRole) => {
-        const targetUser = mockUsers[role] || mockUsers.patient;
+        const profiles = get().roleProfiles || { ...mockUsers };
+        const targetUser = profiles[role] || mockUsers[role] || mockUsers.patient;
         set({
           isAuthenticated: true,
           user: targetUser,
@@ -74,9 +83,16 @@ export const useUserStore = create<UserState>()(
       },
 
       switchRole: (role: UserRole) => {
-        const targetUser = mockUsers[role] || mockUsers.patient;
+        const currentUser = get().user;
+        const profiles = get().roleProfiles || { ...mockUsers };
+        const updatedProfiles = {
+          ...profiles,
+          [currentUser.role]: currentUser,
+        };
+        const targetUser = updatedProfiles[role] || mockUsers[role] || mockUsers.patient;
         set({
           isAuthenticated: true,
+          roleProfiles: updatedProfiles,
           user: targetUser,
         });
       },
@@ -96,9 +112,14 @@ export const useUserStore = create<UserState>()(
           coins: role === "patient" ? 50 : base.coins,
         };
 
+        const profiles = get().roleProfiles || { ...mockUsers };
         set({
           isAuthenticated: true,
           user: newUser,
+          roleProfiles: {
+            ...profiles,
+            [role]: newUser,
+          },
         });
         return newUser;
       },
@@ -116,13 +137,46 @@ export const useUserStore = create<UserState>()(
             updated.alias = data.fullName.trim().split(" ")[0] || "Wahyu";
           }
         }
-        set({ user: updated });
+        const profiles = get().roleProfiles || { ...mockUsers };
+        set({
+          user: updated,
+          roleProfiles: {
+            ...profiles,
+            [currentUser.role]: updated,
+          },
+        });
       },
 
       updateCoins: (val, isDelta = false) => {
         const currentUser = get().user;
         const nextCoins = isDelta ? Math.max(0, currentUser.coins + val) : Math.max(0, val);
-        set({ user: { ...currentUser, coins: nextCoins } });
+        const updatedUser = { ...currentUser, coins: nextCoins };
+        const profiles = get().roleProfiles || { ...mockUsers };
+        set({
+          user: updatedUser,
+          roleProfiles: {
+            ...profiles,
+            [currentUser.role]: updatedUser,
+          },
+        });
+      },
+
+      creditCounselorCoins: (coins: number) => {
+        const profiles = get().roleProfiles || { ...mockUsers };
+        const currentCounselor = profiles.counselor || mockUsers.counselor;
+        const nextCoins = Math.max(0, currentCounselor.coins + coins);
+        const updatedCounselor = {
+          ...currentCounselor,
+          coins: nextCoins,
+        };
+        const currentUser = get().user;
+        set({
+          roleProfiles: {
+            ...profiles,
+            counselor: updatedCounselor,
+          },
+          user: currentUser.role === "counselor" ? updatedCounselor : currentUser,
+        });
       },
 
       logout: () => {
@@ -130,14 +184,20 @@ export const useUserStore = create<UserState>()(
       },
     }),
     {
-      name: "tb_user_store_v3",
-      version: 3,
+      name: "tb_user_store_v4",
+      version: 4,
       migrate: (persistedState: unknown) => {
-        const state = persistedState as { user?: Partial<UserProfile> } | undefined;
+        const state = persistedState as {
+          user?: Partial<UserProfile>;
+          roleProfiles?: Record<UserRole, UserProfile>;
+        } | undefined;
         if (state && state.user) {
           if (!state.user.role) {
             state.user.role = "patient";
           }
+        }
+        if (state && !state.roleProfiles) {
+          state.roleProfiles = { ...mockUsers };
         }
         return state as UserState;
       },
