@@ -369,7 +369,7 @@ export default function ListenerQueueRoomPage() {
       {activeTab === "chat" && activePostData && (
         <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
           {/* Header Sesi Aktif */}
-          <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-850">
+          <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50/80 dark:bg-slate-900/90">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-100 to-teal-100 dark:from-pink-950 dark:to-teal-900 text-teal-800 dark:text-teal-200 font-bold text-xs flex items-center justify-center border border-teal-200 dark:border-teal-700 font-heading">
                 {activePostData.patientAlias.slice(0, 2).toUpperCase()}
@@ -479,19 +479,24 @@ export default function ListenerQueueRoomPage() {
 
       {/* MODAL 1: TANGGAPI CURHATAN & MULAI SESI */}
       <Dialog open={!!postToClaim} onOpenChange={(open) => !open && setPostToClaim(null)}>
-        <DialogContent className="max-w-lg p-0 overflow-hidden rounded-3xl border border-pink-200/90 dark:border-pink-900/60 font-nunito bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl">
-          <div className="bg-gradient-to-r from-pink-600 via-rose-600 to-teal-700 p-6 text-white space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Heart size={16} />
-              <span className="text-xs font-semibold uppercase tracking-wider text-pink-100">
-                Konfirmasi Pendampingan Sebaya
-              </span>
+        <DialogContent className="max-w-lg p-0 overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 font-nunito bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl">
+          <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/60 space-y-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 flex items-center justify-center shrink-0">
+                <Heart size={20} />
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                  Konfirmasi Pendampingan Sebaya
+                </div>
+                <DialogTitle className="text-lg sm:text-xl font-bold font-heading text-slate-900 dark:text-white mt-1">
+                  Dengarkan & Balas Curhatan Pasien
+                </DialogTitle>
+              </div>
             </div>
-            <DialogTitle className="text-xl font-bold font-heading text-white">
-              Dengarkan & Balas Curhatan Pasien
-            </DialogTitle>
-            <DialogDescription className="text-xs text-pink-100/90 font-nunito">
-              Tanggapan pertamamu akan langsung membuka ruang percakapan dua arah di sisi pasien.
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed pl-0.5">
+              Tanggapan pertamamu akan langsung membuka ruang percakapan dua arah di portal pasien.
             </DialogDescription>
           </div>
 

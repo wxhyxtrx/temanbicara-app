@@ -85,22 +85,25 @@ export function VentingModalForm({ open, onOpenChange, onSuccess }: VentingModal
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden rounded-3xl border border-pink-200/90 dark:border-pink-900/60 font-nunito bg-white dark:bg-slate-900 shadow-xl">
-        {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-pink-600 via-rose-600 to-teal-700 p-6 text-white space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="p-1 rounded-md bg-white/20 backdrop-blur-md">
-              <HeartHandshake size={16} />
-            </span>
-            <span className="text-xs font-semibold uppercase tracking-wider text-pink-100">
-              Ruang Aman Tanpa Penghakiman
-            </span>
+      <DialogContent className="max-w-lg p-0 overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 font-nunito bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl">
+        {/* Clean, Elegant Header */}
+        <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/60 space-y-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20 flex items-center justify-center shrink-0">
+              <HeartHandshake size={20} />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-700 dark:text-pink-300 text-[10px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse" />
+                Ruang Aman Bebas Penghakiman
+              </div>
+              <DialogTitle className="text-lg sm:text-xl font-bold font-heading text-slate-900 dark:text-white mt-1">
+                Tuangkan Keluh Kesahmu Hari Ini
+              </DialogTitle>
+            </div>
           </div>
-          <DialogTitle className="text-xl font-bold font-heading text-white">
-            Tuangkan Keluh Kesahmu Hari Ini
-          </DialogTitle>
-          <DialogDescription className="text-xs text-pink-100/90 leading-relaxed font-nunito">
-            Relawan pendengar sebaya terlatih PFA siap mendengarkan tanpa mencela. Kamu bebas bercerita apa saja.
+          <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-nunito pl-0.5">
+            Ceritakan apa pun yang membebanimu. Relawan pendengar sebaya terlatih Psychological First Aid (PFA) siap mendengarkan dengan penuh penerimaan.
           </DialogDescription>
         </div>
 

@@ -164,21 +164,24 @@ export function SessionReviewTipModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 font-nunito bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl">
-        {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-teal-700 via-teal-800 to-slate-900 p-6 text-white space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="p-1 rounded-md bg-white/20 backdrop-blur-md">
-              <HeartHandshake size={16} />
-            </span>
-            <span className="text-xs font-semibold uppercase tracking-wider text-teal-200">
-              Evaluasi & Akhiri Sesi
-            </span>
+        {/* Clean Ambient Header */}
+        <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/60 space-y-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 flex items-center justify-center shrink-0">
+              <HeartHandshake size={20} />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                Evaluasi & Akhiri Sesi
+              </div>
+              <DialogTitle className="text-lg sm:text-xl font-bold font-heading text-slate-900 dark:text-white mt-1">
+                Terima Kasih Telah Bercerita
+              </DialogTitle>
+            </div>
           </div>
-          <DialogTitle className="text-xl font-bold font-heading text-white">
-            Terima Kasih Telah Bercerita
-          </DialogTitle>
-          <DialogDescription className="text-xs text-teal-100/90 leading-relaxed font-nunito">
-            Sesi pendampingan bersama <strong>{conversation.name}</strong> akan diselesaikan. Bagaimana pengalaman batinmu?
+          <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-nunito pl-0.5">
+            Sesi pendampingan bersama <strong className="text-slate-700 dark:text-slate-300 font-semibold">{conversation.name}</strong> akan diselesaikan. Bagaimana pengalaman batinmu?
           </DialogDescription>
         </div>
 
