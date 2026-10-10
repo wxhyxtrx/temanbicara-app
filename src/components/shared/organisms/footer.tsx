@@ -36,47 +36,44 @@ export default function Footer() {
                 </li>
                 <li>
                   <Link href="/login" className="hover:text-teal-400 transition-colors">
+                    Curhat Sebaya
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/login" className="hover:text-teal-400 transition-colors">
                     Curhat AI 24/7
                   </Link>
                 </li>
                 <li>
-                  <Link href="/patient/schedule" className="hover:text-teal-400 transition-colors">
-                    Jadwal Sesi
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/patient/top-up" className="hover:text-teal-400 transition-colors">
-                    Paket Sesi
+                  <Link href="/help-center" className="hover:text-teal-400 transition-colors">
+                    Pusat Bantuan
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Bantuan & Etika (2 Cols) */}
+            {/* Kemitraan & Relawan (3 Cols) */}
             <div className="lg:col-span-2 space-y-3 font-heading">
               <h4 className="text-sm font-bold text-white uppercase tracking-wider">
-                Dukungan
+                Mitra & Relawan
               </h4>
               <ul className="space-y-2 text-xs font-nunito">
                 <li>
-                  <Link href="/help-center" className="hover:text-teal-400 transition-colors">
-                    Pusat Bantuan & FAQ
+                  <Link href="/register/counselor" className="hover:text-teal-400 transition-colors flex items-center gap-1.5">
+                    <span>Mitra Psikolog</span>
+                    <span className="text-[10px] bg-teal-900/60 text-teal-300 px-1.5 py-0.5 rounded border border-teal-700/50">SIPPK</span>
                   </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-teal-400 transition-colors">
-                    Kebijakan Privasi
-                  </a>
+                  <Link href="/register/listener" className="hover:text-teal-400 transition-colors flex items-center gap-1.5">
+                    <span>Relawan Pendengar</span>
+                    <span className="text-[10px] bg-sky-900/60 text-sky-300 px-1.5 py-0.5 rounded border border-sky-700/50">PFA</span>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-teal-400 transition-colors">
-                    Syarat & Ketentuan
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-teal-400 transition-colors">
-                    Standar Etika
-                  </a>
+                  <Link href="/register" className="hover:text-teal-400 transition-colors">
+                    Daftar Pasien
+                  </Link>
                 </li>
               </ul>
             </div>

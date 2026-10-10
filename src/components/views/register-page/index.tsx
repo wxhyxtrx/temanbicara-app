@@ -16,15 +16,16 @@ import {
   AlertCircle,
   User,
   Stethoscope,
-  Headphones,
+  HeartHandshake,
+  Lock,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useUserStore, UserRole } from "@/store/user-store";
+import { useUserStore } from "@/store/user-store";
 
 const registerSchema = z.object({
-  fullName: z.string().min(3, "Nama lengkap minimal 3 karakter"),
+  fullName: z.string().min(3, "Nama lengkap / nama samaran minimal 3 karakter"),
   email: z
     .string()
     .min(1, "Alamat email wajib diisi")
@@ -34,7 +35,7 @@ const registerSchema = z.object({
     .min(8, "Kata sandi minimal 8 karakter demi perlindungan data medis"),
   agreeTerms: z
     .boolean()
-    .refine((val) => val === true, "Wajib menyetujui syarat & ketentuan konseling"),
+    .refine((val) => val === true, "Wajib menyetujui syarat & ketentuan privasi konseling"),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -43,7 +44,6 @@ export default function Register() {
   const router = useRouter();
   const { register: registerUser } = useUserStore();
   const [loading, setLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole>("patient");
 
   const {
     register,
@@ -59,65 +59,30 @@ export default function Register() {
     },
   });
 
-  const getPortalHome = (role: UserRole) => {
-    switch (role) {
-      case "counselor":
-        return "/counselor/beranda";
-      case "peer_listener":
-        return "/listener/beranda";
-      case "admin":
-        return "/admin/beranda";
-      case "patient":
-      default:
-        return "/patient/beranda";
-    }
-  };
-
   const onSubmit = (data: RegisterFormData) => {
     setLoading(true);
 
     setTimeout(() => {
-      const newUser = registerUser(data.fullName, data.email, selectedRole);
-      router.push(getPortalHome(newUser.role));
+      const newUser = registerUser(data.fullName, data.email, "patient");
+      router.push("/patient/beranda");
     }, 450);
   };
 
   const handleSocialRegister = (provider: string) => {
     setLoading(true);
     setTimeout(() => {
-      const newUser = registerUser(
+      registerUser(
         `${provider} User`,
         `${provider.toLowerCase()}.user@temanbicara.id`,
-        selectedRole
+        "patient"
       );
-      router.push(getPortalHome(newUser.role));
+      router.push("/patient/beranda");
     }, 450);
   };
 
-  const roles = [
-    {
-      id: "patient" as UserRole,
-      title: "Pasien / Klien",
-      desc: "Mencari konseling & curhat",
-      icon: User,
-    },
-    {
-      id: "counselor" as UserRole,
-      title: "Psikolog Klinis",
-      desc: "Mitra berlisensi (SIPPK/STR)",
-      icon: Stethoscope,
-    },
-    {
-      id: "peer_listener" as UserRole,
-      title: "Pendengar Sebaya",
-      desc: "Relawan empati terlatih PFA",
-      icon: Headphones,
-    },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden bg-gradient-to-br from-teal-50/70 via-slate-50 to-emerald-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-teal-950/40 text-slate-900 dark:text-slate-100 font-nunito transition-colors duration-200">
-      {/* Calming ambient background orbs */}
+      {/* Ambient Glow Orbs */}
       <div className="absolute top-10 -right-20 w-80 h-80 rounded-full bg-teal-200/30 dark:bg-teal-900/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-emerald-200/25 dark:bg-emerald-900/10 blur-3xl pointer-events-none" />
 
@@ -141,39 +106,16 @@ export default function Register() {
           <Logo size="lg" showTagline />
 
           <div className="pt-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-800 dark:text-teal-300 text-[11px] font-bold mb-1">
+              <User size={13} className="text-teal-600 dark:text-teal-400" />
+              <span>Registrasi Akun Pasien / Klien</span>
+            </div>
             <h1 className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white leading-tight">
-              Mulai Perjalanan di TemanBicara
+              Mulai Perjalanan Pemulihanmu
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-0.5">
-              Pilih peran Anda dan buat akun terverifikasi
+              Ruang aman, privat & terenkripsi untuk berkeluh kesah dan konseling
             </p>
-          </div>
-        </div>
-
-        {/* Role Selection Tabs */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Daftar Sebagai Peran:</label>
-          <div className="grid grid-cols-3 gap-2">
-            {roles.map((r) => {
-              const Icon = r.icon;
-              const isSelected = selectedRole === r.id;
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setSelectedRole(r.id)}
-                  className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                    isSelected
-                      ? "bg-teal-50 dark:bg-teal-950/70 border-teal-500 dark:border-teal-600 text-teal-950 dark:text-teal-200 ring-2 ring-teal-500/30 shadow-xs font-bold"
-                      : "bg-slate-50/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700"
-                  }`}
-                >
-                  <Icon size={16} className={isSelected ? "text-teal-600 dark:text-teal-400" : "text-slate-500"} />
-                  <span className="text-xs font-heading font-semibold leading-tight">{r.title}</span>
-                  <span className="text-[10px] opacity-75 hidden sm:inline leading-tight">{r.desc}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -208,117 +150,158 @@ export default function Register() {
             <span className="w-full border-t border-slate-200 dark:border-slate-800" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="bg-white dark:bg-slate-900 px-3 text-slate-400 dark:text-slate-500 font-medium">
+            <span className="bg-white dark:bg-slate-900 px-3 text-slate-400 font-nunito">
               atau daftar dengan email
             </span>
           </div>
         </div>
 
-        {/* Validated Form */}
-        <form className="space-y-3" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Lengkap / Gelar</label>
+        {/* Register Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Nama Lengkap / Nama Samaran (Pseudonim)
+            </label>
             <Input
               type="text"
-              placeholder={selectedRole === "counselor" ? "Contoh: Dr. Anita Wijaya, M.Psi." : "Contoh: Wahyu Tricahyo"}
-              {...register("fullName")}
-              className={`h-10 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 rounded-xl focus-visible:ring-teal-600 ${
-                errors.fullName
-                  ? "border-rose-400 focus-visible:ring-rose-500 bg-rose-50/30 dark:bg-rose-950/30"
-                  : "border-slate-200 dark:border-slate-700"
+              placeholder="Wahyu Tricahyo"
+              className={`h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 ${
+                errors.fullName ? "border-rose-500 focus-visible:ring-rose-500" : ""
               }`}
+              {...register("fullName")}
+              disabled={loading}
             />
             {errors.fullName && (
-              <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1 mt-1">
-                <AlertCircle size={12} className="shrink-0" />
-                <span>{errors.fullName.message}</span>
+              <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle size={12} /> {errors.fullName.message}
               </p>
             )}
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Alamat Email</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Alamat Email Aktif
+            </label>
             <Input
               type="email"
               placeholder="nama@email.com"
-              {...register("email")}
-              className={`h-10 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 rounded-xl focus-visible:ring-teal-600 ${
-                errors.email
-                  ? "border-rose-400 focus-visible:ring-rose-500 bg-rose-50/30 dark:bg-rose-950/30"
-                  : "border-slate-200 dark:border-slate-700"
+              className={`h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 ${
+                errors.email ? "border-rose-500 focus-visible:ring-rose-500" : ""
               }`}
+              {...register("email")}
+              disabled={loading}
             />
             {errors.email && (
-              <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1 mt-1">
-                <AlertCircle size={12} className="shrink-0" />
-                <span>{errors.email.message}</span>
+              <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle size={12} /> {errors.email.message}
               </p>
             )}
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Kata Sandi</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Kata Sandi
+            </label>
             <Input
               type="password"
-              placeholder="Minimal 8 karakter"
-              {...register("password")}
-              className={`h-10 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 rounded-xl focus-visible:ring-teal-600 ${
-                errors.password
-                  ? "border-rose-400 focus-visible:ring-rose-500 bg-rose-50/30 dark:bg-rose-950/30"
-                  : "border-slate-200 dark:border-slate-700"
+              placeholder="Minimal 8 karakter..."
+              className={`h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 ${
+                errors.password ? "border-rose-500 focus-visible:ring-rose-500" : ""
               }`}
+              {...register("password")}
+              disabled={loading}
             />
             {errors.password && (
-              <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1 mt-1">
-                <AlertCircle size={12} className="shrink-0" />
-                <span>{errors.password.message}</span>
+              <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+                <AlertCircle size={12} /> {errors.password.message}
               </p>
             )}
           </div>
 
+          {/* Privacy & Terms Checkbox */}
           <div className="space-y-1 pt-1">
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-2.5">
               <input
                 type="checkbox"
-                id="terms"
+                id="agreeTerms"
+                className="mt-1 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                 {...register("agreeTerms")}
-                className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-teal-600 focus:ring-teal-600 mt-0.5 cursor-pointer"
+                disabled={loading}
               />
-              <label htmlFor="terms" className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito leading-tight cursor-pointer">
-                Saya menyetujui Ketentuan Layanan serta Kebijakan Kerahasiaan Data TemanBicara.
+              <label htmlFor="agreeTerms" className="text-xs text-slate-600 dark:text-slate-400 font-nunito leading-relaxed cursor-pointer">
+                Saya menyetujui <span className="text-teal-700 dark:text-teal-400 font-semibold underline">Syarat Layanan</span> dan perlindungan kerahasiaan data kesehatan mental standar HIMPSI.
               </label>
             </div>
             {errors.agreeTerms && (
-              <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1 mt-1 pl-6">
-                <AlertCircle size={12} className="shrink-0" />
-                <span>{errors.agreeTerms.message}</span>
+              <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1 pl-6">
+                <AlertCircle size={12} /> {errors.agreeTerms.message}
               </p>
             )}
           </div>
 
           <Button
             type="submit"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold h-11 rounded-xl text-xs sm:text-sm shadow-md shadow-teal-600/20 cursor-pointer mt-2"
             disabled={loading}
-            className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs sm:text-sm cursor-pointer shadow-md shadow-teal-700/20 gap-2 mt-1"
           >
-            <span>{loading ? "Mendaftarkan Akun..." : "Buat Akun Sekarang"}</span>
-            <ArrowRight size={16} />
+            {loading ? "Menyiapkan Ruang Aman..." : "Daftar Akun Pasien & Mulai Curhat"}
           </Button>
         </form>
 
-        {/* Privacy Note */}
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium text-center pt-1 border-t border-slate-100 dark:border-slate-800">
-          <ShieldCheck size={14} className="text-teal-600 dark:text-teal-400 shrink-0" />
-          <span>Privasi Terlindungi • Enkripsi Berstandar Medis</span>
+        {/* Clinical Privacy Banner */}
+        <div className="rounded-2xl p-3 bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40 flex items-start gap-2.5 text-xs text-teal-900 dark:text-teal-200 font-nunito">
+          <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] leading-relaxed">
+            Identitas Anda terproteksi standar kerahasiaan konseling. Anda bebas menggunakan nama samaran saat bercerita.
+          </p>
         </div>
 
-        {/* Login CTA */}
-        <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+        {/* Login Link */}
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400 font-nunito">
           Sudah memiliki akun?{" "}
-          <Link href="/login" className="text-teal-700 dark:text-teal-400 hover:underline font-bold">
-            Masuk Sekarang
+          <Link href="/login" className="text-teal-700 dark:text-teal-400 font-bold hover:underline">
+            Masuk di sini
           </Link>
         </p>
+
+        {/* Separator to Other Roles Onboarding */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center">
+            Pendaftaran Peran Lainnya:
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Link
+              href="/register/counselor"
+              className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-600 hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-all flex items-center gap-2.5 group cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
+                <Stethoscope size={15} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-teal-700 dark:group-hover:text-teal-400 truncate">
+                  Mitra Psikolog Klinis
+                </p>
+                <p className="text-[10px] text-slate-500 truncate">Verifikasi SIPPK & Praktik</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/register/listener"
+              className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-pink-400 dark:hover:border-pink-600 hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-all flex items-center gap-2.5 group cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-950 text-pink-700 dark:text-pink-400 flex items-center justify-center shrink-0">
+                <HeartHandshake size={15} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-pink-700 dark:group-hover:text-pink-400 truncate">
+                  Relawan Pendengar Sebaya
+                </p>
+                <p className="text-[10px] text-slate-500 truncate">Pelatihan Empati PFA</p>
+              </div>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

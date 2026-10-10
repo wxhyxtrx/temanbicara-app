@@ -18,84 +18,23 @@ import {
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 
-interface VerificationItem {
-  id: string;
-  applicantName: string;
-  roleType: "Psikolog Klinis" | "Pendengar Sebaya";
-  credentialNumber: string;
-  institution: string;
-  submissionDate: string;
-  documentName: string;
-  status: "pending" | "approved" | "rejected";
-}
 
-const initialVerifications: VerificationItem[] = [
-  {
-    id: "ver-1",
-    applicantName: "Dr. Dimas Prasetyo, M.Psi",
-    roleType: "Psikolog Klinis",
-    credentialNumber: "SIPPK: 202104-1082-03",
-    institution: "Magister Profesi Psikologi - Universitas Indonesia",
-    submissionDate: "9 Okt 2026",
-    documentName: "SIPPK_DimasPrasetyo_2026.pdf",
-    status: "pending",
-  },
-  {
-    id: "ver-2",
-    applicantName: "Fitri Handayani, S.Psi, M.Psi",
-    roleType: "Psikolog Klinis",
-    credentialNumber: "SIPPK: 201908-0914-02",
-    institution: "Universitas Gadjah Mada • Anggota HIMPSI",
-    submissionDate: "8 Okt 2026",
-    documentName: "STR_Kemenkes_FitriH.pdf",
-    status: "pending",
-  },
-  {
-    id: "ver-3",
-    applicantName: "Rendra Kurniawan, M.Psi",
-    roleType: "Psikolog Klinis",
-    credentialNumber: "SIPPK: 202301-1402-05",
-    institution: "Universitas Padjadjaran",
-    submissionDate: "7 Okt 2026",
-    documentName: "SIPPK_RendraK_UNPAD.pdf",
-    status: "pending",
-  },
-  {
-    id: "ver-4",
-    applicantName: "Dr. Sarah Alatas, M.Psi",
-    roleType: "Psikolog Klinis",
-    credentialNumber: "SIPPK: 198402-2019-01",
-    institution: "Universitas Indonesia • HIMPSI Pusat",
-    submissionDate: "1 Okt 2026",
-    documentName: "SIPPK_SarahAlatas_Resmi.pdf",
-    status: "approved",
-  },
-  {
-    id: "ver-5",
-    applicantName: "Dewi Lestari",
-    roleType: "Pendengar Sebaya",
-    credentialNumber: "Sertifikat PFA: WHO-ID-2024-819",
-    institution: "Pelatihan Psychological First Aid WHO & Kemkes",
-    submissionDate: "30 Sep 2026",
-    documentName: "Sertifikat_PFA_Dewi.pdf",
-    status: "approved",
-  },
-];
+
+import { useVerificationStore, VerificationItem } from "@/store/verification-store";
 
 export default function AdminVerificationsPage() {
-  const [items, setItems] = useState<VerificationItem[]>(initialVerifications);
+  const items = useVerificationStore((state) => state.verifications);
+  const updateStatus = useVerificationStore((state) => state.updateStatus);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [search, setSearch] = useState("");
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   const handleAction = (id: string, action: "approved" | "rejected", name: string) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: action } : item))
-    );
+    updateStatus(id, action);
     setActionNotice(
       action === "approved"
-        ? `Lisensi SIPPK untuk ${name} berhasil disetujui. Praktisi kini dapat membuka sesi konseling.`
-        : `Permohonan verifikasi untuk ${name} ditolak. Email klarifikasi dikirim.`
+        ? `Kredensial untuk ${name} berhasil disetujui. Akun mitra kini aktif dan dapat melayani pasien.`
+        : `Permohonan verifikasi untuk ${name} ditolak. Email pemberitahuan telah dikirimkan.`
     );
     setTimeout(() => setActionNotice(null), 3500);
   };
