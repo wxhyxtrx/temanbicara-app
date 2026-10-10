@@ -10,22 +10,30 @@ export interface PatientData {
 
 export interface CounselorData {
   licenseNumber: string; // SIPPK / STR HIMPSI
+  sippkNumber?: string;
   specialty: string;
+  specializations?: string[];
   title: string;
   experienceYears: number;
   hourlyRateCoins: number;
   rating: number;
   totalConsultations: number;
+  consultationCount?: number;
   consultationMethods: ("chat" | "voice")[];
   earningsCoins: number;
+  isAvailable?: boolean;
 }
 
 export interface ListenerData {
   listenerBadge: string;
+  badgeLevel?: string;
   topicsHandled: string[];
+  supportTopics?: string[];
   sessionsCompleted: number;
   rating: number;
+  empathyScore?: number;
   status: "online" | "offline" | "busy";
+  isOnline?: boolean;
 }
 
 export interface AdminData {
