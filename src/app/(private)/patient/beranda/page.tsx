@@ -6,10 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  moodOptions,
   recentConversations,
   verifiedConsultants,
-  MoodOption,
   Consultant,
   RecentConversationItem,
 } from "@/constant/beranda";
@@ -22,37 +20,22 @@ import {
   MessageSquare,
   Clock,
   Sparkles,
-  Wind,
   AlertCircle,
   ArrowRight,
-  Brain,
   Star,
   HeartHandshake,
   Users,
-  BarChart3,
-  TrendingUp,
-  Activity,
-  Check,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
 import { useScheduleStore } from "@/store/schedule-store";
-import { useAssessmentStore } from "@/store/assessment-store";
 import { usePeerVentStore } from "@/store/peer-vent-store";
 import { VentingModalForm } from "@/components/views/patient/venting-modal-form";
 
 export default function PatientBerandaPage() {
-  const [selectedMood, setSelectedMood] = useState<string>("calm");
-  const [breathingActive, setBreathingActive] = useState<boolean>(false);
   const [mounted, setMounted] = useState<boolean>(false);
   const user = useUserStore((state) => state.user);
   const rawSchedules = useScheduleStore((state) => state.schedules);
-
-  const moodLogs = useAssessmentStore((state) => state.moodLogs);
-  const latestDass = useAssessmentStore((state) => state.latestResult);
-  const saveMoodLog = useAssessmentStore((state) => state.saveMoodLog);
-  const [selectedTriggers, setSelectedTriggers] = useState<string[]>(["Pekerjaan", "Deadline"]);
-  const [triggerSaved, setTriggerSaved] = useState(false);
   const [ventingModalOpen, setVentingModalOpen] = useState(false);
   const myActivePost = usePeerVentStore((state) => state.myActivePost);
 
@@ -60,17 +43,6 @@ export default function PatientBerandaPage() {
     setMounted(true);
   }, []);
 
-  const handleToggleTrigger = (trigger: string) => {
-    const next = selectedTriggers.includes(trigger)
-      ? selectedTriggers.filter((t) => t !== trigger)
-      : [...selectedTriggers, trigger];
-    setSelectedTriggers(next);
-    saveMoodLog("cemas", 3, next, "Pemicu dicatat di beranda.");
-    setTriggerSaved(true);
-    setTimeout(() => setTriggerSaved(false), 2000);
-  };
-
-  const activeMood = moodOptions.find((m) => m.value === selectedMood) || moodOptions[0];
   const activeSessions = mounted
     ? rawSchedules.filter((s) => s.status === "terjadwal" || s.status === "menunggu")
     : [];
@@ -157,221 +129,7 @@ export default function PatientBerandaPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         {/* Left Column (8 Cols on Desktop) */}
         <div className="lg:col-span-8 space-y-6 sm:space-y-8">
-          {/* 2. Therapeutic Emotion Check-In & Grounding Widget */}
-          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-            <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <CardTitle className="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Brain size={20} className="text-teal-600 dark:text-teal-400" />
-                    Bagaimana Kondisi Batinmu Hari Ini?
-                  </CardTitle>
-                  <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Pilih suasana hati yang paling mewakili kondisimu saat ini untuk rekomendasi pemulihan.
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBreathingActive(!breathingActive)}
-                  className="text-xs border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-slate-800 rounded-lg gap-1.5 self-start sm:self-center cursor-pointer"
-                >
-                  <Wind size={14} className={breathingActive ? "animate-spin" : ""} />
-                  {breathingActive ? "Tutup Relaksasi" : "Latihan Pernapasan"}
-                </Button>
-              </div>
-            </CardHeader>
 
-            <CardContent className="p-5 sm:p-6 space-y-5">
-              {/* Emotion Selector Badges */}
-              <div className="flex flex-wrap gap-2 sm:gap-2.5">
-                {moodOptions.map((option: MoodOption) => {
-                  const isActive = selectedMood === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedMood(option.value)}
-                      className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 border cursor-pointer ${
-                        isActive ? option.activeColorClass : option.colorClass
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Dynamic Emotional Validation Box */}
-              {activeMood && (
-                <div className="rounded-xl p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 space-y-2.5">
-                  <div className="flex items-center gap-2 text-xs font-bold text-teal-800 dark:text-teal-300 uppercase tracking-wider">
-                    <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
-                    <span>Catatan Refleksi Klinis</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 font-medium italic">
-                    "{activeMood.quote}"
-                  </p>
-                  <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
-                    <p className="font-nunito">
-                      <strong className="text-slate-900 dark:text-white font-semibold">Rekomendasi: </strong>
-                      {activeMood.recommendation}
-                    </p>
-                    <Link href="/patient/room" className="flex-shrink-0">
-                      <Button size="sm" variant="ghost" className="text-xs text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800 px-2 py-1 h-auto font-semibold gap-1">
-                        Eksplorasi di Chat <ArrowRight size={13} />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              )}
-
-              {/* Box Breathing Interactive Exercise (Expandable) */}
-              {breathingActive && (
-                <div className="rounded-2xl p-5 bg-gradient-to-br from-teal-50 via-emerald-50/50 to-white dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-900 border border-teal-200 dark:border-teal-800 text-center space-y-3 animate-in fade-in duration-300">
-                  <div className="flex items-center justify-center gap-2 text-xs font-bold text-teal-800 dark:text-teal-300">
-                    <Wind size={16} className="text-teal-600 dark:text-teal-400 animate-pulse" />
-                    <span>Teknik Pernapasan Relaksasi (Box Breathing 4-4-4-4)</span>
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto">
-                    Tarik napas perlahan melalui hidung (4 detik), tahan di dada (4 detik), hembuskan melalui mulut (4 detik), dan tahan jeda (4 detik). Ulangi 3 kali.
-                  </p>
-                  <div className="flex justify-center items-center gap-4 py-2">
-                    <div className="w-20 h-20 rounded-full border-4 border-teal-500/40 dark:border-teal-400/30 bg-white dark:bg-slate-800 flex items-center justify-center shadow-xs">
-                      <span className="text-xs font-bold text-teal-700 dark:text-teal-300 font-heading">Napas</span>
-                    </div>
-                  </div>
-                  <span className="text-[11px] text-teal-700 dark:text-teal-400 font-medium">
-                    Membantu menurunkan lonjakan detak jantung dan meredakan kepanikan saraf vagus.
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 2b. 7-Day Mood Analytics & Trigger Tracker Card */}
-          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-            <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 size={18} className="text-teal-600 dark:text-teal-400" />
-                    <CardTitle className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                      Pelacak Suasana Hati 7 Hari Terakhir
-                    </CardTitle>
-                  </div>
-                  <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Fluktuasi emosi & pemicu stres yang kamu rasakan sepanjang pekan ini.
-                  </CardDescription>
-                </div>
-
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-semibold self-start sm:self-center">
-                  <TrendingUp size={13} />
-                  <span>Stabilitas +35%</span>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-5 sm:p-6 space-y-5">
-              {/* Bar Chart Visualization */}
-              <div className="space-y-2">
-                <div className="h-36 flex items-end justify-between gap-2 sm:gap-3 px-2 pt-4 pb-2 bg-slate-50/60 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
-                  {moodLogs.map((log, idx) => {
-                    const heightPercent = Math.max(20, (log.score / 5) * 100);
-                    const colorClass =
-                      log.mood === "senang"
-                        ? "bg-emerald-500"
-                        : log.mood === "tenang"
-                        ? "bg-teal-500"
-                        : log.mood === "cemas"
-                        ? "bg-amber-500"
-                        : log.mood === "lelah"
-                        ? "bg-slate-400"
-                        : log.mood === "sedih"
-                        ? "bg-blue-500"
-                        : "bg-rose-500";
-
-                    return (
-                      <div key={log.id || idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 group-hover:text-teal-600 transition-colors">
-                          {log.score}/5
-                        </span>
-                        <div className="w-full max-w-[28px] bg-slate-200 dark:bg-slate-700 rounded-t-md h-full flex items-end overflow-hidden">
-                          <div
-                            className={`w-full ${colorClass} rounded-t-md transition-all duration-500 group-hover:brightness-110`}
-                            style={{ height: `${heightPercent}%` }}
-                            title={`${log.dayLabel} (${log.date}): ${log.mood} (Intensitas ${log.intensity}/5)`}
-                          />
-                        </div>
-                        <div className="text-center pt-0.5">
-                          <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
-                            {log.dayLabel}
-                          </span>
-                          <span className="text-[9px] text-slate-400 dark:text-slate-500 hidden sm:block">
-                            {log.date}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Senang
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 rounded-full bg-teal-500" /> Tenang
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Cemas
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Kewalahan
-                    </span>
-                  </div>
-                  <span className="font-medium text-teal-700 dark:text-teal-300">
-                    Berdasarkan Catatan Check-in
-                  </span>
-                </div>
-              </div>
-
-              {/* Pemicu Stres Dominan Chips */}
-              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Pemicu Emosi & Stres Dominan Hari Ini:
-                  </span>
-                  {triggerSaved && (
-                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 animate-in fade-in duration-200">
-                      <Check size={12} /> Tersimpan di Jurnal
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {["Pekerjaan", "Deadline", "Kurang Tidur", "Keluarga", "Hubungan", "Finansial", "Ekspektasi"].map((trigger) => {
-                    const isSelected = selectedTriggers.includes(trigger);
-                    return (
-                      <button
-                        key={trigger}
-                        type="button"
-                        onClick={() => handleToggleTrigger(trigger)}
-                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all duration-150 border cursor-pointer ${
-                          isSelected
-                            ? "bg-teal-700 text-white border-teal-700 shadow-2xs dark:bg-teal-600 dark:border-teal-600"
-                            : "bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-teal-400"
-                        }`}
-                      >
-                        {isSelected ? `✓ ${trigger}` : `+ ${trigger}`}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Banner: Curhat Pendengar Sebaya (Peer Listener) */}
           {myActivePost && myActivePost.status === "menunggu" ? (
@@ -602,7 +360,7 @@ export default function PatientBerandaPage() {
               </h3>
 
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-nunito leading-relaxed">
-                Dapatkan 3 sesi konseling mendalam 60 menit bersama psikolog berlisensi, lembar evaluasi berkala (DASS-21), dan akses pendampingan chat terpadu.
+                Dapatkan 3 sesi konseling mendalam 60 menit bersama psikolog berlisensi, pendampingan terstruktur, dan akses ruang chat aman terpadu.
               </p>
             </div>
 
@@ -616,132 +374,6 @@ export default function PatientBerandaPage() {
 
         {/* Right Column (4 Cols on Desktop) */}
         <div className="lg:col-span-4 space-y-6 sm:space-y-8">
-          {/* DASS-21 Clinical Triad Status Card */}
-          <Card className="rounded-2xl border border-teal-200/90 dark:border-teal-800/80 bg-gradient-to-br from-teal-50/50 via-white to-slate-50 dark:from-teal-950/30 dark:via-slate-900 dark:to-slate-900 shadow-xs overflow-hidden">
-            <CardHeader className="p-4 sm:p-5 pb-3 border-b border-teal-100 dark:border-teal-900/40">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Activity size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <CardTitle className="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
-                      Status Klinis DASS-21
-                    </CardTitle>
-                    <CardDescription className="text-[11px] text-teal-700 dark:text-teal-400 font-nunito truncate">
-                      Hasil Asesmen Mandiri Terakhir
-                    </CardDescription>
-                  </div>
-                </div>
-
-                <Link href="/patient/assessment" className="shrink-0">
-                  <span className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 flex items-center gap-0.5">
-                    Detail <ChevronRight size={13} />
-                  </span>
-                </Link>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-4 sm:p-5 space-y-3.5">
-              {latestDass ? (
-                <>
-                  <div className="grid grid-cols-3 gap-2">
-                    {/* Depresi */}
-                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700 text-center space-y-1">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
-                        Depresi
-                      </span>
-                      <div className="text-base font-extrabold font-heading text-slate-900 dark:text-white">
-                        {latestDass.depressionScore}
-                        <span className="text-[10px] font-normal text-slate-400">/42</span>
-                      </div>
-                      <Badge
-                        className={`text-[9px] px-1.5 py-0 border font-semibold ${
-                          latestDass.depressionSeverity === "Normal"
-                            ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200"
-                            : latestDass.depressionSeverity === "Ringan"
-                            ? "bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border-teal-200"
-                            : "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200"
-                        }`}
-                      >
-                        {latestDass.depressionSeverity}
-                      </Badge>
-                    </div>
-
-                    {/* Cemas */}
-                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700 text-center space-y-1">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
-                        Cemas
-                      </span>
-                      <div className="text-base font-extrabold font-heading text-slate-900 dark:text-white">
-                        {latestDass.anxietyScore}
-                        <span className="text-[10px] font-normal text-slate-400">/42</span>
-                      </div>
-                      <Badge
-                        className={`text-[9px] px-1.5 py-0 border font-semibold ${
-                          latestDass.anxietySeverity === "Normal"
-                            ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200"
-                            : latestDass.anxietySeverity === "Sedang"
-                            ? "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200"
-                            : "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200"
-                        }`}
-                      >
-                        {latestDass.anxietySeverity}
-                      </Badge>
-                    </div>
-
-                    {/* Stres */}
-                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700 text-center space-y-1">
-                      <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
-                        Stres
-                      </span>
-                      <div className="text-base font-extrabold font-heading text-slate-900 dark:text-white">
-                        {latestDass.stressScore}
-                        <span className="text-[10px] font-normal text-slate-400">/42</span>
-                      </div>
-                      <Badge
-                        className={`text-[9px] px-1.5 py-0 border font-semibold ${
-                          latestDass.stressSeverity === "Normal"
-                            ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200"
-                            : latestDass.stressSeverity === "Sedang"
-                            ? "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200"
-                            : "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200"
-                        }`}
-                      >
-                        {latestDass.stressSeverity}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-slate-600 dark:text-slate-300 font-nunito leading-relaxed line-clamp-2">
-                    {latestDass.recommendation}
-                  </p>
-
-                  <div className="pt-1 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 dark:text-slate-500 font-mono text-[10px]">
-                      {latestDass.date}
-                    </span>
-                    <Link href="/patient/assessment">
-                      <Button size="sm" variant="outline" className="text-xs h-7 px-3 border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-slate-800 font-semibold rounded-lg">
-                        Tes Ulang
-                      </Button>
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-4 space-y-2">
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    Kamu belum pernah melakukan asesmen DASS-21.
-                  </p>
-                  <Link href="/patient/assessment">
-                    <Button size="sm" className="bg-teal-600 text-white font-semibold text-xs rounded-xl px-4">
-                      Mulai Asesmen DASS-21
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
           {/* 5. Verified Psychologists Card */}
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
             <CardHeader className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800">
