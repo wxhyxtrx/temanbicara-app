@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -16,35 +15,77 @@ import {
 import {
   MessageSquare,
   Phone,
-  ShieldCheck,
-  FileText,
-  User,
   HeartPulse,
   Save,
   CheckCircle2,
   Clock,
-  Sparkles,
   AlertTriangle,
-  ArrowRight,
   Send,
   Lock,
-  Stethoscope,
   Activity,
-  Smile,
-  Brain,
+  FileText,
   Check,
+  Pause,
+  Play,
+  RotateCcw,
+  Sparkles,
+  ChevronRight,
+  User,
+  ShieldCheck,
+  ArrowUpRight,
+  Tag,
+  HelpCircle,
+  TrendingDown,
 } from "lucide-react";
-import { useChatStore, Message } from "@/store/chat-store";
+import { useChatStore, Message, Conversation } from "@/store/chat-store";
 import { useScheduleStore } from "@/store/schedule-store";
 import { useClinicalRecordsStore } from "@/store/clinical-records-store";
 import { CallRoomModal } from "@/components/views/chat-page/call-room-modal";
-import { SessionTimerBar } from "@/components/views/chat-page/session-timer-bar";
 
-const clinicalQuickPrompts = [
-  "Mari kita ambil jeda napas diafragma 2 menit bersama-sama.",
-  "Apa yang kamu rasakan di tubuhmu saat pikiran cemas itu muncul?",
-  "Mari kita periksa bukti nyata yang mendukung vs menolak ketakutan tersebut (Teknik CBT).",
-  "Pikiranmu bukanlah fakta absolut. Mari beri nama pada emosi tersebut.",
+interface QuickIntervention {
+  id: string;
+  category: string;
+  label: string;
+  text: string;
+  simulatedReply: string;
+}
+
+const quickInterventions: QuickIntervention[] = [
+  {
+    id: "diaphragm",
+    category: "Relaksasi Somatik",
+    label: "🌬️ Napas Diafragma 2 Mnt",
+    text: "Mari kita ambil jeda napas diafragma 2 menit bersama-sama. Tarik napas 4 detik, tahan 4 detik, dan hembuskan perlahan 6 detik.",
+    simulatedReply: "Baik Dok, saya coba ikuti... Tarik napas 4 detik, hembuskan perlahan. Dada mulai terasa agak lebih lega dan tidak seberat tadi.",
+  },
+  {
+    id: "somatic",
+    category: "Kesadaran Tubuh",
+    label: "🧠 Eksplorasi Sensasi Somatik",
+    text: "Apa yang kamu rasakan secara spesifik di tubuhmu saat sensasi cemas itu mulai memuncak di pagi hari?",
+    simulatedReply: "Dada terasa seperti diikat tali kencang Dok, telapak tangan saya berkeringat dingin, dan kepala bagian belakang agak tegang.",
+  },
+  {
+    id: "cbt-evidence",
+    category: "Restrukturisasi Kognitif",
+    label: "⚖️ Uji Bukti Nyata (CBT)",
+    text: "Mari kita uji bukti nyata: Apa bukti konkret yang mendukung bahwa kekhawatiranmu pasti terjadi, dan apa fakta yang membuktikan sebaliknya?",
+    simulatedReply: "Kalau dipikirkan dengan jernih, selama ini presentasi saya selalu diapresiasi atasan. Kekhawatiran dipecat itu lebih karena pikiran saya yang melebih-lebihkan kemungkinan buruk.",
+  },
+  {
+    id: "grounding",
+    category: "Stabilisasi Akut",
+    label: "👁️ Grounding 5-4-3-2-1",
+    text: "Mari kita grounding indra kita sejenak. Coba sebutkan 5 benda yang kamu lihat di sekitarmu sekarang, dan 4 tekstur yang bisa kamu sentuh.",
+    simulatedReply: "Saya melihat laptop, cangkir kopi, buku catatan, jendela, dan jam dinding. Saya menyentuh meja kayu halus dan sandaran kursi.",
+  },
+  {
+    id: "validation",
+    category: "Afirmasi Terapeutik",
+    label: "🛡️ Validasi & Normalisasi Emosi",
+    text: "Reaksi cemas yang kamu alami sangat wajar mengingat tingginya tuntutan kuartal ini. Kamu tidak lemah, sistem sarafmu hanya sedang protektif.",
+    simulatedReply: "Mendengar itu membuat saya merasa jauh lebih tenang Dok. Saya sering menyalahkan diri sendiri karena merasa terlalu cemas.",
+  },
 ];
 
 export default function CounselorRoomPage() {
@@ -53,27 +94,36 @@ export default function CounselorRoomPage() {
     conversations,
     messagesByConversation,
     sendCounselorReply,
+    sendPatientSimulationReply,
     clinicalNotes,
     updateClinicalNote,
   } = useChatStore();
   const updateSessionStatus = useScheduleStore((state) => state.updateSessionStatus);
+  const saveSoapToRecord = useClinicalRecordsStore((state) => state.saveSoapNote);
 
-  // Active client session (default to conversation 2: Wahyu Tricahyo)
+  // Active client session (conversation 2: Wahyu Tricahyo)
   const activeConvId = 2;
-  const currentConversation = conversations.find((c) => c.id === activeConvId) || conversations[1];
   const currentMessages = messagesByConversation[activeConvId] || [];
 
   // Chat message input
   const [replyText, setReplyText] = useState("");
+  const [isPatientTyping, setIsPatientTyping] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Session timer (60 minutes cap, 45 mins initial countdown)
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(45 * 60);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(true);
+
+  // Clinical Tab: "soap" vs "dossier"
+  const [activeTab, setActiveTab] = useState<"soap" | "dossier">("soap");
 
   // SOAP notes form state
   const existingNote = clinicalNotes[activeConvId] || {
-    s: "Klien melaporkan rasa cemas antisipatif berulang saat pagi sebelum jam kerja.",
-    o: "Afek cemas ringan, kontak mata baik, speech rate teratur.",
-    a: "F41.1 Ansietas Menyeluruh terkait beban kerja kuartal akhir.",
-    p: "Psikoedukasi CBT restrukturisasi pikiran otomatis & latihan napas diafragma.",
-    updatedAt: "Hari ini",
+    s: "Klien melaporkan rasa cemas antisipatif berulang saat pagi sebelum jam kantor. Mengalami somatic tension (dada sesak ringan, palpitasi). Latihan napas diafragma malam hari cukup membantu onset tidur.",
+    o: "Afek cemas ringan, kontak mata baik, speech rate normal. Insight klinis baik (grade 5, sadar akan pola pemicu kecemasan).",
+    a: "F41.1 - Gangguan Cemas Menyeluruh dengan kecenderungan catastrophizing terhadap beban kerja kuartal akhir.",
+    p: "1. Psikoedukasi CBT restrukturisasi pikiran otomatis (3-column technique).\n2. Latihan grounding 5-4-3-2-1 saat morning routine.\n3. Pertahankan jadwal tidur konsisten jam 23.00.",
+    updatedAt: "10 Okt 2026, 14:15 WIB",
   };
 
   const [soapS, setSoapS] = useState(existingNote.s);
@@ -81,6 +131,7 @@ export default function CounselorRoomPage() {
   const [soapA, setSoapA] = useState(existingNote.a);
   const [soapP, setSoapP] = useState(existingNote.p);
   const [soapSavedMsg, setSoapSavedMsg] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string>(existingNote.updatedAt || "14:15 WIB");
 
   // Modals
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
@@ -92,21 +143,55 @@ export default function CounselorRoomPage() {
     setMounted(true);
   }, []);
 
+  // Timer countdown
+  useEffect(() => {
+    if (!isTimerRunning || secondsRemaining <= 0) return;
+    const interval = setInterval(() => {
+      setSecondsRemaining((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isTimerRunning, secondsRemaining]);
+
+  // Auto-scroll chat to bottom
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [currentMessages]);
+  }, [currentMessages, isPatientTyping]);
 
-  const handleSendReply = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!replyText.trim()) return;
-
-    sendCounselorReply(activeConvId, replyText.trim());
-    setReplyText("");
+  const formatTimer = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  const saveSoapToRecord = useClinicalRecordsStore((state) => state.saveSoapNote);
+  const handleSendReply = (customText?: string) => {
+    const content = (customText || replyText).trim();
+    if (!content) return;
+
+    sendCounselorReply(activeConvId, content);
+    if (!customText) setReplyText("");
+
+    // Realistic patient response simulation
+    const matchedPrompt = quickInterventions.find((item) =>
+      content.toLowerCase().includes(item.label.slice(3).toLowerCase().slice(0, 8)) ||
+      item.text.slice(0, 20) === content.slice(0, 20)
+    );
+
+    setIsPatientTyping(true);
+    setTimeout(() => {
+      setIsPatientTyping(false);
+      const simulatedText = matchedPrompt
+        ? matchedPrompt.simulatedReply
+        : "Baik Dok, saya pahami penjelasannya. Saya akan coba perhatikan pikiran itu perlahan dan mempraktikkan arahannya.";
+      sendPatientSimulationReply(activeConvId, simulatedText);
+    }, 2200);
+  };
+
+  const handleApplyQuickPrompt = (intervention: QuickIntervention) => {
+    handleSendReply(intervention.text);
+  };
 
   const handleSaveSoap = () => {
+    const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " WIB";
     updateClinicalNote(activeConvId, {
       s: soapS,
       o: soapO,
@@ -120,166 +205,278 @@ export default function CounselorRoomPage() {
       a: soapA,
       p: soapP,
     });
+    setLastSavedTime(timeString);
     setSoapSavedMsg(true);
-    setTimeout(() => setSoapSavedMsg(false), 3000);
+    setTimeout(() => setSoapSavedMsg(false), 3500);
   };
 
   const handleFinishSession = () => {
-    // Selesaikan sesi pertama di schedule store
+    handleSaveSoap();
     updateSessionStatus("sch-01", "selesai");
     setShowFinishConfirm(false);
     setSessionCompletedMsg(true);
   };
 
+  // Patient profile for Call Room Modal
+  const patientConversationForCall: Conversation = {
+    id: activeConvId,
+    name: "Wahyu Tricahyo",
+    role: "Klien Terdaftar (Sesi #3)",
+    specialty: "Keluhan: Anticipatory Anxiety & Burnout",
+    initials: "WT",
+    lastMessage: "",
+    time: "Aktif",
+    unread: 0,
+    isAI: false,
+    statusText: "Terkoneksi Ruang Konseling",
+    online: true,
+  };
+
+  if (!mounted) {
+    return <div className="p-6 text-sm text-slate-500 font-nunito">Memuat ruang telekonseling...</div>;
+  }
+
   return (
-    <div className="space-y-4 sm:space-y-6 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      {/* 1. Clinical Session Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+    <div className="space-y-4 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+      {/* 1. CLINICAL COMMAND BAR (Single Unified Header, No Redundant Stacks) */}
+      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs">
+        {/* Left: Patient Identifier */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-bold text-sm flex items-center justify-center border border-teal-200 dark:border-teal-800 shrink-0 font-heading">
-            WT
+          <div className="relative shrink-0">
+            <div className="w-11 h-11 rounded-xl bg-teal-800 dark:bg-teal-700 text-teal-50 font-bold text-sm flex items-center justify-center font-heading border border-teal-600/40 shadow-xs">
+              WT
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
           </div>
+
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white truncate">
-                Wahyu Tricahyo (Klien Terdaftar)
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base font-bold font-heading text-slate-900 dark:text-white tracking-tight truncate">
+                Wahyu Tricahyo
               </h1>
-              <Badge className="bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 text-[10px] shrink-0">
-                Sesi Berlangsung
+              <span className="text-xs text-slate-400 font-medium">(27 th)</span>
+              <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 text-[10px] py-0 px-2 font-medium">
+                Sesi #3 · CBT Ansietas
               </Badge>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito flex items-center gap-1.5 mt-0.5">
-              <Lock size={12} className="text-teal-600 dark:text-teal-400" />
-              <span>Ruang Konseling Privat • Terenkripsi Medis Standar HIPAA</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 font-mono">
+              <span>Rekam Medis: #TB-2026-094</span>
+              <span>•</span>
+              <span className="flex items-center gap-1 text-teal-700 dark:text-teal-400 font-sans font-medium">
+                <Lock size={11} /> Enkripsi HIPAA / HIMPSI
+              </span>
             </p>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Center & Right: Integrated Live Timer & Session Actions */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100 dark:border-slate-800">
+          {/* Live Synchronized Timer Badge */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <div className="flex items-center gap-1.5 font-mono font-bold text-slate-800 dark:text-slate-200">
+              <Clock size={13} className="text-teal-600 dark:text-teal-400" />
+              <span>{formatTimer(secondsRemaining)}</span>
+            </div>
+            <span className="text-[11px] text-slate-400 font-nunito hidden sm:inline">
+              (Batas 60 Menit)
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsTimerRunning(!isTimerRunning)}
+              title={isTimerRunning ? "Jeda timer" : "Lanjutkan timer"}
+              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5 rounded transition-colors ml-1 cursor-pointer"
+            >
+              {isTimerRunning ? <Pause size={12} /> : <Play size={12} />}
+            </button>
+          </div>
+
+          {/* Action: Voice Call */}
           <Button
             size="sm"
             onClick={() => setIsCallModalOpen(true)}
-            className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl h-9 px-3.5 font-semibold shadow-2xs gap-1.5 cursor-pointer"
+            className="text-xs bg-teal-700 hover:bg-teal-800 text-white rounded-xl h-9 px-3.5 font-semibold shadow-2xs gap-1.5 cursor-pointer"
           >
-            <Phone size={14} />
-            <span>Mulai Voice Call Klinis</span>
+            <Phone size={13} />
+            <span>Voice Call Klinis</span>
           </Button>
 
+          {/* Action: Protokol Krisis */}
           <Button
             size="sm"
             variant="outline"
             onClick={() => setShowCrisisModal(true)}
-            className="text-xs border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl h-9 px-3 font-semibold cursor-pointer gap-1"
+            className="text-xs border-rose-200 dark:border-rose-900/80 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl h-9 px-3 font-semibold cursor-pointer gap-1.5"
           >
-            <HeartPulse size={14} />
+            <HeartPulse size={14} className="text-rose-600" />
             <span>Protokol Krisis</span>
           </Button>
 
+          {/* Action: Akhiri Sesi */}
           <Button
             size="sm"
             onClick={() => setShowFinishConfirm(true)}
-            className="text-xs bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white rounded-xl h-9 px-3.5 font-semibold cursor-pointer gap-1"
+            className="text-xs bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white rounded-xl h-9 px-3.5 font-semibold cursor-pointer gap-1.5"
           >
             <CheckCircle2 size={14} className="text-emerald-400" />
-            <span>Selesaikan Sesi</span>
+            <span>Akhiri Sesi</span>
           </Button>
         </div>
-      </div>
+      </header>
 
-      {/* 2. Real-time Session Guard & Countdown Timer */}
-      <SessionTimerBar
-        initialMinutes={45}
-        sessionTitle="Sesi Telekonseling Aktif: Wahyu Tricahyo"
-        isCounselor={true}
-        onSessionFinish={() => setShowFinishConfirm(true)}
-      />
-
+      {/* Session Completed Alert Banner */}
       {sessionCompletedMsg && (
-        <div className="flex items-center justify-between gap-2 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in">
+        <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-semibold animate-in fade-in">
           <div className="flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-emerald-600" />
-            <span>Sesi konseling telah ditandai Selesai. Catatan SOAP telah diarsipkan ke dokumen rekam klien.</span>
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <span>Sesi konseling telah selesai. Catatan SOAP telah diarsipkan otomatis ke berkas rekam medis klien.</span>
           </div>
           <Link href="/counselor/clients">
-            <Button size="sm" className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
+            <Button size="sm" className="h-7 text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl">
               Buka Berkas Klien
             </Button>
           </Link>
         </div>
       )}
 
-      {/* 2. Dual-Pane: Chat Sesi di Kiri & Catatan SOAP di Kanan */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 min-h-[640px]">
-        {/* PANEL KIRI: LIVE CHAT DENGAN PASIEN (7 COLS) */}
-        <div className="lg:col-span-7 flex flex-col h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/90">
+      {/* 2. DUAL-PANE CLINICAL WORKSPACE */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 min-h-[660px]">
+        {/* PANEL KIRI: DIALOG KLINIS TERAPEUTIK (7 COLS) */}
+        <div className="lg:col-span-7 flex flex-col h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+          {/* Header Dialog */}
+          <div className="p-3 sm:px-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-900/90">
             <div className="flex items-center gap-2">
-              <MessageSquare size={16} className="text-teal-600 dark:text-teal-400" />
+              <MessageSquare size={15} className="text-teal-700 dark:text-teal-400" />
               <span className="text-xs font-bold font-heading text-slate-800 dark:text-slate-200">
                 Percakapan Langsung dengan Pasien
               </span>
             </div>
-            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Terhubung
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Terhubung
+              </span>
+            </div>
           </div>
 
-          {/* Quick Prompts Bar */}
-          <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-teal-50/40 dark:bg-teal-950/20 overflow-x-auto flex gap-1.5 scrollbar-none">
-            {clinicalQuickPrompts.map((prompt, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setReplyText(prompt)}
-                className="shrink-0 text-[10px] bg-white dark:bg-slate-800 hover:bg-teal-50 border border-teal-200/60 dark:border-teal-800 text-teal-800 dark:text-teal-300 rounded-lg px-2.5 py-1 font-medium transition-colors cursor-pointer text-left"
-              >
-                + {prompt}
-              </button>
-            ))}
+          {/* Intervensi Klinis Cepat (Quick Clinical Interventions) */}
+          <div className="p-2 sm:px-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/50">
+            <div className="flex items-center justify-between gap-2 mb-1.5 px-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Sparkles size={11} className="text-teal-600" /> Panduan Intervensi Terapeutik Cepat
+              </span>
+              <span className="text-[10px] text-slate-400">Klik untuk mengirim ke pasien</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {quickInterventions.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleApplyQuickPrompt(item)}
+                  className="text-[11px] bg-white dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-teal-950/50 border border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-700 text-slate-700 dark:text-slate-200 rounded-lg px-2.5 py-1 font-medium transition-all cursor-pointer shadow-2xs flex items-center gap-1 text-left"
+                >
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Message List Stream */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/40 dark:bg-slate-950/40 max-h-[460px]">
-            {currentMessages.map((msg: Message) => {
+          {/* Stream Pesan Dialog */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/30 dark:bg-slate-950/30 max-h-[480px]">
+            {/* Sesi Dimulai Divider */}
+            <div className="flex items-center justify-center my-1">
+              <span className="text-[10px] font-mono text-slate-400 bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200/80 dark:border-slate-700 shadow-2xs">
+                Hari ini, 10 Okt 2026 · Sesi Konseling Aktif
+              </span>
+            </div>
+
+            {currentMessages.map((msg: Message, idx: number) => {
               const isPsychologist = msg.senderRole === "counselor" || msg.sender.includes("Anita");
+              const prevMsg = currentMessages[idx - 1];
+              const prevSender = prevMsg ? (prevMsg.senderRole === "counselor" || prevMsg.sender.includes("Anita")) : null;
+              const isConsecutive = prevSender === isPsychologist;
+
               return (
                 <div
                   key={msg.id}
-                  className={`flex ${isPsychologist ? "justify-end" : "justify-start"}`}
+                  className={`flex items-end gap-2 ${isPsychologist ? "justify-end" : "justify-start"}`}
                 >
+                  {/* Avatar Pasien untuk cluster pesan klien */}
+                  {!isPsychologist && (
+                    <div className="w-7 h-7 rounded-lg bg-teal-800 text-teal-100 font-bold text-[10px] flex items-center justify-center shrink-0 mb-0.5">
+                      WT
+                    </div>
+                  )}
+
                   <div
-                    className={`max-w-[85%] p-3 rounded-2xl text-xs space-y-1 ${
+                    className={`max-w-[82%] sm:max-w-[75%] p-3 rounded-2xl text-xs space-y-1 transition-all ${
                       isPsychologist
-                        ? "bg-teal-600 text-white rounded-tr-xs shadow-xs"
-                        : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700 rounded-tl-xs shadow-2xs"
+                        ? "bg-slate-900 dark:bg-slate-800 text-slate-50 rounded-br-xs border border-slate-800 dark:border-slate-700 shadow-xs"
+                        : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200/90 dark:border-slate-800 rounded-bl-xs shadow-2xs"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-4 text-[10px] opacity-75 font-mono">
-                      <span>{msg.sender}</span>
-                      <span>{msg.time}</span>
-                    </div>
-                    <p className="leading-relaxed font-nunito text-xs sm:text-[13px]">{msg.content}</p>
+                    {/* Header Pengirim hanya jika bukan pesan beruntun */}
+                    {!isConsecutive && (
+                      <div className="flex items-center justify-between gap-3 text-[10px] font-medium pb-0.5 border-b border-black/5 dark:border-white/5">
+                        <span className={isPsychologist ? "text-teal-300 font-semibold" : "text-slate-600 dark:text-slate-300 font-bold"}>
+                          {isPsychologist ? "Dr. Anita Wijaya, M.Psi. (Anda)" : "Wahyu Tricahyo (Klien)"}
+                        </span>
+                        <span className="font-mono opacity-70 text-[9px]">{msg.time}</span>
+                      </div>
+                    )}
+
+                    <p className="leading-relaxed font-nunito text-[12.5px] sm:text-[13px] whitespace-pre-wrap">
+                      {msg.content}
+                    </p>
+
+                    {isConsecutive && (
+                      <div className="text-right text-[9px] font-mono opacity-60 pt-0.5">
+                        {msg.time}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })}
+
+            {/* Simulasi Indikator Mengetik Pasien */}
+            {isPatientTyping && (
+              <div className="flex items-end gap-2 justify-start animate-in fade-in">
+                <div className="w-7 h-7 rounded-lg bg-teal-800 text-teal-100 font-bold text-[10px] flex items-center justify-center shrink-0">
+                  WT
+                </div>
+                <div className="p-2.5 px-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 rounded-bl-xs shadow-2xs flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium">Wahyu sedang mengetik respons</span>
+                  <span className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div ref={chatBottomRef} />
           </div>
 
           {/* Input Box Balasan Psikolog */}
           <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <form onSubmit={handleSendReply} className="flex items-center gap-2">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendReply();
+              }}
+              className="flex items-center gap-2"
+            >
               <Input
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Ketik respon atau intervensi terapeutik untuk pasien..."
-                className="h-10 text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
+                placeholder="Tulis intervensi klinis, panduan relaksasi, atau arahan untuk pasien..."
+                className="h-10 text-xs bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-teal-600"
               />
               <Button
                 type="submit"
-                disabled={!replyText.trim()}
-                className="h-10 px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold shadow-xs cursor-pointer gap-1.5"
+                disabled={!replyText.trim() || isPatientTyping}
+                className="h-10 px-4 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-semibold shadow-xs cursor-pointer gap-1.5 shrink-0"
               >
                 <Send size={13} />
                 <span>Kirim</span>
@@ -288,122 +485,300 @@ export default function CounselorRoomPage() {
           </div>
         </div>
 
-        {/* PANEL KANAN: REKAM MEDIS & FORMULIR CATATAN SOAP (5 COLS) */}
-        <div className="lg:col-span-5 flex flex-col space-y-4">
-          {/* Card Ringkasan Asesmen Pasien */}
-          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-            <CardHeader className="p-3.5 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <CardTitle className="font-heading text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <Activity size={15} className="text-teal-600 dark:text-teal-400" />
-                Intake & Asesmen Mandiri Klien (DASS-21)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3.5 space-y-2 text-xs">
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
-                  <span className="text-[10px] text-slate-400 block">Depresi</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">6 (Normal)</span>
-                </div>
-                <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/60">
-                  <span className="text-[10px] text-rose-500 block">Ansietas</span>
-                  <span className="font-bold text-rose-600 dark:text-rose-400 text-xs">16 (Tinggi)</span>
-                </div>
-                <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/60">
-                  <span className="text-[10px] text-amber-500 block">Stres</span>
-                  <span className="font-bold text-amber-600 dark:text-amber-400 text-xs">18 (Sedang)</span>
-                </div>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito leading-snug">
-                <strong>Keluhan: </strong> Sering terbangun jam 03.00 pagi dengan palpitasi dan kekhawatiran berlebih terhadap target pekerjaan.
-              </p>
-            </CardContent>
-          </Card>
+        {/* PANEL KANAN: DOKUMENTASI KLINIS & BERKAS KLIEN (5 COLS) */}
+        <div className="lg:col-span-5 flex flex-col h-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs overflow-hidden">
+          {/* Segmented Control Header (Tab Switcher) */}
+          <div className="p-2.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 flex items-center justify-between">
+            <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setActiveTab("soap")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === "soap"
+                    ? "bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 shadow-2xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <FileText size={13} />
+                <span>Catatan SOAP Sesi</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("dossier")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === "dossier"
+                    ? "bg-white dark:bg-slate-900 text-teal-800 dark:text-teal-300 shadow-2xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <Activity size={13} />
+                <span>Berkas Klien & DASS</span>
+              </button>
+            </div>
 
-          {/* Form Catatan SOAP */}
-          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex-1 flex flex-col">
-            <CardHeader className="p-3.5 pb-2 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="font-heading text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <FileText size={15} className="text-teal-600 dark:text-teal-400" />
-                  Catatan Kemajuan Sesi (SOAP Note)
-                </CardTitle>
-                <CardDescription className="text-[10px] text-slate-400">
-                  Terakhir diperbarui: {existingNote.updatedAt || "Hari ini"}
-                </CardDescription>
-              </div>
+            {activeTab === "soap" && (
               <Button
                 size="sm"
                 onClick={handleSaveSoap}
-                className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-2.5 font-semibold gap-1 cursor-pointer"
+                className="h-8 text-xs bg-teal-700 hover:bg-teal-800 text-white rounded-xl px-3 font-semibold gap-1.5 cursor-pointer shadow-2xs"
               >
                 <Save size={12} />
                 <span>Simpan</span>
               </Button>
-            </CardHeader>
+            )}
+          </div>
 
-            <CardContent className="p-3.5 space-y-3 flex-1 flex flex-col justify-between text-xs">
+          {/* TAB 1: LEMBAR CATATAN SOAP */}
+          {activeTab === "soap" && (
+            <div className="flex-1 p-4 space-y-3.5 overflow-y-auto max-h-[580px]">
+              {/* Header Status SOAP */}
+              <div className="flex items-center justify-between text-[11px] pb-1 border-b border-slate-100 dark:border-slate-800">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <ShieldCheck size={13} className="text-teal-600" />
+                  Format Standar SOAP (HIMPSI)
+                </span>
+                <span className="text-slate-400 font-mono text-[10px]">
+                  Terakhir disimpan: {lastSavedTime}
+                </span>
+              </div>
+
               {soapSavedMsg && (
-                <div className="flex items-center gap-1.5 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[11px] font-semibold animate-in fade-in">
-                  <Check size={13} className="text-emerald-600" />
-                  <span>Catatan SOAP tersimpan & terenkripsi.</span>
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in">
+                  <Check size={14} className="text-emerald-600 shrink-0" />
+                  <span>Catatan SOAP berhasil disimpan dan diarsipkan ke Rekam Medis Klien.</span>
                 </div>
               )}
 
-              <div className="space-y-2.5 flex-1">
-                {/* S - Subjective */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1">
-                    <span>S (Subjective) - Keluhan Pasien:</span>
+              {/* S: Subjective */}
+              <div className="space-y-1.5 p-3 rounded-xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-teal-900 dark:text-teal-300 flex items-center gap-1.5 font-heading">
+                    <span className="w-5 h-5 rounded-md bg-teal-100 dark:bg-teal-900/80 text-teal-800 dark:text-teal-300 text-[11px] flex items-center justify-center font-mono">
+                      S
+                    </span>
+                    <span>Subjective (Keluhan Utama & Afek Pasien)</span>
                   </label>
-                  <textarea
-                    rows={2}
-                    value={soapS}
-                    onChange={(e) => setSoapS(e.target.value)}
-                    className="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-teal-500 font-nunito"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setSoapS((prev) => prev + " Pasien juga melaporkan sensasi tegang di leher.")}
+                    className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-medium cursor-pointer"
+                  >
+                    + Tag Somatisasi
+                  </button>
                 </div>
+                <textarea
+                  rows={3}
+                  value={soapS}
+                  onChange={(e) => setSoapS(e.target.value)}
+                  placeholder="Keluhan subjektif, sensasi fisik yang dirasakan klien, narasi stres..."
+                  className="w-full text-xs p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-teal-600 font-nunito leading-relaxed resize-none"
+                />
+              </div>
 
-                {/* O - Objective */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1">
-                    <span>O (Objective) - Observasi Klinis Psikolog:</span>
+              {/* O: Objective */}
+              <div className="space-y-1.5 p-3 rounded-xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-teal-900 dark:text-teal-300 flex items-center gap-1.5 font-heading">
+                    <span className="w-5 h-5 rounded-md bg-teal-100 dark:bg-teal-900/80 text-teal-800 dark:text-teal-300 text-[11px] flex items-center justify-center font-mono">
+                      O
+                    </span>
+                    <span>Objective (Observasi Klinis Psikolog)</span>
                   </label>
-                  <textarea
-                    rows={2}
-                    value={soapO}
-                    onChange={(e) => setSoapO(e.target.value)}
-                    className="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-teal-500 font-nunito"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setSoapO((prev) => prev + " Pasien kooperatif dan responsif terhadap arahan.")}
+                    className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-medium cursor-pointer"
+                  >
+                    + Tag Observasi
+                  </button>
                 </div>
+                <textarea
+                  rows={2}
+                  value={soapO}
+                  onChange={(e) => setSoapO(e.target.value)}
+                  placeholder="Kontak mata, pola intonasi, konsistensi emosi, insight klinis..."
+                  className="w-full text-xs p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-teal-600 font-nunito leading-relaxed resize-none"
+                />
+              </div>
 
-                {/* A - Assessment */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1">
-                    <span>A (Assessment) - Evaluasi & Formulasi CBT:</span>
+              {/* A: Assessment */}
+              <div className="space-y-1.5 p-3 rounded-xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-teal-900 dark:text-teal-300 flex items-center gap-1.5 font-heading">
+                    <span className="w-5 h-5 rounded-md bg-teal-100 dark:bg-teal-900/80 text-teal-800 dark:text-teal-300 text-[11px] flex items-center justify-center font-mono">
+                      A
+                    </span>
+                    <span>Assessment (Formulasi Diagnosis & Dinamika CBT)</span>
                   </label>
-                  <textarea
-                    rows={2}
-                    value={soapA}
-                    onChange={(e) => setSoapA(e.target.value)}
-                    className="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-teal-500 font-nunito"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setSoapA((prev) => prev + " Pola distorsi pikiran: Catastrophizing.")}
+                    className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-medium cursor-pointer"
+                  >
+                    + Tag Diagnostik
+                  </button>
                 </div>
+                <textarea
+                  rows={2}
+                  value={soapA}
+                  onChange={(e) => setSoapA(e.target.value)}
+                  placeholder="Kode diagnosis ICD-10, formulasi pikiran otomatis, dinamika kecemasan..."
+                  className="w-full text-xs p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-teal-600 font-nunito leading-relaxed resize-none"
+                />
+              </div>
 
-                {/* P - Plan */}
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1">
-                    <span>P (Plan) - PR Terapi & Tindak Lanjut:</span>
+              {/* P: Plan */}
+              <div className="space-y-1.5 p-3 rounded-xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-teal-900 dark:text-teal-300 flex items-center gap-1.5 font-heading">
+                    <span className="w-5 h-5 rounded-md bg-teal-100 dark:bg-teal-900/80 text-teal-800 dark:text-teal-300 text-[11px] flex items-center justify-center font-mono">
+                      P
+                    </span>
+                    <span>Plan (Tugas Mandiri / PR Terapi & Sesi Lanjutan)</span>
                   </label>
-                  <textarea
-                    rows={2}
-                    value={soapP}
-                    onChange={(e) => setSoapP(e.target.value)}
-                    className="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-teal-500 font-nunito"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setSoapP((prev) => prev + "\n4. Jaga jadwal istirahat rutin.")}
+                    className="text-[10px] text-teal-700 dark:text-teal-400 hover:underline font-medium cursor-pointer"
+                  >
+                    + Tambah PR
+                  </button>
+                </div>
+                <textarea
+                  rows={3}
+                  value={soapP}
+                  onChange={(e) => setSoapP(e.target.value)}
+                  placeholder="Latihan yang harus dijalankan klien, tugas jurnal 3-kolom, rencana sesi berikutnya..."
+                  className="w-full text-xs p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-teal-600 font-nunito leading-relaxed resize-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: BERKAS KLIEN & ASESMEN (DASS-21) */}
+          {activeTab === "dossier" && (
+            <div className="flex-1 p-4 space-y-4 overflow-y-auto max-h-[580px]">
+              {/* Profil Singkat */}
+              <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold font-heading text-slate-800 dark:text-slate-200">
+                    Biodata Intake Pasien
+                  </span>
+                  <Badge className="bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border-teal-200 text-[10px]">
+                    Klien Aktif
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Pekerjaan:</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">Software Engineer (Tech Startup)</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Sesi Terlaksana:</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">2 dari 6 sesi terencana</span>
+                  </div>
+                  <div className="col-span-2 pt-1 border-t border-slate-200/60 dark:border-slate-700">
+                    <span className="text-slate-400 block text-[10px]">Kontak Darurat Terverifikasi:</span>
+                    <span className="font-mono text-slate-800 dark:text-slate-200">0811-9876-5432 (Istri - Ny. Rina Tricahyo)</span>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Skor DASS-21 dengan Visual Bar */}
+              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold font-heading text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Activity size={14} className="text-teal-600" />
+                    Hasil Asesmen Mandiri Berkala (DASS-21)
+                  </span>
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
+                    <TrendingDown size={12} /> Tren Membaik
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {/* Depresi */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">Depresi</span>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-400">6 / 42 (Normal)</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: "14%" }} />
+                    </div>
+                  </div>
+
+                  {/* Ansietas */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">Ansietas</span>
+                      <span className="font-bold text-rose-700 dark:text-rose-400">16 / 42 (Tinggi - Fokus Utama)</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-rose-500 rounded-full" style={{ width: "38%" }} />
+                    </div>
+                  </div>
+
+                  {/* Stres */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">Stres</span>
+                      <span className="font-bold text-amber-700 dark:text-amber-400">18 / 42 (Sedang)</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500 rounded-full" style={{ width: "42%" }} />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 leading-relaxed">
+                  <strong>Keluhan Utama Intake:</strong> Sering terbangun jam 03.00 pagi dengan palpitasi dan ketakutan tidak mampu memenuhi ekspektasi rilis sprint pekerjaan.
+                </p>
+              </div>
+
+              {/* Riwayat Sesi Terdahulu */}
+              <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 space-y-2.5">
+                <span className="text-xs font-bold font-heading text-slate-800 dark:text-slate-200 block">
+                  Ringkasan Sesi Terdahulu
+                </span>
+
+                <div className="space-y-2 text-[11px]">
+                  <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">Sesi #2 (3 Okt 2026)</span>
+                      <span>14:00 WIB</span>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-300">
+                      Formulasi akumulasi stres kerja fase 3. Dilatihkan boundary setting aktif dan latihan pernapasan kotak 4-4-4-4.
+                    </p>
+                  </div>
+
+                  <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800">
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">Sesi #1 (26 Sep 2026)</span>
+                      <span>14:00 WIB</span>
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-300">
+                      Initial assessment. Skrining insomnia dan ketegangan somatis. Edukasi Sleep Hygiene terstruktur.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Link href="/counselor/clients">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs h-8 rounded-xl font-semibold border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40 gap-1.5 cursor-pointer"
+                    >
+                      <span>Buka Rekam Medis Klien Lengkap</span>
+                      <ArrowUpRight size={13} />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -411,7 +786,7 @@ export default function CounselorRoomPage() {
       <CallRoomModal
         isOpen={isCallModalOpen}
         onClose={() => setIsCallModalOpen(false)}
-        conversation={currentConversation}
+        conversation={patientConversationForCall}
       />
 
       {/* 4. MODAL: PROTOKOL KRISIS & ESKALASI DARURAT */}
@@ -419,7 +794,7 @@ export default function CounselorRoomPage() {
         <DialogContent className="max-w-md font-nunito p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
           <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
                 <AlertTriangle size={18} />
               </div>
               <div>
@@ -427,7 +802,7 @@ export default function CounselorRoomPage() {
                   Protokol Krisis & Rujukan Darurat
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500">
-                  Panduan eskalasi bila klien menunjukkan risiko melukai diri atau kegawatdaruratan
+                  Panduan eskalasi kegawatdaruratan psikiatris & risiko melukai diri
                 </DialogDescription>
               </div>
             </div>
@@ -437,15 +812,15 @@ export default function CounselorRoomPage() {
             <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-900 dark:text-rose-300 space-y-1.5">
               <p className="font-bold">Langkah Tindakan Cepat:</p>
               <ul className="list-disc pl-4 space-y-1 text-[11px]">
-                <li>Tetap dampingi klien di saluran komunikasi hingga terkoneksi pihak darurat.</li>
-                <li>Arahkan klien ke hotline kementerian kesehatan <strong>SEJIWA: 119 ext. 8</strong>.</li>
-                <li>Hubungi kontak darurat yang terdaftar di sistem profil pasien.</li>
+                <li>Tetap dampingi klien di sesi tanpa memutus komunikasi secara sepihak.</li>
+                <li>Arahkan klien ke Hotline Kemenkes <strong>SEJIWA: 119 ext. 8</strong>.</li>
+                <li>Hubungi kontak darurat keluarga terdaftar di bawah.</li>
               </ul>
             </div>
 
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
               <p className="font-semibold text-slate-700 dark:text-slate-300">Kontak Darurat Terdaftar Pasien:</p>
-              <p className="font-mono text-slate-900 dark:text-white">0811-9876-5432 (Keluarga Terdekat)</p>
+              <p className="font-mono text-slate-900 dark:text-white">0811-9876-5432 (Istri - Ny. Rina Tricahyo)</p>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -463,9 +838,9 @@ export default function CounselorRoomPage() {
                   alert("Protokol eskalasi darurat telah dicatat ke tim audit medis TemanBicara.");
                   setShowCrisisModal(false);
                 }}
-                className="text-xs h-9 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl px-4 cursor-pointer"
+                className="text-xs h-9 bg-rose-700 hover:bg-rose-800 text-white font-semibold rounded-xl px-4 cursor-pointer"
               >
-                Eskalasi ke Supervisor Klinis
+                Eskalasi ke Supervisor Medis
               </Button>
             </div>
           </div>
@@ -477,15 +852,15 @@ export default function CounselorRoomPage() {
         <DialogContent className="max-w-md font-nunito p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
           <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
                 <CheckCircle2 size={18} />
               </div>
               <div>
                 <DialogTitle className="text-base font-bold font-heading text-slate-900 dark:text-white">
-                  Selesaikan Sesi Konseling Ini?
+                  Akhiri & Arsipkan Sesi Konseling Ini?
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500">
-                  Konfirmasi pengakhiran konsultasi dan pengarsipan catatan SOAP
+                  Konfirmasi pengakhiran konsultasi dan sinkronisasi catatan SOAP
                 </DialogDescription>
               </div>
             </div>
@@ -493,7 +868,7 @@ export default function CounselorRoomPage() {
 
           <div className="space-y-3 pt-2 text-xs">
             <p className="text-slate-600 dark:text-slate-400 leading-relaxed font-nunito">
-              Dengan mengklik konfirmasi, sesi bersama <strong>Wahyu Tricahyo</strong> akan ditandai selesai di jadwal dan riwayat pasien. Honor sesi Anda telah masuk dan siap ditarik di menu Payout.
+              Dengan mengakhiri sesi, konsultasi bersama <strong>Wahyu Tricahyo</strong> akan ditandai selesai. Catatan SOAP akan otomatis diperbarui ke berkas rekam medis, dan honor sesi akan dicatat di dompet penarikan Anda.
             </p>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -508,7 +883,7 @@ export default function CounselorRoomPage() {
               <Button
                 type="button"
                 onClick={handleFinishSession}
-                className="text-xs h-9 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-4 cursor-pointer"
+                className="text-xs h-9 bg-teal-700 hover:bg-teal-800 text-white font-semibold rounded-xl px-4 cursor-pointer"
               >
                 Konfirmasi Selesai
               </Button>

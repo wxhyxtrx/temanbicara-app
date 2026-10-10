@@ -229,6 +229,7 @@ interface ChatState {
   }) => void;
   sendCounselorReply: (convId: number, content: string) => void;
   sendPeerListenerReply: (convId: number, content: string) => void;
+  sendPatientSimulationReply: (convId: number, content: string) => void;
   updateClinicalNote: (convId: number, note: Partial<ClinicalNoteRecord>) => void;
   getFilteredConversations: () => Conversation[];
 }
@@ -387,6 +388,36 @@ export const useChatStore = create<ChatState>()(
         };
 
         const updatedMsgs = [...currentMsgs, listenerMsg];
+
+        set({
+          conversations: get().conversations.map((c) =>
+            c.id === convId ? { ...c, lastMessage: content.trim(), time: "Baru saja" } : c
+          ),
+          messagesByConversation: {
+            ...get().messagesByConversation,
+            [convId]: updatedMsgs,
+          },
+          messages: get().selectedConversation?.id === convId ? updatedMsgs : get().messages,
+        });
+      },
+
+      sendPatientSimulationReply: (convId, content) => {
+        if (!content.trim()) return;
+        const currentMsgs = get().messagesByConversation[convId] || [];
+        const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        const patientMsg: Message = {
+          id: Date.now(),
+          conversationId: convId,
+          sender: "Wahyu Tricahyo",
+          senderRole: "patient",
+          initials: "WT",
+          content: content.trim(),
+          time: nowTime,
+          isUser: true,
+        };
+
+        const updatedMsgs = [...currentMsgs, patientMsg];
 
         set({
           conversations: get().conversations.map((c) =>
