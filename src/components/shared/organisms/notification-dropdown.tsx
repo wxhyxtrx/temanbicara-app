@@ -245,7 +245,7 @@ export function NotificationDropdown() {
               type="button"
               onClick={() => {
                 setIsOpen(false);
-                router.push("/top-up/history");
+                router.push("/patient/top-up/history");
               }}
               className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 flex items-center gap-1 cursor-pointer px-2 py-1"
             >

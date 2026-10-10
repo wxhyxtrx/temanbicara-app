@@ -80,14 +80,14 @@ export default function NotFound() {
           {/* Navigation Action Buttons Group */}
           <div className="space-y-3.5 max-w-sm mx-auto pt-1">
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
-              <Link href="/beranda" className="w-full sm:w-auto">
+              <Link href="/patient/beranda" className="w-full sm:w-auto">
                 <Button className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-5 py-2.5 h-10 text-xs font-semibold shadow-xs gap-2 cursor-pointer">
                   <Home size={15} />
                   <span>Kembali ke Beranda</span>
                 </Button>
               </Link>
 
-              <Link href="/room" className="w-full sm:w-auto">
+              <Link href="/patient/room" className="w-full sm:w-auto">
                 <Button
                   variant="outline"
                   className="w-full sm:w-auto border-slate-200 dark:border-slate-800 hover:border-teal-200 text-slate-700 dark:text-slate-200 hover:text-teal-800 dark:hover:text-white hover:bg-teal-50/50 dark:hover:bg-slate-900 bg-white dark:bg-slate-900/80 rounded-xl px-5 py-2.5 h-10 text-xs font-semibold shadow-2xs gap-2 cursor-pointer"

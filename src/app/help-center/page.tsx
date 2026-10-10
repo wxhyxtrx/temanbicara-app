@@ -170,7 +170,7 @@ export default function PublicHelpCenterPage() {
           </div>
 
           {mounted && isAuthenticated && (
-            <Link href="/beranda">
+            <Link href="/patient/beranda">
               <Button className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs px-4 h-9 font-semibold gap-1.5 shadow-xs cursor-pointer">
                 <span>Ke Beranda Pasien</span>
                 <ArrowRight size={14} />

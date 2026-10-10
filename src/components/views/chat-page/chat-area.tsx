@@ -140,7 +140,7 @@ export function ChatArea() {
                   <AlertCircle size={15} className="text-rose-600 dark:text-rose-400 shrink-0" />
                   <span>Saldo tidak cukup (Perlu 5 Koin).</span>
                 </div>
-                <Link href="/top-up" onClick={() => setShowCallPayConfirm(false)}>
+                <Link href="/patient/top-up" onClick={() => setShowCallPayConfirm(false)}>
                   <Button size="sm" type="button" className="h-7 text-xs bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg px-2.5 cursor-pointer">
                     Top Up Koin
                   </Button>

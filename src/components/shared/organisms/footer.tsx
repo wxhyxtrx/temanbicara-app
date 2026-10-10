@@ -40,12 +40,12 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/schedule" className="hover:text-teal-400 transition-colors">
+                  <Link href="/patient/schedule" className="hover:text-teal-400 transition-colors">
                     Jadwal Sesi
                   </Link>
                 </li>
                 <li>
-                  <Link href="/top-up" className="hover:text-teal-400 transition-colors">
+                  <Link href="/patient/top-up" className="hover:text-teal-400 transition-colors">
                     Paket Sesi
                   </Link>
                 </li>

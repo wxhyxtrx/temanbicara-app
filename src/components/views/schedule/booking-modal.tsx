@@ -185,7 +185,7 @@ export function BookingModal({
                   <AlertCircle size={15} className="text-rose-600 dark:text-rose-400 shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
-                <Link href="/top-up" onClick={onClose}>
+                <Link href="/patient/top-up" onClick={onClose}>
                   <Button size="sm" type="button" className="h-7 text-xs bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg px-2.5">
                     Top Up
                   </Button>

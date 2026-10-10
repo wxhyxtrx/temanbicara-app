@@ -270,7 +270,7 @@ export function SessionDetailModal({
                 </Button>
 
                 {session.status === "terjadwal" && (
-                  <Link href="/room" onClick={onClose}>
+                  <Link href="/patient/room" onClick={onClose}>
                     <Button
                       size="sm"
                       className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-9 px-4 gap-1.5 shadow-xs cursor-pointer"
