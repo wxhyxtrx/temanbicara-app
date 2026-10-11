@@ -97,7 +97,7 @@ async function runTests() {
   console.log('Result:', psikologData);
   if (psikologRes.status !== 201) throw new Error('Register Psikolog failed');
 
-  // 5. TEST LOGIN PASIEN (ACTIVE -> /dashboard/pasien)
+  // 5. TEST LOGIN PASIEN (ACTIVE -> /patient/beranda)
   console.log('\n[5/6] Testing Login Pasien...');
   const loginPasienReq = new Request('http://localhost:3000/api/auth/login', {
     method: 'POST',
@@ -110,11 +110,11 @@ async function runTests() {
   const loginPasienData = await loginPasienRes.json();
   console.log('Status:', loginPasienRes.status);
   console.log('Redirect:', loginPasienData.data?.redirect_to);
-  if (loginPasienData.data?.redirect_to !== '/dashboard/pasien') {
+  if (loginPasienData.data?.redirect_to !== '/patient/beranda') {
     throw new Error('Pasien redirect incorrect');
   }
 
-  // 6. TEST LOGIN RELAWAN (PENDING_APPROVAL -> /status/menunggu-verifikasi)
+  // 6. TEST LOGIN RELAWAN (PENDING_APPROVAL -> /register/listener)
   console.log('\n[6/6] Testing Login Relawan Pending...');
   const loginRelawanReq = new Request('http://localhost:3000/api/auth/login', {
     method: 'POST',
@@ -127,7 +127,7 @@ async function runTests() {
   const loginRelawanData = await loginRelawanRes.json();
   console.log('Status:', loginRelawanRes.status);
   console.log('Redirect:', loginRelawanData.data?.redirect_to);
-  if (loginRelawanData.data?.redirect_to !== '/status/menunggu-verifikasi') {
+  if (loginRelawanData.data?.redirect_to !== '/register/listener') {
     throw new Error('Relawan pending redirect incorrect');
   }
 

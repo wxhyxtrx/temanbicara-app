@@ -118,7 +118,7 @@ export async function POST(req: Request) {
           email,
           role: 'relawan',
           status: 'pending_approval',
-          redirect_to: '/status/menunggu-verifikasi',
+          redirect_to: '/register/listener',
         },
       },
       { status: 201 }

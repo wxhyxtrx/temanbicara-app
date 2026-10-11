@@ -87,29 +87,29 @@ export async function POST(req: Request) {
     }
 
     // 4. Penentuan redirect URL berdasarkan role & status
-    let redirectTo = '/dashboard/pasien';
+    let redirectTo = '/patient/beranda';
 
     if (userProfile.status === 'incomplete_profile') {
-      redirectTo = '/register/mitra/step-2';
+      redirectTo = '/register';
     } else if (userProfile.status === 'pending_approval') {
-      redirectTo = '/status/menunggu-verifikasi';
+      redirectTo = '/register/listener';
     } else if (userProfile.status === 'pending_verification') {
-      redirectTo = '/status/verifikasi-dokumen';
+      redirectTo = '/register/counselor';
     } else {
       // Status aktif: redirect sesuai role
       switch (userProfile.role) {
         case 'admin':
-          redirectTo = '/admin';
+          redirectTo = '/admin/beranda';
           break;
         case 'psikolog':
-          redirectTo = '/dashboard/psikolog';
+          redirectTo = '/counselor/beranda';
           break;
         case 'relawan':
-          redirectTo = '/dashboard/relawan';
+          redirectTo = '/listener/beranda';
           break;
         case 'pasien':
         default:
-          redirectTo = '/dashboard/pasien';
+          redirectTo = '/patient/beranda';
           break;
       }
     }

@@ -139,7 +139,7 @@ export async function POST(req: Request) {
           email,
           role: 'psikolog',
           status: 'pending_verification',
-          redirect_to: '/status/verifikasi-dokumen',
+          redirect_to: '/register/counselor',
         },
       },
       { status: 201 }

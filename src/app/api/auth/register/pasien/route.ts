@@ -107,6 +107,7 @@ export async function POST(req: Request) {
           email,
           role: 'pasien',
           status: 'active',
+          redirect_to: '/patient/beranda',
         },
       },
       { status: 201 }

@@ -87,7 +87,7 @@ Digunakan oleh Calon Relawan (Upload CV) dan Calon Psikolog (Upload SIPP/STR).
     "email": "siti.relawan@example.com",
     "role": "relawan",
     "status": "pending_approval",
-    "redirect_to": "/status/menunggu-verifikasi"
+    "redirect_to": "/register/listener"
   }
 }
 ```
@@ -121,7 +121,7 @@ Digunakan oleh Calon Relawan (Upload CV) dan Calon Psikolog (Upload SIPP/STR).
     "email": "nadia.psikolog@example.com",
     "role": "psikolog",
     "status": "pending_verification",
-    "redirect_to": "/status/verifikasi-dokumen"
+    "redirect_to": "/register/counselor"
   }
 }
 ```
@@ -156,9 +156,15 @@ Digunakan oleh Calon Relawan (Upload CV) dan Calon Psikolog (Upload SIPP/STR).
       "refresh_token": "...",
       "expires_at": 1728645000
     },
-    "redirect_to": "/dashboard/pasien"
+    "redirect_to": "/patient/beranda"
   }
 }
+```
+*Catatan Mapping Redirect Sukses:*
+- Pasien: `/patient/beranda`
+- Psikolog: `/counselor/beranda`
+- Relawan: `/listener/beranda`
+- Admin: `/admin/beranda`
 ```
 - **Response Error (403 Forbidden - Khusus Akun Belum Lolos Verifikasi):**
 ```json

@@ -1,23 +1,64 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin, supabasePublic } from '@/lib/supabase/client';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+import { supabaseAdmin } from '@/lib/supabase/client';
 
 export async function GET(req: Request) {
   const requestUrl = new URL(req.url);
   const code = requestUrl.searchParams.get('code');
+  const error = requestUrl.searchParams.get('error');
+  const errorDescription = requestUrl.searchParams.get('error_description');
   const intentRole = requestUrl.searchParams.get('intent_role'); // 'relawan' | 'psikolog' | null
   const origin = requestUrl.origin;
 
+  console.log('[OAUTH CALLBACK URL]:', req.url);
+  console.log('[OAUTH SEARCH PARAMS]:', Object.fromEntries(requestUrl.searchParams.entries()));
+
+  if (error) {
+    console.error('[OAUTH ERROR FROM PROVIDER]:', error, errorDescription);
+    return NextResponse.redirect(
+      `${origin}/login?error=${encodeURIComponent(error)}&message=${encodeURIComponent(errorDescription || '')}`
+    );
+  }
+
   if (!code) {
+    console.warn('[OAUTH CODE MISSING]: No code param received');
     return NextResponse.redirect(`${origin}/login?error=OAUTH_CODE_MISSING`);
   }
 
   try {
-    // 1. Tukar auth code dengan session Supabase Auth
+    const cookieStore = await cookies();
+
+    const supabaseServer = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mcciuvlqvvvptgmelexi.supabase.co',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_JshNaL_CvRDPS1JD5nJs7g_iYKI0oIV',
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+              });
+            } catch {
+              // Ignore if called in unsupported context
+            }
+          },
+        },
+      }
+    );
+
+    // 1. Tukar auth code dengan session Supabase Auth menggunakan PKCE verifier di cookie
     const { data: sessionData, error: sessionError } =
-      await supabasePublic.auth.exchangeCodeForSession(code);
+      await supabaseServer.auth.exchangeCodeForSession(code);
 
     if (sessionError || !sessionData.user) {
-      return NextResponse.redirect(`${origin}/login?error=OAUTH_EXCHANGE_FAILED`);
+      console.error('[OAUTH EXCHANGE FAILED]:', sessionError?.message);
+      return NextResponse.redirect(
+        `${origin}/login?error=OAUTH_EXCHANGE_FAILED&message=${encodeURIComponent(sessionError?.message || '')}`
+      );
     }
 
     const authUser = sessionData.user;
@@ -52,23 +93,23 @@ export async function GET(req: Request) {
 
       // Redirect sesuai role dan status
       if (existingUser.status === 'incomplete_profile') {
-        return NextResponse.redirect(`${origin}/register/mitra/step-2`);
+        return NextResponse.redirect(`${origin}/register`);
       }
       if (existingUser.status === 'pending_approval') {
-        return NextResponse.redirect(`${origin}/status/menunggu-verifikasi`);
+        return NextResponse.redirect(`${origin}/register/listener`);
       }
       if (existingUser.status === 'pending_verification') {
-        return NextResponse.redirect(`${origin}/status/verifikasi-dokumen`);
+        return NextResponse.redirect(`${origin}/register/counselor`);
       }
 
       const redirectPath =
         existingUser.role === 'admin'
-          ? '/admin'
+          ? '/admin/beranda'
           : existingUser.role === 'psikolog'
-          ? '/dashboard/psikolog'
+          ? '/counselor/beranda'
           : existingUser.role === 'relawan'
-          ? '/dashboard/relawan'
-          : '/dashboard/pasien';
+          ? '/listener/beranda'
+          : '/patient/beranda';
 
       return NextResponse.redirect(`${origin}${redirectPath}`);
     }
@@ -86,7 +127,9 @@ export async function GET(req: Request) {
         is_email_verified: true,
       });
 
-      return NextResponse.redirect(`${origin}/register/mitra/step-2`);
+      return NextResponse.redirect(
+        `${origin}${intentRole === 'psikolog' ? '/register/counselor' : '/register/listener'}`
+      );
     }
 
     // Default Pasien -> Auto-register active
@@ -105,8 +148,11 @@ export async function GET(req: Request) {
       nama_lengkap: fullName,
     });
 
-    return NextResponse.redirect(`${origin}/dashboard/pasien`);
-  } catch (err) {
-    return NextResponse.redirect(`${origin}/login?error=OAUTH_INTERNAL_ERROR`);
+    return NextResponse.redirect(`${origin}/patient/beranda`);
+  } catch (err: any) {
+    console.error('[OAUTH INTERNAL ERROR]:', err);
+    return NextResponse.redirect(
+      `${origin}/login?error=OAUTH_INTERNAL_ERROR&message=${encodeURIComponent(err.message || '')}`
+    );
   }
 }
