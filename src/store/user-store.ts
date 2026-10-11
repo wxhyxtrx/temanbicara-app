@@ -30,6 +30,18 @@ export interface UserState {
   creditCounselorCoins: (coins: number) => void;
   creditListenerCoins: (coins: number) => void;
   sendTip: (recipientRole: "counselor" | "peer_listener", amount: number) => boolean;
+  setAuthSession: (
+    sessionUser: {
+      id: string;
+      email: string;
+      role: string;
+      status: string;
+      avatar_url: string | null;
+      fullName?: string;
+    },
+    token?: string
+  ) => void;
+  syncSession: () => Promise<void>;
   logout: () => void;
 }
 
@@ -38,7 +50,7 @@ export const useUserStore = create<UserState>()(
     (set, get) => ({
       user: mockUsers.patient,
       roleProfiles: { ...mockUsers },
-      isAuthenticated: true,
+      isAuthenticated: false,
 
       login: (email, name) => {
         // Cek apakah email cocok dengan akun preset mock
@@ -52,6 +64,11 @@ export const useUserStore = create<UserState>()(
             isAuthenticated: true,
             user: matchedMock,
           });
+          if (typeof window !== "undefined") {
+            document.cookie = `tb_access_token=mock-token-${matchedMock.role}; path=/; max-age=604800; SameSite=Lax`;
+            document.cookie = `tb_user_role=${matchedMock.role}; path=/; max-age=604800; SameSite=Lax`;
+            document.cookie = `tb_user_status=active; path=/; max-age=604800; SameSite=Lax`;
+          }
           return matchedMock;
         }
 
@@ -76,6 +93,11 @@ export const useUserStore = create<UserState>()(
             [customUser.role]: customUser,
           },
         });
+        if (typeof window !== "undefined") {
+          document.cookie = `tb_access_token=custom-token; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `tb_user_role=${customUser.role}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `tb_user_status=active; path=/; max-age=604800; SameSite=Lax`;
+        }
         return customUser;
       },
 
@@ -86,6 +108,12 @@ export const useUserStore = create<UserState>()(
           isAuthenticated: true,
           user: targetUser,
         });
+        if (typeof window !== "undefined") {
+          localStorage.setItem("tb_access_token", `demo-token-${role}`);
+          document.cookie = `tb_access_token=demo-token-${role}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `tb_user_role=${role}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `tb_user_status=active; path=/; max-age=604800; SameSite=Lax`;
+        }
         return targetUser;
       },
 
@@ -102,6 +130,9 @@ export const useUserStore = create<UserState>()(
           roleProfiles: updatedProfiles,
           user: targetUser,
         });
+        if (typeof window !== "undefined") {
+          document.cookie = `tb_user_role=${role}; path=/; max-age=604800; SameSite=Lax`;
+        }
       },
 
       register: (fullName, email, role = "patient", extraData?: Partial<UserProfile>) => {
@@ -233,8 +264,114 @@ export const useUserStore = create<UserState>()(
         return true;
       },
 
+      setAuthSession: (sessionUser, token) => {
+        const roleMap: Record<string, UserRole> = {
+          pasien: "patient",
+          relawan: "peer_listener",
+          psikolog: "counselor",
+          admin: "admin",
+          patient: "patient",
+          peer_listener: "peer_listener",
+          counselor: "counselor",
+        };
+        const mappedRole: UserRole = roleMap[sessionUser.role] || "patient";
+        const profiles = get().roleProfiles || { ...mockUsers };
+        const baseProfile = profiles[mappedRole] || mockUsers[mappedRole] || mockUsers.patient;
+
+        const displayName = sessionUser.fullName || sessionUser.email.split("@")[0];
+        const updatedUser: UserProfile = {
+          ...baseProfile,
+          id: sessionUser.id,
+          email: sessionUser.email,
+          fullName: sessionUser.fullName || baseProfile.fullName,
+          role: mappedRole,
+          avatarInitials: generateInitials(displayName),
+          avatarUrl: sessionUser.avatar_url || baseProfile.avatarUrl,
+        };
+
+        set({
+          isAuthenticated: true,
+          user: updatedUser,
+          roleProfiles: {
+            ...profiles,
+            [mappedRole]: updatedUser,
+          },
+        });
+
+        if (typeof window !== "undefined") {
+          if (token) {
+            localStorage.setItem("tb_access_token", token);
+          }
+          document.cookie = `tb_access_token=${token || "session-token"}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `tb_user_role=${mappedRole}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `tb_user_status=${sessionUser.status || "active"}; path=/; max-age=604800; SameSite=Lax`;
+        }
+      },
+
+      syncSession: async () => {
+        if (typeof window === "undefined") return;
+        const matchToken = document.cookie.match(/tb_access_token=([^;]+)/);
+        const matchRole = document.cookie.match(/tb_user_role=([^;]+)/);
+        const token = matchToken ? matchToken[1] : null;
+        const cookieRoleRaw = matchRole ? matchRole[1] : null;
+
+        if (!token) {
+          if (get().isAuthenticated) {
+            set({ isAuthenticated: false });
+          }
+          return;
+        }
+
+        const roleMap: Record<string, UserRole> = {
+          pasien: "patient",
+          relawan: "peer_listener",
+          psikolog: "counselor",
+          admin: "admin",
+          patient: "patient",
+          peer_listener: "peer_listener",
+          counselor: "counselor",
+        };
+
+        // 1. Coba fetch sesi real-time dari backend
+        try {
+          const res = await fetch("/api/auth/me");
+          if (res.ok) {
+            const json = await res.json();
+            if (json?.data?.user) {
+              get().setAuthSession(json.data.user, token);
+              return;
+            }
+          }
+        } catch {
+          // Abaikan kesalahan jaringan sementara, gunakan fallback cookie
+        }
+
+        // 2. Fallback instan dari cookie jika fetch tertunda
+        if (cookieRoleRaw) {
+          const mapped = roleMap[cookieRoleRaw] || "patient";
+          if (get().user.role !== mapped || !get().isAuthenticated) {
+            const profiles = get().roleProfiles || { ...mockUsers };
+            const targetUser = profiles[mapped] || mockUsers[mapped] || mockUsers.patient;
+            set({
+              isAuthenticated: true,
+              user: targetUser,
+            });
+          }
+        }
+      },
+
       logout: () => {
-        set({ isAuthenticated: false });
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("tb_access_token");
+          localStorage.removeItem("tb_user_store_v4");
+          document.cookie = "tb_access_token=; path=/; max-age=0";
+          document.cookie = "tb_user_role=; path=/; max-age=0";
+          document.cookie = "tb_user_status=; path=/; max-age=0";
+        }
+        set({
+          isAuthenticated: false,
+          user: mockUsers.patient,
+        });
       },
     }),
     {

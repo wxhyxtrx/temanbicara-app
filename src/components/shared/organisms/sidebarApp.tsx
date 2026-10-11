@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/shared/atoms/Logo";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useUserStore } from "@/store/user-store";
+import { useUserStore, UserRole } from "@/store/user-store";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -45,7 +45,28 @@ export function AppSidebar() {
     setMounted(true);
   }, []);
 
-  const currentRole = mounted && user?.role ? user.role : "patient";
+  const getEffectiveRole = (): UserRole => {
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(/tb_user_role=([^;]+)/);
+      if (match && match[1]) {
+        const roleMap: Record<string, UserRole> = {
+          pasien: "patient",
+          patient: "patient",
+          relawan: "peer_listener",
+          peer_listener: "peer_listener",
+          psikolog: "counselor",
+          counselor: "counselor",
+          admin: "admin",
+        };
+        if (roleMap[match[1]]) {
+          return roleMap[match[1]];
+        }
+      }
+    }
+    return mounted && user?.role ? user.role : "patient";
+  };
+
+  const currentRole = getEffectiveRole();
   const menuConfig = getMenuItemsByRole(currentRole);
 
   const displayName = mounted

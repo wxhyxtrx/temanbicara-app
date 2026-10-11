@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
+import { authService } from "@/services/auth.service";
+import { supabasePublic } from "@/lib/supabase/client";
 
 const issueTopics = [
   "Kecemasan & Overthinking",
@@ -37,32 +39,45 @@ const issueTopics = [
 
 export default function Register() {
   const router = useRouter();
-  const { register: registerUser } = useUserStore();
+  const { isAuthenticated, user } = useUserStore();
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (isAuthenticated && user?.role) {
+      const roleRoutes: Record<string, string> = {
+        pasien: "/patient/beranda",
+        patient: "/patient/beranda",
+        psikolog: "/counselor/beranda",
+        counselor: "/counselor/beranda",
+        relawan: "/listener/beranda",
+        peer_listener: "/listener/beranda",
+        admin: "/admin/beranda",
+      };
+      router.replace(roleRoutes[user.role] || "/patient/beranda");
+    }
+  }, [isAuthenticated, user, router]);
 
   // Stepper State (1: Akun, 2: Kontak Darurat & Profil, 3: Informed Consent)
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Form State
-  const [fullName, setFullName] = useState("Wahyu Tricahyo");
-  const [alias, setAlias] = useState("Wahyu");
-  const [email, setEmail] = useState("wahyu@temanbicara.id");
-  const [password, setPassword] = useState("password123");
-  const [phone, setPhone] = useState("+62 812-3456-7890");
+  const [fullName, setFullName] = useState("");
+  const [alias, setAlias] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [phone, setPhone] = useState("");
 
   // Step 2 State
   const [ageGroup, setAgeGroup] = useState<string>("Dewasa Muda (18-24 thn)");
-  const [emergencyName, setEmergencyName] = useState("Ibu Ratna (Ibu Kandung)");
-  const [emergencyPhone, setEmergencyPhone] = useState("0811-9876-5432");
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([
-    "Kecemasan & Overthinking",
-    "Burnout & Karier",
-  ]);
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 
   // Step 3 State: Informed Consents
-  const [consentNonEmergency, setConsentNonEmergency] = useState(true);
-  const [consentEmergencyContact, setConsentEmergencyContact] = useState(true);
-  const [consentPrivacy, setConsentPrivacy] = useState(true);
+  const [consentNonEmergency, setConsentNonEmergency] = useState(false);
+  const [consentEmergencyContact, setConsentEmergencyContact] = useState(false);
+  const [consentPrivacy, setConsentPrivacy] = useState(false);
 
   // Error messages
   const [stepError, setStepError] = useState<string | null>(null);
@@ -77,9 +92,9 @@ export default function Register() {
     e.preventDefault();
     setStepError(null);
 
-    if (!fullName.trim() || fullName.length < 3) {
-      setStepError("Nama lengkap / nama samaran minimal 3 karakter.");
-      notify.warning("Data Belum Lengkap", "Nama lengkap / nama samaran minimal 3 karakter.");
+    if (!fullName.trim() || fullName.length < 2) {
+      setStepError("Nama lengkap minimal 2 karakter.");
+      notify.warning("Data Belum Lengkap", "Nama lengkap minimal 2 karakter.");
       return;
     }
     if (!email.trim() || !email.includes("@")) {
@@ -88,8 +103,13 @@ export default function Register() {
       return;
     }
     if (!password || password.length < 8) {
-      setStepError("Kata sandi minimal 8 karakter demi keamanan data medis.");
-      notify.warning("Kata Sandi Terlalu Pendek", "Kata sandi minimal 8 karakter demi keamanan data medis.");
+      setStepError("Kata sandi minimal 8 karakter demi keamanan.");
+      notify.warning("Kata Sandi Terlalu Pendek", "Kata sandi minimal 8 karakter.");
+      return;
+    }
+    if (confirmPassword !== password) {
+      setStepError("Konfirmasi kata sandi tidak cocok.");
+      notify.warning("Sandi Tidak Cocok", "Konfirmasi kata sandi tidak cocok.");
       return;
     }
 
@@ -99,6 +119,13 @@ export default function Register() {
   const handleStep2Next = (e: React.FormEvent) => {
     e.preventDefault();
     setStepError(null);
+
+    const cleanPhone = phone.trim().replace(/[\s-]/g, "");
+    if (!cleanPhone) {
+      setStepError("Nomor WhatsApp wajib diisi.");
+      notify.warning("Nomor WhatsApp Kosong", "Nomor WhatsApp wajib diisi.");
+      return;
+    }
 
     if (!emergencyName.trim()) {
       setStepError("Nama kontak darurat wajib diisi untuk keselamatan pasien.");
@@ -119,7 +146,7 @@ export default function Register() {
     setStep(3);
   };
 
-  const handleFinalSubmit = (e: React.FormEvent) => {
+  const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStepError(null);
 
@@ -131,34 +158,50 @@ export default function Register() {
 
     setLoading(true);
 
-    setTimeout(() => {
-      registerUser(fullName, email, "patient", {
-        alias: alias.trim() || fullName.split(" ")[0] || "Sahabat",
-        phone,
-        emergencyContact: `${emergencyName}: ${emergencyPhone}`,
-        mentalNotes: `Fokus: ${selectedTopics.join(", ")} | Usia: ${ageGroup}`,
+    try {
+      let cleanPhone = phone.trim().replace(/[\s-]/g, "");
+      if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.substring(1);
+      if (cleanPhone.startsWith("8")) cleanPhone = "0" + cleanPhone;
+
+      const res = await authService.registerPasien({
+        nama_lengkap: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        no_wa: cleanPhone,
+        password,
+        password_confirmation: confirmPassword || password,
       });
-      notify.success("Pendaftaran Berhasil!", `Selamat datang di TemanBicara, ${fullName}! Akun pasien Anda telah aktif.`);
-      router.push("/patient/beranda");
-    }, 500);
+
+      if (res.success) {
+        notify.success("Pendaftaran Berhasil!", res.message || "Akun pasien berhasil dibuat. Silakan masuk.");
+        router.push("/login");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Pendaftaran gagal. Periksa data kembali.";
+      setStepError(msg);
+      notify.error("Registrasi Gagal", msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSocialRegister = (provider: string) => {
+  const handleSocialRegister = async () => {
     setLoading(true);
-    setTimeout(() => {
-      registerUser(
-        `${provider} User`,
-        `${provider.toLowerCase()}.user@temanbicara.id`,
-        "patient",
-        {
-          alias: `${provider} User`,
-          emergencyContact: "Kerabat Terdekat: 0811-9876-5432",
-          mentalNotes: "Pendaftaran Cepat via Google",
-        }
-      );
-      notify.success("Pendaftaran Google Berhasil!", "Selamat datang di TemanBicara! Akun pasien Anda telah aktif.");
-      router.push("/patient/beranda");
-    }, 450);
+    try {
+      const { data, error } = await supabasePublic.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/oauth/google/callback`,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal memulai registrasi Google";
+      notify.error("OAuth Error", msg);
+      setLoading(false);
+    }
   };
 
   return (
@@ -227,7 +270,7 @@ export default function Register() {
               type="button"
               variant="outline"
               className="w-full flex items-center justify-center gap-2.5 h-11 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer transition-colors shadow-xs"
-              onClick={() => handleSocialRegister("Google")}
+              onClick={() => handleSocialRegister()}
               disabled={loading}
             >
               <FcGoogle className="h-5 w-5" />
@@ -252,7 +295,7 @@ export default function Register() {
               </label>
               <Input
                 type="text"
-                placeholder="Wahyu Tricahyo"
+                placeholder="Contoh: Ahmad Fauzi"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"
@@ -267,7 +310,7 @@ export default function Register() {
               </label>
               <Input
                 type="text"
-                placeholder="Wahyu / Sahabat Teduh"
+                placeholder="Contoh: Fauzi / Sahabat Teduh"
                 value={alias}
                 onChange={(e) => setAlias(e.target.value)}
                 className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"
@@ -298,9 +341,23 @@ export default function Register() {
               </label>
               <Input
                 type="password"
-                placeholder="Minimal 8 karakter..."
+                placeholder="Minimal 8 karakter"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Konfirmasi Kata Sandi
+              </label>
+              <Input
+                type="password"
+                placeholder="Ulangi kata sandi"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"
                 disabled={loading}
               />
@@ -359,7 +416,7 @@ export default function Register() {
               </label>
               <Input
                 type="tel"
-                placeholder="+62 812-3456-7890"
+                placeholder="081234567890"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"
@@ -373,7 +430,7 @@ export default function Register() {
                 </label>
                 <Input
                   type="text"
-                  placeholder="Ibu Ratna (Ibu Kandung)"
+                  placeholder="Contoh: Ibu Ratna (Keluarga)"
                   value={emergencyName}
                   onChange={(e) => setEmergencyName(e.target.value)}
                   className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"
@@ -386,7 +443,7 @@ export default function Register() {
                 </label>
                 <Input
                   type="tel"
-                  placeholder="0811-9876-5432"
+                  placeholder="081198765432"
                   value={emergencyPhone}
                   onChange={(e) => setEmergencyPhone(e.target.value)}
                   className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"

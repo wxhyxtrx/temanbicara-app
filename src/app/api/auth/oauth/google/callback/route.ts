@@ -111,7 +111,23 @@ export async function GET(req: Request) {
           ? '/listener/beranda'
           : '/patient/beranda';
 
-      return NextResponse.redirect(`${origin}${redirectPath}`);
+      const redirectRes = NextResponse.redirect(`${origin}${redirectPath}`);
+      redirectRes.cookies.set('tb_access_token', sessionData.session?.access_token || authUser.id, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: 'lax',
+      });
+      redirectRes.cookies.set('tb_user_role', existingUser.role, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: 'lax',
+      });
+      redirectRes.cookies.set('tb_user_status', existingUser.status, {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: 'lax',
+      });
+      return redirectRes;
     }
 
     // 3. User BARU
@@ -148,7 +164,23 @@ export async function GET(req: Request) {
       nama_lengkap: fullName,
     });
 
-    return NextResponse.redirect(`${origin}/patient/beranda`);
+    const newPatientRes = NextResponse.redirect(`${origin}/patient/beranda`);
+    newPatientRes.cookies.set('tb_access_token', sessionData.session?.access_token || authUser.id, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+    newPatientRes.cookies.set('tb_user_role', 'pasien', {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+    newPatientRes.cookies.set('tb_user_status', 'active', {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+    return newPatientRes;
   } catch (err: any) {
     console.error('[OAUTH INTERNAL ERROR]:', err);
     return NextResponse.redirect(

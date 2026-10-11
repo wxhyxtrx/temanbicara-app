@@ -19,9 +19,11 @@ import {
   Users,
   AlertTriangle,
   BookOpen,
+  UploadCloud,
+  AlertCircle,
 } from "lucide-react";
-import { useVerificationStore } from "@/store/verification-store";
-import { useUserStore } from "@/store/user-store";
+import { notify } from "@/lib/toast";
+import { authService } from "@/services/auth.service";
 
 const listenerTopicInterests = [
   "Curhat Stres Kuliah & Skripsi",
@@ -34,24 +36,21 @@ const listenerTopicInterests = [
 
 export default function ListenerRegistrationPage() {
   const router = useRouter();
-  const addVerification = useVerificationStore((state) => state.addVerification);
-  const loginWithRole = useUserStore((state) => state.loginWithRole);
 
-  const [fullName, setFullName] = useState("Rian Permana, S.Sos.");
-  const [alias, setAlias] = useState("Rian");
-  const [email, setEmail] = useState("rian.permana@email.com");
-  const [phone, setPhone] = useState("+62 856-7788-9900");
-  const [pfaBackground, setPfaBackground] = useState("Pelatihan Psychological First Aid (PFA) WHO & Kemenkes RI");
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([
-    "Curhat Stres Kuliah & Skripsi",
-    "Quarter-Life Crisis & Arah Hidup",
-    "Overthinking Masa Depan",
-  ]);
-  const [timeCommitment, setTimeCommitment] = useState("4 - 6 Jam / Pekan");
-  const [uploadedFile, setUploadedFile] = useState("Sertifikat_Pelatihan_PFA_RianPermana.pdf");
-  const [agreeRules, setAgreeRules] = useState(true);
+  const [fullName, setFullName] = useState("");
+  const [alias, setAlias] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [pfaBackground, setPfaBackground] = useState("");
+  const [reasonToJoin, setReasonToJoin] = useState("");
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [agreeRules, setAgreeRules] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleToggleTopic = (topic: string) => {
@@ -60,26 +59,111 @@ export default function ListenerRegistrationPage() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      notify.warning("Ukuran File Terlalu Besar", "Ukuran file CV maksimal 2MB.");
+      return;
+    }
+    setSelectedFile(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    if (!fullName.trim() || fullName.length < 2) {
+      setFormError("Nama lengkap minimal 2 karakter.");
+      notify.warning("Data Belum Lengkap", "Nama lengkap minimal 2 karakter.");
+      return;
+    }
+
+    if (!email.trim() || !email.includes("@")) {
+      setFormError("Format email tidak valid.");
+      notify.warning("Email Tidak Valid", "Format email tidak valid.");
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      setFormError("Kata sandi minimal 8 karakter.");
+      notify.warning("Sandi Terlalu Pendek", "Kata sandi minimal 8 karakter.");
+      return;
+    }
+
+    if (passwordConfirmation !== password) {
+      setFormError("Konfirmasi kata sandi tidak cocok.");
+      notify.warning("Sandi Tidak Cocok", "Konfirmasi kata sandi tidak cocok.");
+      return;
+    }
+
+    if (!pfaBackground.trim()) {
+      setFormError("Latar belakang atau riwayat pelatihan PFA wajib diisi.");
+      notify.warning("Data Kosong", "Latar belakang wajib diisi.");
+      return;
+    }
+
+    if (!selectedFile) {
+      setFormError("Dokumen CV wajib diunggah (PDF, maksimal 2MB).");
+      notify.warning("Berkas Kosong", "Dokumen CV wajib diunggah.");
+      return;
+    }
+
+    if (!reasonToJoin.trim() || reasonToJoin.length < 10) {
+      setFormError("Alasan bergabung minimal 10 karakter.");
+      notify.warning("Alasan Kosong", "Alasan bergabung minimal 10 karakter.");
+      return;
+    }
+
+    if (!agreeRules) {
+      setFormError("Anda wajib menyetujui pakta integritas relawan.");
+      notify.warning("Persetujuan Diperlukan", "Setujui pakta integritas untuk melanjutkan.");
+      return;
+    }
+
     setLoading(true);
 
-    setTimeout(() => {
-      // Simpan ke verification store
-      addVerification({
-        applicantName: `${fullName} (Alias: ${alias})`,
-        applicantEmail: email,
-        roleType: "Pendengar Sebaya",
-        credentialNumber: `PFA Badge: ${pfaBackground.slice(0, 32)}`,
-        institution: pfaBackground,
-        documentName: uploadedFile || "Sertifikat_PFA_Relawan.pdf",
-        specialty: selectedTopics.join(", "),
-        notes: `Komitmen waktu: ${timeCommitment}. Siap mendampingi pasien secara anonim sesuai modul Look-Listen-Link.`,
+    try {
+      // 1. Dapatkan presigned upload URL
+      const presigned = await authService.getPresignedUrl({
+        file_name: selectedFile.name,
+        file_type: selectedFile.type || "application/pdf",
+        document_type: "cv",
+        user_email_or_temp_id: email.trim().toLowerCase(),
       });
 
+      // 2. Unggah file binary ke storage
+      await authService.uploadBinaryFile(presigned.data.upload_url, selectedFile);
+
+      // 3. Normalisasi nomor kontak
+      let cleanPhone = phone.trim().replace(/[\s-]/g, "");
+      if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.substring(1);
+      if (cleanPhone.startsWith("8")) cleanPhone = "0" + cleanPhone;
+
+      // 4. Submit registrasi relawan
+      const res = await authService.registerRelawan({
+        nama_lengkap: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        no_wa: cleanPhone,
+        password,
+        password_confirmation: passwordConfirmation,
+        latar_belakang: pfaBackground.trim(),
+        dokumen_cv_url: presigned.data.file_path,
+        alasan_bergabung: reasonToJoin.trim(),
+      });
+
+      if (res.success) {
+        notify.success("Pendaftaran Terkirim", res.message || "Aplikasi Anda berhasil diajukan.");
+        setIsSubmitted(true);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengajukan pendaftaran. Periksa koneksi dan data.";
+      setFormError(msg);
+      notify.error("Registrasi Gagal", msg);
+    } finally {
       setLoading(false);
-      setIsSubmitted(true);
-    }, 600);
+    }
   };
 
   return (
@@ -117,63 +201,41 @@ export default function ListenerRegistrationPage() {
                 Pendaftaran Relawan Berhasil Dikirim!
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
-                Terima kasih atas kepedulianmu, <strong>{fullName}</strong>. Data pengalaman PFA Anda telah masuk ke sistem peninjauan relawan TemanBicara.
+                Terima kasih atas kepedulianmu, <strong>{fullName}</strong>. Berkas CV dan data profil Anda telah masuk ke sistem peninjauan tim kurasi TemanBicara.
               </p>
             </div>
 
-            {/* Stepper Progress */}
-            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 max-w-md mx-auto text-left space-y-3.5">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 max-w-md mx-auto text-left space-y-3">
               <div className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                  ✓
-                </span>
+                <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/60 text-pink-700 dark:text-pink-300 flex items-center justify-center font-bold text-xs shrink-0">
+                  1
+                </div>
                 <div className="text-xs">
-                  <p className="font-bold text-slate-900 dark:text-white">Formulir Relawan Diterima</p>
-                  <p className="text-[11px] text-slate-500">Nama Panggilan di Antrean: "{alias}"</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-200">Verifikasi Dokumen CV</p>
+                  <p className="text-[11px] text-slate-500">Estimasi proses review 1 - 3 hari kerja</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shrink-0 animate-pulse">
-                  ⏳
-                </span>
-                <div className="text-xs">
-                  <p className="font-bold text-amber-800 dark:text-amber-300">Peninjauan Sertifikasi PFA</p>
-                  <p className="text-[11px] text-slate-500">Pemberitahuan via email dalam 1x24 Jam</p>
+                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
+                  2
                 </div>
-              </div>
-
-              <div className="flex items-center gap-3 opacity-60">
-                <span className="w-6 h-6 rounded-full bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center text-xs font-bold shrink-0">
-                  3
-                </span>
                 <div className="text-xs">
-                  <p className="font-bold text-slate-700 dark:text-slate-300">Aktivasi Ruang Dengar Sebaya</p>
-                  <p className="text-[11px] text-slate-500">Siap menerima dan mendampingi keluh kesah pasien</p>
+                  <p className="font-bold text-slate-700 dark:text-slate-300">Pemberitahuan via Email & WA</p>
+                  <p className="text-[11px] text-slate-500">Hasil verifikasi akan dikirim langsung ke akun Anda</p>
                 </div>
               </div>
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href="/admin/verifications">
+              <Link href="/login">
                 <Button
-                  variant="outline"
-                  className="w-full sm:w-auto text-xs border-pink-200 dark:border-pink-800 text-pink-700 dark:text-pink-300 hover:bg-pink-50 dark:hover:bg-slate-800 rounded-xl h-10 px-5 font-semibold cursor-pointer"
+                  className="w-full sm:w-auto text-xs bg-pink-600 hover:bg-pink-700 text-white rounded-xl h-10 px-6 font-bold shadow-xs cursor-pointer gap-2"
                 >
-                  Buka Panel Verifikasi Admin (Demo)
+                  <span>Kembali ke Halaman Masuk</span>
+                  <ArrowRight size={14} />
                 </Button>
               </Link>
-
-              <Button
-                onClick={() => {
-                  loginWithRole("peer_listener");
-                  router.push("/listener/beranda");
-                }}
-                className="w-full sm:w-auto text-xs bg-pink-600 hover:bg-pink-700 text-white rounded-xl h-10 px-6 font-bold shadow-xs cursor-pointer gap-2"
-              >
-                <span>Masuk ke Portal Relawan (Demo)</span>
-                <ArrowRight size={14} />
-              </Button>
             </div>
           </div>
         ) : (
@@ -191,12 +253,19 @@ export default function ListenerRegistrationPage() {
               </p>
             </div>
 
+            {formError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle size={15} className="shrink-0 text-rose-500" />
+                <span>{formError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Bagian 1: Identitas & Nama Panggilan */}
+              {/* Bagian 1: Identitas & Akun */}
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-pink-700 dark:text-pink-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Users size={14} />
-                  <span>1. Identitas Relawan</span>
+                  <span>1. Identitas & Akun Relawan</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -208,21 +277,22 @@ export default function ListenerRegistrationPage() {
                       required
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Rian Permana, S.Sos."
+                      placeholder="Contoh: Siti Nurhaliza"
                       className="h-10 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 rounded-xl"
+                      disabled={loading}
                     />
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Nama Samaran / Panggilan (Publik di Chat)
+                      Nama Samaran / Panggilan di Chat
                     </label>
                     <Input
-                      required
                       value={alias}
                       onChange={(e) => setAlias(e.target.value)}
-                      placeholder="Kak Rian / Rian"
+                      placeholder="Contoh: Kak Siti"
                       className="h-10 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 rounded-xl"
+                      disabled={loading}
                     />
                   </div>
 
@@ -235,8 +305,9 @@ export default function ListenerRegistrationPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="rian@email.com"
+                      placeholder="nama@email.com"
                       className="h-10 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 rounded-xl"
+                      disabled={loading}
                     />
                   </div>
 
@@ -248,39 +319,88 @@ export default function ListenerRegistrationPage() {
                       required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+62 856-xxxx-xxxx"
+                      placeholder="081987654321"
                       className="h-10 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 rounded-xl"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Kata Sandi
+                    </label>
+                    <Input
+                      required
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Minimal 8 karakter"
+                      className="h-10 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 rounded-xl"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Konfirmasi Kata Sandi
+                    </label>
+                    <Input
+                      required
+                      type="password"
+                      value={passwordConfirmation}
+                      onChange={(e) => setPasswordConfirmation(e.target.value)}
+                      placeholder="Ulangi kata sandi"
+                      className="h-10 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 rounded-xl"
+                      disabled={loading}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Bagian 2: Pengalaman & Pelatihan PFA */}
+              {/* Bagian 2: Latar Belakang & Alasan */}
               <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <h3 className="text-xs font-bold text-pink-700 dark:text-pink-300 uppercase tracking-wider flex items-center gap-1.5">
                   <BookOpen size={14} />
-                  <span>2. Pelatihan Psychological First Aid (PFA)</span>
+                  <span>2. Latar Belakang & Komitmen</span>
                 </h3>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Latar Belakang / Sertifikat Pelatihan PFA
-                  </label>
-                  <Input
-                    required
-                    value={pfaBackground}
-                    onChange={(e) => setPfaBackground(e.target.value)}
-                    placeholder="Contoh: Pelatihan PFA Kemenkes RI, Mahasiswa S1 Psikologi UI, Pekerja Sosial, dll."
-                    className="h-10 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 rounded-xl"
-                  />
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Latar Belakang Pendidikan / Pengalaman PFA
+                    </label>
+                    <Input
+                      required
+                      value={pfaBackground}
+                      onChange={(e) => setPfaBackground(e.target.value)}
+                      placeholder="Contoh: Mahasiswa S1 Psikologi Semester 7 / Sertifikat PFA Kemenkes"
+                      className="h-10 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 rounded-xl"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Alasan Ingin Bergabung Menjadi Relawan
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={reasonToJoin}
+                      onChange={(e) => setReasonToJoin(e.target.value)}
+                      placeholder="Jelaskan motivasi Anda menjadi pendengar suportif bagi sesama..."
+                      className="w-full p-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-pink-500"
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Bagian 3: Minat Topik Curhat yang Ingin Didampingi */}
+              {/* Bagian 3: Minat Topik Curhat */}
               <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <h3 className="text-xs font-bold text-pink-700 dark:text-pink-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles size={14} />
-                  <span>3. Topik Curhat Pilihan</span>
+                  <span>3. Topik Curhat Pilihan (Opsional)</span>
                 </h3>
 
                 <div className="flex flex-wrap gap-1.5">
@@ -304,38 +424,35 @@ export default function ListenerRegistrationPage() {
                 </div>
               </div>
 
-              {/* Bagian 4: Upload Bukti Sertifikat / CV */}
+              {/* Bagian 4: Upload Bukti CV */}
               <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                  4. Upload Bukti Sertifikat PFA / CV Relawan:
+                  4. Unggah Dokumen CV (PDF, Maksimal 2MB):
                 </label>
-                <div className="p-4 rounded-2xl border-2 border-dashed border-pink-300 dark:border-pink-800 bg-pink-50/30 dark:bg-pink-950/20 text-center space-y-2">
+                <label className="p-4 rounded-2xl border-2 border-dashed border-pink-300 dark:border-pink-800 bg-pink-50/30 dark:bg-pink-950/20 text-center space-y-2 block cursor-pointer hover:bg-pink-50/50 transition-colors">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={loading}
+                  />
                   <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/80 text-pink-700 dark:text-pink-300 flex items-center justify-center mx-auto">
-                    <FileCheck2 size={20} />
+                    {selectedFile ? <FileCheck2 size={20} /> : <UploadCloud size={20} />}
                   </div>
                   <div className="text-xs text-slate-600 dark:text-slate-400 font-nunito">
-                    <span className="font-semibold text-pink-700 dark:text-pink-300 font-mono">
-                      {uploadedFile}
-                    </span>{" "}
-                    (Terlampir)
+                    {selectedFile ? (
+                      <span className="font-semibold text-pink-700 dark:text-pink-300 font-mono">
+                        {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
+                      </span>
+                    ) : (
+                      <span>Klik untuk memilih file CV dari perangkat Anda</span>
+                    )}
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    Format didukung: PDF, JPG, PNG (Maksimal 5MB)
+                    Format didukung: PDF resmi (Maksimal 2MB)
                   </p>
-                </div>
-              </div>
-
-              {/* Rambu Etika Relawan */}
-              <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-2 text-xs text-amber-900 dark:text-amber-200">
-                <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
-                  <AlertTriangle size={15} />
-                  <span>3 Rambu Mutlak Pendengar Sebaya:</span>
-                </div>
-                <ul className="list-disc pl-5 space-y-1 text-[11px] leading-relaxed">
-                  <li>Tidak memberikan diagnosa medis gangguan jiwa atau resep obat.</li>
-                  <li>Menjaga kerahasiaan identitas pasien 100% dan tidak meminta kontak pribadi di luar platform.</li>
-                  <li>Wajib segera menekan tombol rujukan psikolog klinis / SEJIWA 119 bila pasien menunjukkan risiko menyakiti diri.</li>
-                </ul>
+                </label>
               </div>
 
               {/* Pakta Integritas */}
@@ -350,7 +467,7 @@ export default function ListenerRegistrationPage() {
                     className="mt-1 rounded border-slate-300 text-pink-600 focus:ring-pink-500 cursor-pointer"
                   />
                   <label htmlFor="agreeRules" className="text-xs text-slate-600 dark:text-slate-400 font-nunito leading-relaxed cursor-pointer">
-                    Saya menyetujui pakta integritas relawan dan berkomitmen mendampingi dengan empati tanpa menghakimi.
+                    Saya menyatakan data yang diberikan adalah benar dan berkomitmen mendampingi dengan empati tanpa menghakimi.
                   </label>
                 </div>
               </div>
@@ -362,7 +479,7 @@ export default function ListenerRegistrationPage() {
                   disabled={loading}
                   className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold h-11 rounded-xl text-xs sm:text-sm shadow-md shadow-pink-600/20 cursor-pointer"
                 >
-                  {loading ? "Memproses Data..." : "Kirim Pendaftaran Relawan Pendengar"}
+                  {loading ? "Mengunggah & Mengirim Data..." : "Kirim Pendaftaran Relawan"}
                 </Button>
               </div>
             </form>

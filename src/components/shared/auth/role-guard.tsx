@@ -30,17 +30,40 @@ export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
   const router = useRouter();
   const user = useUserStore((state) => state.user);
   const switchRole = useUserStore((state) => state.switchRole);
+  const syncSession = useUserStore((state) => state.syncSession);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    syncSession();
+  }, [syncSession]);
 
   if (!mounted) {
     return <>{children}</>;
   }
 
-  const isAuthorized = allowedRoles.includes(user.role);
+  // Deteksi jika sesi cookie server sudah berganti tetapi store client belum selesai rehydrate
+  let effectiveRole = user.role;
+  if (typeof document !== "undefined") {
+    const cookieMatch = document.cookie.match(/tb_user_role=([^;]+)/);
+    if (cookieMatch && cookieMatch[1]) {
+      const roleMap: Record<string, UserRole> = {
+        pasien: "patient",
+        patient: "patient",
+        relawan: "peer_listener",
+        peer_listener: "peer_listener",
+        psikolog: "counselor",
+        counselor: "counselor",
+        admin: "admin",
+      };
+      const cookieMapped = roleMap[cookieMatch[1]];
+      if (cookieMapped && allowedRoles.includes(cookieMapped)) {
+        effectiveRole = cookieMapped;
+      }
+    }
+  }
+
+  const isAuthorized = allowedRoles.includes(effectiveRole);
 
   if (!isAuthorized) {
     const userRoleName = roleNames[user.role] || user.role;

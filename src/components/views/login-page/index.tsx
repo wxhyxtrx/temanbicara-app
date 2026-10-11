@@ -13,18 +13,14 @@ import {
   ArrowLeft,
   ArrowRight,
   AlertCircle,
-  Sparkles,
-  User,
-  Stethoscope,
-  Headphones,
-  ShieldAlert,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useUserStore, UserRole } from "@/store/user-store";
+import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
-import { mockUsers } from "@/constant/mock-users";
+import { authService } from "@/services/auth.service";
+import { supabasePublic } from "@/lib/supabase/client";
 
 const loginSchema = z.object({
   email: z
@@ -40,103 +36,89 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const router = useRouter();
-  const { login, loginWithRole } = useUserStore();
+  const { isAuthenticated, user, setAuthSession } = useUserStore();
   const [loading, setLoading] = useState(false);
-  const [activeRoleSelected, setActiveRoleSelected] = useState<UserRole>("patient");
   const [serverError, setServerError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isAuthenticated && user?.role) {
+      const roleRoutes: Record<string, string> = {
+        pasien: "/patient/beranda",
+        patient: "/patient/beranda",
+        psikolog: "/counselor/beranda",
+        counselor: "/counselor/beranda",
+        relawan: "/listener/beranda",
+        peer_listener: "/listener/beranda",
+        admin: "/admin/beranda",
+      };
+      router.replace(roleRoutes[user.role] || "/patient/beranda");
+    }
+  }, [isAuthenticated, user, router]);
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "wahyu@temanbicara.id",
-      password: "password123",
+      email: "",
+      password: "",
     },
   });
 
-  const getPortalHome = (role: UserRole) => {
-    switch (role) {
-      case "counselor":
-        return "/counselor/beranda";
-      case "peer_listener":
-        return "/listener/beranda";
-      case "admin":
-        return "/admin/beranda";
-      case "patient":
-      default:
-        return "/patient/beranda";
-    }
-  };
-
-  const onSubmit = (data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
     setServerError(null);
 
-    setTimeout(() => {
-      const loggedUser = login(data.email);
-      notify.success("Masuk Berhasil", `Selamat datang kembali, ${loggedUser.fullName}!`);
-      router.push(getPortalHome(loggedUser.role));
-    }, 400);
+    try {
+      const res = await authService.login({
+        email: data.email,
+        password: data.password,
+        remember_me: true,
+      });
+
+      if (res.success && res.data) {
+        setAuthSession(res.data.user, res.data.session.access_token);
+        notify.success("Masuk Berhasil", res.message || "Selamat datang kembali!");
+
+        const roleRoutes: Record<string, string> = {
+          pasien: "/patient/beranda",
+          psikolog: "/counselor/beranda",
+          relawan: "/listener/beranda",
+          admin: "/admin/beranda",
+        };
+        const dest = roleRoutes[res.data.user.role] || res.data.redirect_to || "/patient/beranda";
+        router.push(dest);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Gagal masuk. Periksa email dan password.";
+      setServerError(message);
+      notify.error("Gagal Masuk", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleQuickDemoRole = (role: UserRole) => {
-    setActiveRoleSelected(role);
-    const mock = mockUsers[role];
-    setValue("email", mock.email, { shouldValidate: true });
-    setValue("password", "password123", { shouldValidate: true });
-
-    // Instan login dan alihkan
+  const handleSocialLogin = async () => {
     setLoading(true);
-    setTimeout(() => {
-      const loggedUser = loginWithRole(role);
-      notify.success("Mode Demo Aktif", `Beralih ke akun ${loggedUser.fullName} (${loggedUser.role}).`);
-      router.push(getPortalHome(loggedUser.role));
-    }, 350);
+    try {
+      const { data, error } = await supabasePublic.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/oauth/google/callback`,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal memulai autentikasi Google";
+      notify.error("OAuth Error", msg);
+      setLoading(false);
+    }
   };
-
-  const handleSocialLogin = (provider: string) => {
-    setLoading(true);
-    setTimeout(() => {
-      const loggedUser = login(`${provider.toLowerCase()}.user@temanbicara.id`, `${provider} User`);
-      notify.success("Masuk via Google", `Selamat datang, ${loggedUser.fullName}!`);
-      router.push(getPortalHome(loggedUser.role));
-    }, 400);
-  };
-
-  const demoRoles = [
-    {
-      role: "patient" as UserRole,
-      title: "Pasien",
-      name: "Wahyu",
-      badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
-      icon: User,
-    },
-    {
-      role: "counselor" as UserRole,
-      title: "Psikolog",
-      name: "Dr. Anita",
-      badgeColor: "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800",
-      icon: Stethoscope,
-    },
-    {
-      role: "peer_listener" as UserRole,
-      title: "Pendengar",
-      name: "Rian",
-      badgeColor: "bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800",
-      icon: Headphones,
-    },
-    {
-      role: "admin" as UserRole,
-      title: "Admin",
-      name: "Siti",
-      badgeColor: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800",
-      icon: ShieldAlert,
-    },
-  ];
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden bg-gradient-to-br from-teal-50/70 via-slate-50 to-emerald-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-teal-950/40 text-slate-900 dark:text-slate-100 font-nunito transition-colors duration-200">
@@ -168,45 +150,8 @@ export default function Login() {
               Masuk ke Ruang TemanBicara
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-0.5">
-              Pilih akun demonstrasi atau masuk dengan email terdaftar
+              Masuk dengan akun terdaftar untuk melanjutkan
             </p>
-          </div>
-        </div>
-
-        {/* Multi-Role Quick Demo Selector */}
-        <div className="p-3 rounded-2xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-              <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
-              <span>Coba Demo 4 Role (1-Klik Langsung Masuk)</span>
-            </div>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-semibold">Demo Cepat</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-            {demoRoles.map((item) => {
-              const Icon = item.icon;
-              const isSelected = activeRoleSelected === item.role;
-              return (
-                <button
-                  key={item.role}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleQuickDemoRole(item.role)}
-                  className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
-                    isSelected
-                      ? "ring-2 ring-teal-500 shadow-xs " + item.badgeColor
-                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-teal-300 dark:hover:border-teal-700 text-slate-700 dark:text-slate-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-1 text-xs font-bold font-heading">
-                    <Icon size={13} className="shrink-0" />
-                    <span>{item.title}</span>
-                  </div>
-                  <span className="text-[10px] opacity-80 mt-0.5 truncate">{item.name}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -215,7 +160,7 @@ export default function Login() {
           type="button"
           variant="outline"
           className="w-full flex items-center justify-center gap-2.5 h-11 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 rounded-xl cursor-pointer transition-colors shadow-xs"
-          onClick={() => handleSocialLogin("Google")}
+          onClick={() => handleSocialLogin()}
           disabled={loading}
         >
           <FcGoogle className="h-5 w-5" />

@@ -115,7 +115,7 @@ export async function POST(req: Request) {
     }
 
     // 5. Kembalikan session data dan metadata role
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'Login berhasil',
       data: {
@@ -134,6 +134,24 @@ export async function POST(req: Request) {
         redirect_to: redirectTo,
       },
     });
+
+    response.cookies.set('tb_access_token', authData.session.access_token, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+    response.cookies.set('tb_user_role', userProfile.role, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+    response.cookies.set('tb_user_status', userProfile.status, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
+    });
+
+    return response;
   } catch (err: any) {
     return NextResponse.json(
       {
