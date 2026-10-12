@@ -72,8 +72,6 @@ src/
 
 ## Pemberitahuan Status Pengembangan
 
-> **Akun demo dan tombol Quick Demo sudah dihapus.** Seluruh autentikasi kini berjalan melalui Supabase, sehingga akun demo lama (`*@temanbicara.id` / `password123`) tidak lagi berlaku.
-
 **Sudah terhubung ke backend (Supabase):**
 - Login email & kata sandi serta masuk dengan Google (OAuth).
 - Registrasi terpisah untuk Pasien, Psikolog, dan Relawan (`/api/auth/register/*`).
