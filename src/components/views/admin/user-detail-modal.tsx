@@ -22,6 +22,7 @@ import {
 import { Copy, Check, ShieldAlert, Trash2, Save, Loader2 } from "lucide-react";
 import { userService } from "@/services/user.service";
 import { notify } from "@/lib/toast";
+import { useUserStore } from "@/store/user-store";
 import type { AdminUserRow, ApiAccountStatus, ApiRole } from "@/types/user-profile";
 
 interface UserDetailModalProps {
@@ -45,6 +46,8 @@ export function UserDetailModal({
   roleBadgeConfig,
   formatDate,
 }: UserDetailModalProps) {
+  const currentUser = useUserStore((state) => state.user);
+  const isSelf = user ? user.id === currentUser?.id || user.email === currentUser?.email : false;
   const [copiedId, setCopiedId] = useState(false);
   const [newStatus, setNewStatus] = useState<ApiAccountStatus>("active");
   const [rejectionReason, setRejectionReason] = useState("");
@@ -238,16 +241,22 @@ export function UserDetailModal({
 
           {/* 5. Footer Actions */}
           <div className="pt-2 flex items-center justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenDelete(user)}
-              className="rounded-xl border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs gap-1 cursor-pointer font-semibold"
-            >
-              <Trash2 size={13} />
-              <span>Hapus Akun</span>
-            </Button>
+            {!isSelf ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenDelete(user)}
+                className="rounded-xl border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs gap-1 cursor-pointer font-semibold"
+              >
+                <Trash2 size={13} />
+                <span>Hapus Akun</span>
+              </Button>
+            ) : (
+              <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400">
+                Akun Anda Sendiri
+              </span>
+            )}
 
             <Button
               type="button"

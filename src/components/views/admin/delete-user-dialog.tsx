@@ -12,6 +12,7 @@ import {
 import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
 import { userService } from "@/services/user.service";
 import { notify } from "@/lib/toast";
+import { useUserStore } from "@/store/user-store";
 import type { AdminUserRow } from "@/types/user-profile";
 
 interface DeleteUserDialogProps {
@@ -27,9 +28,10 @@ export function DeleteUserDialog({
   onOpenChange,
   onDeleted,
 }: DeleteUserDialogProps) {
+  const currentUser = useUserStore((state) => state.user);
   const [deleting, setDeleting] = useState(false);
 
-  if (!user) return null;
+  if (!user || user.id === currentUser?.id || user.email === currentUser?.email) return null;
 
   const handleDelete = async () => {
     setDeleting(true);

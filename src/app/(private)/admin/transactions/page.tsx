@@ -32,8 +32,9 @@ import {
   FileText,
 } from "lucide-react";
 import { usePayoutStore, PayoutRecord } from "@/store/payout-store";
-import { useTransactionStore } from "@/store/transaction-store";
+import { useTransactionStore, TransactionRecord } from "@/store/transaction-store";
 import { notify } from "@/lib/toast";
+import { Tables, Column } from "@/components/shared/atoms/Table";
 
 export default function AdminTransactionsPage() {
   const [mounted, setMounted] = useState(false);
@@ -129,6 +130,182 @@ export default function AdminTransactionsPage() {
     if (activeTab === "session") return matchSearch && tx.type === "usage";
     return matchSearch;
   });
+
+  const payoutColumns: Column<PayoutRecord>[] = [
+    {
+      label: "No Invoice & Waktu",
+      className: "w-[20%]",
+      renderCell: (p) => (
+        <div>
+          <p className="font-mono font-semibold text-slate-900 dark:text-white">{p.invoiceNo}</p>
+          <span className="text-[10px] text-slate-400 font-nunito">{p.date}</span>
+        </div>
+      ),
+    },
+    {
+      label: "Psikolog",
+      className: "w-[18%]",
+      renderCell: (p) => (
+        <div>
+          <p className="font-bold text-slate-800 dark:text-slate-200">{p.counselorName}</p>
+          <span className="text-[10px] text-teal-700 dark:text-teal-400 font-medium">Praktisi SIPPK</span>
+        </div>
+      ),
+    },
+    {
+      label: "Rekening Tujuan",
+      className: "w-[20%]",
+      renderCell: (p) => (
+        <div>
+          <p className="font-semibold text-slate-900 dark:text-white">{p.bankName}</p>
+          <p className="font-mono text-[11px] text-slate-500">
+            {p.accountNo} <span className="text-[10px]">({p.accountHolder})</span>
+          </p>
+        </div>
+      ),
+    },
+    {
+      label: "Koin Ditukar",
+      className: "w-[12%]",
+      renderCell: (p) => (
+        <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
+          -{p.coinsDeducted} Koin
+        </span>
+      ),
+    },
+    {
+      label: "Nominal Transfer",
+      className: "w-[14%]",
+      renderCell: (p) => (
+        <span className="font-mono font-bold text-slate-900 dark:text-white">
+          Rp {p.amountRupiah.toLocaleString("id-ID")}
+        </span>
+      ),
+    },
+    {
+      label: "Status",
+      className: "w-[10%]",
+      renderCell: (p) => (
+        <Badge
+          className={`text-[10px] ${
+            p.status === "Berhasil"
+              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200"
+              : p.status === "Diproses"
+              ? "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200"
+              : "bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200"
+          }`}
+        >
+          {p.status}
+        </Badge>
+      ),
+    },
+    {
+      label: "Otorisasi & Aksi",
+      align: "right",
+      className: "w-[16%]",
+      renderCell: (p) => {
+        const isPending = p.status === "Diproses";
+        return isPending ? (
+          <div className="flex items-center justify-end gap-1.5">
+            <Button
+              size="sm"
+              onClick={() => handleOpenApprove(p)}
+              className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg px-2.5 shadow-2xs gap-1 cursor-pointer"
+            >
+              <Check size={12} />
+              <span>Setujui Transfer</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleOpenReject(p)}
+              className="h-7 text-[11px] border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40 rounded-lg px-2.5 cursor-pointer gap-1"
+            >
+              <X size={12} />
+              <span>Tolak</span>
+            </Button>
+          </div>
+        ) : (
+          <span className="text-[10px] text-slate-400 italic">
+            {p.status === "Berhasil" ? "Transfer Selesai" : "Pengajuan Dibatalkan"}
+          </span>
+        );
+      },
+    },
+  ];
+
+  const transactionColumns: Column<TransactionRecord>[] = [
+    {
+      label: "No Transaksi & Waktu",
+      className: "w-[20%]",
+      renderCell: (tx) => (
+        <div>
+          <p className="font-mono font-semibold text-slate-900 dark:text-white">{tx.invoiceNumber}</p>
+          <span className="text-[10px] text-slate-400 font-nunito">{tx.date}</span>
+        </div>
+      ),
+    },
+    {
+      label: "Kategori & Judul",
+      className: "w-[22%]",
+      renderCell: (tx) => (
+        <div>
+          <p className="font-bold text-slate-800 dark:text-slate-200">{tx.title}</p>
+          <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold">
+            {tx.category}
+          </span>
+        </div>
+      ),
+    },
+    {
+      label: "Pihak Terkait",
+      className: "w-[16%]",
+      renderCell: (tx) => (
+        <span className="font-medium text-slate-700 dark:text-slate-300">{tx.targetParty}</span>
+      ),
+    },
+    {
+      label: "Mutasi Koin",
+      className: "w-[14%]",
+      renderCell: (tx) => (
+        <span
+          className={`font-mono font-bold ${
+            tx.coinChange >= 0
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-rose-600 dark:text-rose-400"
+          }`}
+        >
+          {tx.coinChange >= 0 ? `+${tx.coinChange}` : tx.coinChange} Koin
+        </span>
+      ),
+    },
+    {
+      label: "Metode Bayar",
+      className: "w-[14%]",
+      renderCell: (tx) => (
+        <span className="text-slate-600 dark:text-slate-400 font-medium">{tx.paymentMethod}</span>
+      ),
+    },
+    {
+      label: "Catatan Audit",
+      className: "w-[16%]",
+      renderCell: (tx) => (
+        <span className="text-slate-500 text-[11px] max-w-xs truncate block" title={tx.notes}>
+          {tx.notes || "-"}
+        </span>
+      ),
+    },
+    {
+      label: "Status",
+      align: "right",
+      className: "w-[10%]",
+      renderCell: (tx) => (
+        <Badge className="bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 text-[10px]">
+          {tx.status}
+        </Badge>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -283,169 +460,21 @@ export default function AdminTransactionsPage() {
         <CardContent className="p-0 sm:p-2">
           {activeTab === "payout" ? (
             /* TAB 1: PAYOUT HONOR APPROVAL TABLE */
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
-                    <th className="p-3.5 pl-4">No Invoice & Waktu</th>
-                    <th className="p-3.5">Psikolog</th>
-                    <th className="p-3.5">Rekening Tujuan</th>
-                    <th className="p-3.5">Koin Ditukar</th>
-                    <th className="p-3.5">Nominal Transfer</th>
-                    <th className="p-3.5">Status</th>
-                    <th className="p-3.5 pr-4 text-right">Otorisasi & Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredPayouts.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-400">
-                        Tidak ada riwayat pengajuan payout yang sesuai.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredPayouts.map((p) => {
-                      const isPending = p.status === "Diproses";
-                      return (
-                        <tr
-                          key={p.id}
-                          className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors ${
-                            isPending ? "bg-amber-50/30 dark:bg-amber-950/20" : ""
-                          }`}
-                        >
-                          <td className="p-3.5 pl-4">
-                            <p className="font-mono font-semibold text-slate-900 dark:text-white">{p.invoiceNo}</p>
-                            <span className="text-[10px] text-slate-400 font-nunito">{p.date}</span>
-                          </td>
-                          <td className="p-3.5">
-                            <p className="font-bold text-slate-800 dark:text-slate-200">{p.counselorName}</p>
-                            <span className="text-[10px] text-teal-700 dark:text-teal-400 font-medium">Praktisi SIPPK</span>
-                          </td>
-                          <td className="p-3.5">
-                            <p className="font-semibold text-slate-900 dark:text-white">{p.bankName}</p>
-                            <p className="font-mono text-[11px] text-slate-500">
-                              {p.accountNo} <span className="text-[10px]">({p.accountHolder})</span>
-                            </p>
-                          </td>
-                          <td className="p-3.5 font-mono font-bold text-rose-600 dark:text-rose-400">
-                            -{p.coinsDeducted} Koin
-                          </td>
-                          <td className="p-3.5 font-mono font-bold text-slate-900 dark:text-white">
-                            Rp {p.amountRupiah.toLocaleString("id-ID")}
-                          </td>
-                          <td className="p-3.5">
-                            <Badge
-                              className={`text-[10px] ${
-                                p.status === "Berhasil"
-                                  ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200"
-                                  : p.status === "Diproses"
-                                  ? "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200"
-                                  : "bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200"
-                              }`}
-                            >
-                              {p.status}
-                            </Badge>
-                          </td>
-                          <td className="p-3.5 pr-4 text-right">
-                            {isPending ? (
-                              <div className="flex items-center justify-end gap-1.5">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleOpenApprove(p)}
-                                  className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg px-2.5 shadow-2xs gap-1 cursor-pointer"
-                                >
-                                  <Check size={12} />
-                                  <span>Setujui Transfer</span>
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleOpenReject(p)}
-                                  className="h-7 text-[11px] border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40 rounded-lg px-2.5 cursor-pointer gap-1"
-                                >
-                                  <X size={12} />
-                                  <span>Tolak</span>
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 italic">
-                                {p.status === "Berhasil" ? "Transfer Selesai" : "Pengajuan Dibatalkan"}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Tables
+              columns={payoutColumns}
+              data={filteredPayouts}
+              rowClassName={(p) => (p.status === "Diproses" ? "bg-amber-50/30 dark:bg-amber-950/20" : "")}
+              emptyTitle="Tidak ada riwayat pengajuan payout"
+              emptyDescription="Tidak ada data pengajuan payout yang sesuai dengan filter pencarian."
+            />
           ) : (
             /* TAB 2: AUDIT MUTASI KOIN & TRANSAKSI PASIEN */
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
-                    <th className="p-3.5 pl-4">No Transaksi & Waktu</th>
-                    <th className="p-3.5">Kategori & Judul</th>
-                    <th className="p-3.5">Pihak Terkait</th>
-                    <th className="p-3.5">Mutasi Koin</th>
-                    <th className="p-3.5">Metode Bayar</th>
-                    <th className="p-3.5">Catatan Audit</th>
-                    <th className="p-3.5 pr-4 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredTransactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="p-8 text-center text-slate-400">
-                        Tidak ada log transaksi koin yang sesuai.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredTransactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                        <td className="p-3.5 pl-4">
-                          <p className="font-mono font-semibold text-slate-900 dark:text-white">{tx.invoiceNumber}</p>
-                          <span className="text-[10px] text-slate-400 font-nunito">{tx.date}</span>
-                        </td>
-                        <td className="p-3.5">
-                          <p className="font-bold text-slate-800 dark:text-slate-200">{tx.title}</p>
-                          <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold">
-                            {tx.category}
-                          </span>
-                        </td>
-                        <td className="p-3.5 font-medium text-slate-700 dark:text-slate-300">
-                          {tx.targetParty}
-                        </td>
-                        <td className="p-3.5 font-mono font-bold">
-                          <span
-                            className={
-                              tx.coinChange >= 0
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-rose-600 dark:text-rose-400"
-                            }
-                          >
-                            {tx.coinChange >= 0 ? `+${tx.coinChange}` : tx.coinChange} Koin
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-slate-600 dark:text-slate-400 font-medium">
-                          {tx.paymentMethod}
-                        </td>
-                        <td className="p-3.5 text-slate-500 text-[11px] max-w-xs truncate">
-                          {tx.notes || "-"}
-                        </td>
-                        <td className="p-3.5 pr-4 text-right">
-                          <Badge className="bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 text-[10px]">
-                            {tx.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Tables
+              columns={transactionColumns}
+              data={filteredTransactions}
+              emptyTitle="Tidak ada log transaksi koin"
+              emptyDescription="Tidak ada data transaksi koin yang sesuai dengan filter pencarian."
+            />
           )}
         </CardContent>
       </Card>

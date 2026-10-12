@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/shared/atoms/theme-toggle";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/shared/atoms/Logo";
 import {
   ShieldCheck,
@@ -36,12 +36,20 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const router = useRouter();
-  const { isAuthenticated, user, setAuthSession } = useUserStore();
+  const searchParams = useSearchParams();
+  const isExpired = searchParams.get("expired") === "true";
+  const { isAuthenticated, user, setAuthSession, logout } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
   React.useEffect(() => {
-    if (isAuthenticated && user?.role) {
+    if (isExpired) {
+      logout();
+    }
+  }, [isExpired, logout]);
+
+  React.useEffect(() => {
+    if (!isExpired && isAuthenticated && user?.role) {
       const roleRoutes: Record<string, string> = {
         pasien: "/patient/beranda",
         patient: "/patient/beranda",
@@ -53,7 +61,7 @@ export default function Login() {
       };
       router.replace(roleRoutes[user.role] || "/patient/beranda");
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, isExpired]);
 
   const {
     register,
@@ -182,6 +190,18 @@ export default function Login() {
             </span>
           </div>
         </div>
+
+        {isExpired && (
+          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2.5 shadow-2xs">
+            <AlertCircle size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+            <div>
+              <p className="font-bold">Sesi Anda Telah Berakhir</p>
+              <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                Sesi tidak valid atau telah kedaluwarsa. Silakan masuk kembali dengan akun Anda.
+              </p>
+            </div>
+          </div>
+        )}
 
         {serverError && (
           <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2">

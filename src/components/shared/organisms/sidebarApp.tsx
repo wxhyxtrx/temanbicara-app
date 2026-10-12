@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/shared/atoms/Logo";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { mockUsers } from "@/constant/mock-users";
 import { useUserStore, UserRole } from "@/store/user-store";
 import { authService } from "@/services/auth.service";
 
@@ -47,7 +48,14 @@ export function AppSidebar() {
   }, []);
 
   const getEffectiveRole = (): UserRole => {
-    if (typeof document !== "undefined") {
+    // 1. Pathname check is 100% deterministic on BOTH Server (SSR) and Client!
+    if (pathname?.startsWith("/admin")) return "admin";
+    if (pathname?.startsWith("/counselor")) return "counselor";
+    if (pathname?.startsWith("/listener")) return "peer_listener";
+    if (pathname?.startsWith("/patient")) return "patient";
+
+    // 2. Cookie check only after mounted (never during initial client hydration)
+    if (mounted && typeof document !== "undefined") {
       const match = document.cookie.match(/tb_user_role=([^;]+)/);
       if (match && match[1]) {
         const roleMap: Record<string, UserRole> = {
@@ -70,13 +78,15 @@ export function AppSidebar() {
   const currentRole = getEffectiveRole();
   const menuConfig = getMenuItemsByRole(currentRole);
 
+  const defaultFallbackUser = mockUsers[currentRole] || mockUsers.patient;
+
   const displayName = mounted
-    ? user.fullName || "Pengguna TemanBicara"
-    : "Wahyu Tricahyo";
+    ? user.fullName || defaultFallbackUser.fullName
+    : defaultFallbackUser.fullName;
   const displayInitials = mounted
-    ? user.avatarInitials || "TB"
-    : "WT";
-  const displayCoins = mounted ? user.coins || 0 : 50;
+    ? user.avatarInitials || defaultFallbackUser.avatarInitials
+    : defaultFallbackUser.avatarInitials;
+  const displayCoins = mounted ? user.coins || 0 : defaultFallbackUser.coins;
 
   // Handler auto-close sidebar pada mobile dan tablet (< 1024px)
   const handleNavClick = () => {

@@ -188,11 +188,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     if (!UUID_RE.test(id)) return fail(400, 'INVALID_ID', 'ID pengguna tidak valid');
 
-    // Proteksi self-delete
-    if (session.user.id === id) {
-      return fail(400, 'CANNOT_DELETE_SELF', 'Admin tidak dapat menghapus akun sendiri');
-    }
-
     // 1. Cek keberadaan user
     const { data: targetUser, error: findError } = await supabaseAdmin
       .from('users')
@@ -202,6 +197,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
     if (findError) return fail(500, 'QUERY_FAILED', findError.message);
     if (!targetUser) return fail(404, 'NOT_FOUND', 'Pengguna tidak ditemukan');
+
+    // Proteksi self-delete (ID atau email admin yang sedang login)
+    if (session.user.id === id || session.user.email === targetUser.email) {
+      return fail(400, 'CANNOT_DELETE_SELF', 'Admin tidak dapat menghapus akun sendiri');
+    }
 
     // 2. Hapus dari public.users (cascade akan menghapus profile anak)
     const { error: deleteDbError } = await supabaseAdmin.from('users').delete().eq('id', id);

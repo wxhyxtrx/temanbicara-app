@@ -423,6 +423,20 @@ export const useUserStore = create<UserState>()(
         // 1. Fetch sesi real-time dari backend (/api/users/me)
         try {
           const res = await fetch("/api/users/me");
+          if (res.status === 401) {
+            // Sesi token tidak valid atau kedaluwarsa di backend
+            get().logout();
+            if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+              const currentPath = window.location.pathname + window.location.search;
+              const loginUrl = new URL("/login", window.location.origin);
+              loginUrl.searchParams.set("expired", "true");
+              if (currentPath && currentPath !== "/") {
+                loginUrl.searchParams.set("callbackUrl", currentPath);
+              }
+              window.location.href = loginUrl.toString();
+            }
+            return;
+          }
           if (res.ok) {
             const json = await res.json();
             if (json?.data?.user) {

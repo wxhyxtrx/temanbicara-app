@@ -6,6 +6,7 @@ import {
 } from '@/lib/validations/auth';
 import { AccountStatus, UserRole } from '@/types/database';
 import { supabasePublic } from '@/lib/supabase/client';
+import { handleUnauthorized } from '@/lib/auth/unauthorized-handler';
 
 export interface UserAuthSession {
   id: string;
@@ -78,6 +79,10 @@ export interface ApiErrorResponse {
 async function handleResponse<T>(res: Response): Promise<T> {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    const isLoginEndpoint = typeof res.url === 'string' && res.url.includes('/api/auth/login');
+    if (!isLoginEndpoint && (res.status === 401 || data.error === 'INVALID_TOKEN' || data.error === 'UNAUTHENTICATED')) {
+      handleUnauthorized(data.message || 'Sesi tidak valid atau kedaluwarsa');
+    }
     const errorMsg = data.message || data.error || 'Terjadi kesalahan pada server';
     throw new Error(errorMsg);
   }

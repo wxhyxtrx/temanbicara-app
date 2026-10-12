@@ -24,7 +24,9 @@ import { userService } from "@/services/user.service";
 import { UserDetailModal } from "@/components/views/admin/user-detail-modal";
 import { CreateUserModal } from "@/components/views/admin/create-user-modal";
 import { DeleteUserDialog } from "@/components/views/admin/delete-user-dialog";
+import { useUserStore } from "@/store/user-store";
 import type { AdminUserRow, ApiAccountStatus, ApiRole } from "@/types/user-profile";
+import { Tables, Column } from "@/components/shared/atoms/Table";
 
 const statusBadgeConfig: Record<
   ApiAccountStatus,
@@ -94,6 +96,7 @@ const roleBadgeConfig: Record<
 };
 
 export default function AdminUsersPage() {
+  const currentUser = useUserStore((state) => state.user);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -119,14 +122,21 @@ export default function AdminUsersPage() {
       });
 
       if (res && res.success && Array.isArray(res.data)) {
-        setUsers(res.data);
-        setTotal(res.meta?.total || res.data.length);
+        const filtered = res.data.filter(
+          (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
+        );
+        setUsers(filtered);
+        const countDiff = res.data.length - filtered.length;
+        setTotal(res.meta?.total !== undefined ? Math.max(0, res.meta.total - countDiff) : filtered.length);
       } else {
         setUsers([]);
         setTotal(0);
       }
-    } catch (err) {
-      console.error("Gagal mengambil data user:", err);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes("Sesi tidak valid") && !msg.includes("kedaluwarsa") && !msg.includes("INVALID_TOKEN")) {
+        console.error("Gagal mengambil data user:", err);
+      }
       setUsers([]);
       setTotal(0);
     } finally {
@@ -155,6 +165,92 @@ export default function AdminUsersPage() {
       return isoString;
     }
   };
+
+  const columns: Column<AdminUserRow>[] = [
+    {
+      label: "Pengguna",
+      className: "w-[26%]",
+      renderCell: (u) => (
+        <div>
+          <p className="font-bold font-heading text-slate-900 dark:text-white text-xs sm:text-sm">
+            {u.fullName || u.email.split("@")[0]}
+          </p>
+          <p className="text-[11px] text-slate-400 font-nunito">{u.email}</p>
+        </div>
+      ),
+    },
+    {
+      label: "Peran Akun",
+      className: "w-[18%]",
+      renderCell: (u) => {
+        const roleCfg = roleBadgeConfig[u.role] || {
+          label: u.role,
+          className: "bg-slate-100 text-slate-700 border-slate-200",
+        };
+        return (
+          <span
+            className={`inline-block font-semibold px-2.5 py-0.5 rounded-lg border text-[11px] ${roleCfg.className}`}
+          >
+            {roleCfg.label}
+          </span>
+        );
+      },
+    },
+    {
+      label: "Nomor WhatsApp",
+      className: "w-[18%]",
+      renderCell: (u) =>
+        u.no_wa ? (
+          <span className="font-mono text-slate-700 dark:text-slate-300">{u.no_wa}</span>
+        ) : (
+          <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
+            Tidak ada
+          </span>
+        ),
+    },
+    {
+      label: "Bergabung",
+      className: "w-[14%]",
+      renderCell: (u) => (
+        <span className="text-slate-500 dark:text-slate-400 font-nunito">
+          {formatDate(u.created_at)}
+        </span>
+      ),
+    },
+    {
+      label: "Status Akun",
+      className: "w-[12%]",
+      renderCell: (u) => {
+        const statusCfg = statusBadgeConfig[u.status] || {
+          label: u.status,
+          className: "bg-slate-100 text-slate-700 border-slate-200",
+        };
+        return (
+          <Badge className={`text-[10px] border shadow-none ${statusCfg.className}`}>
+            {statusCfg.label}
+          </Badge>
+        );
+      },
+    },
+    {
+      label: "Aksi",
+      align: "center",
+      className: "w-[12%]",
+      renderCell: (u) => (
+        <div className="flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedUser(u)}
+            className="h-7 px-2.5 text-xs text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-lg gap-1 cursor-pointer font-semibold"
+          >
+            <Eye size={13} />
+            <span>Detail / Kelola</span>
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -252,113 +348,13 @@ export default function AdminUsersPage() {
       </div>
 
       {/* 3. Users Table */}
-      <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="py-3.5 px-4">Pengguna</th>
-                  <th className="py-3.5 px-4">Peran Akun</th>
-                  <th className="py-3.5 px-4">Nomor WhatsApp</th>
-                  <th className="py-3.5 px-4">Bergabung</th>
-                  <th className="py-3.5 px-4">Status Akun</th>
-                  <th className="py-3.5 px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-400">
-                      <div className="flex items-center justify-center gap-2">
-                        <RefreshCw size={16} className="animate-spin text-teal-600" />
-                        <span>Memuat data pengguna dari database...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : users.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-400 space-y-1">
-                      <Users size={28} className="mx-auto opacity-40 text-slate-400 mb-2" />
-                      <p className="font-semibold text-slate-700 dark:text-slate-300">
-                        Tidak ada pengguna yang sesuai
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        Coba sesuaikan kata kunci pencarian atau filter status dan peran akun.
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((u) => {
-                    const statusCfg = statusBadgeConfig[u.status] || {
-                      label: u.status,
-                      className: "bg-slate-100 text-slate-700 border-slate-200",
-                    };
-                    const roleCfg = roleBadgeConfig[u.role] || {
-                      label: u.role,
-                      className: "bg-slate-100 text-slate-700 border-slate-200",
-                    };
-
-                    return (
-                      <tr
-                        key={u.id}
-                        className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
-                      >
-                        <td className="py-3.5 px-4">
-                          <p className="font-bold font-heading text-slate-900 dark:text-white text-xs sm:text-sm">
-                            {u.fullName || u.email.split("@")[0]}
-                          </p>
-                          <p className="text-[11px] text-slate-400 font-nunito">{u.email}</p>
-                        </td>
-
-                        <td className="py-3.5 px-4">
-                          <span
-                            className={`inline-block font-semibold px-2.5 py-0.5 rounded-lg border text-[11px] ${roleCfg.className}`}
-                          >
-                            {roleCfg.label}
-                          </span>
-                        </td>
-
-                        <td className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">
-                          {u.no_wa ? (
-                            <span>{u.no_wa}</span>
-                          ) : (
-                            <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
-                              Tidak ada
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-nunito">
-                          {formatDate(u.created_at)}
-                        </td>
-
-                        <td className="py-3.5 px-4">
-                          <Badge className={`text-[10px] border shadow-none ${statusCfg.className}`}>
-                            {statusCfg.label}
-                          </Badge>
-                        </td>
-
-                        <td className="py-3.5 px-4 text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedUser(u)}
-                            className="h-7 px-2.5 text-xs text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-lg gap-1 cursor-pointer font-semibold"
-                          >
-                            <Eye size={13} />
-                            <span>Detail / Kelola</span>
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <Tables
+        columns={columns}
+        data={users}
+        isLoading={loading}
+        emptyTitle="Tidak ada pengguna yang sesuai"
+        emptyDescription="Coba sesuaikan kata kunci pencarian atau filter status dan peran akun."
+      />
 
       {/* 4. Modals */}
       <UserDetailModal

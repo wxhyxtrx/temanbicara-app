@@ -63,6 +63,7 @@ export async function GET(req: Request) {
           'psikolog_profiles(nama_lengkap_gelar, verified_at), admin_profiles(nama_lengkap, level)',
         { count: 'exact' }
       )
+      .neq('id', session.user.id)
       .order('created_at', { ascending: false })
       .range(from, to);
     if (role) query = query.eq('role', role);

@@ -1,3 +1,4 @@
+import { handleUnauthorized } from '@/lib/auth/unauthorized-handler';
 import {
   AdminUserQuery,
   AdminUserListResponse,
@@ -16,6 +17,9 @@ import {
 async function handleResponse<T>(res: Response): Promise<T> {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 401 || data.error === 'INVALID_TOKEN' || data.error === 'UNAUTHENTICATED') {
+      handleUnauthorized(data.message || 'Sesi tidak valid atau kedaluwarsa');
+    }
     const errorMsg = data.message || data.error || 'Terjadi kesalahan pada server';
     throw new Error(errorMsg);
   }

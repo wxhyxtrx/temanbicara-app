@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useUserStore } from "@/store/user-store";
 import { useTransactionStore, TransactionRecord } from "@/store/transaction-store";
 import { InvoiceModal } from "@/components/views/top-up/invoice-modal";
+import { Tables, Column } from "@/components/shared/atoms/Table";
 import {
   Coins,
   ArrowDownLeft,
@@ -94,6 +95,96 @@ export default function PatientTransactionHistoryPage() {
     setSelectedTx(tx);
     setIsInvoiceOpen(true);
   };
+
+  const columns: Column<TransactionRecord>[] = [
+    {
+      label: "Tanggal & Invoice",
+      className: "w-[22%]",
+      renderCell: (tx) => (
+        <div>
+          <p className="font-semibold text-slate-900 dark:text-white">{tx.date}</p>
+          <span className="text-[10px] font-mono text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 px-1.5 py-0.5 rounded border border-teal-200/80 dark:border-teal-800">
+            {tx.invoiceNumber}
+          </span>
+        </div>
+      ),
+    },
+    {
+      label: "Deskripsi Mutasi",
+      className: "w-[26%]",
+      renderCell: (tx) => (
+        <div>
+          <p className="font-bold text-slate-900 dark:text-white font-heading">{tx.title}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito">{tx.targetParty}</p>
+        </div>
+      ),
+    },
+    {
+      label: "Kategori / Kanal",
+      className: "w-[18%]",
+      renderCell: (tx) => (
+        <div>
+          <span className="inline-block font-semibold text-slate-700 dark:text-slate-300">
+            {tx.category}
+          </span>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">{tx.paymentMethod}</p>
+        </div>
+      ),
+    },
+    {
+      label: "Perubahan Koin",
+      align: "right",
+      className: "w-[16%]",
+      renderCell: (tx) => {
+        const isPlus = tx.coinChange > 0;
+        return (
+          <div className="text-right">
+            <span
+              className={`font-mono font-bold text-sm ${
+                isPlus ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"
+              }`}
+            >
+              {isPlus ? `+${tx.coinChange}` : tx.coinChange} Koin
+            </span>
+            {tx.amountRupiah && (
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">
+                Rp {tx.amountRupiah.toLocaleString("id-ID")}
+              </p>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      label: "Sisa Saldo",
+      align: "right",
+      className: "w-[10%]",
+      renderCell: (tx) => (
+        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+          {tx.coinBalanceAfter} Koin
+        </span>
+      ),
+    },
+    {
+      label: "Aksi",
+      align: "center",
+      className: "w-[8%]",
+      renderCell: (tx) => (
+        <div className="flex justify-center">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleOpenInvoice(tx)}
+            className="h-8 text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 px-2.5 gap-1 font-semibold cursor-pointer"
+            title="Buka Kuitansi Resmi"
+          >
+            <FileText size={13} className="text-teal-600 dark:text-teal-400" />
+            <span>Kuitansi</span>
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -311,92 +402,13 @@ export default function PatientTransactionHistoryPage() {
           </div>
 
           {/* B. DESKTOP VIEW: High-Res Mutation Table */}
-          <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200/90 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 select-none">
-                  <th className="py-3 px-4">Tanggal & Invoice</th>
-                  <th className="py-3 px-4">Deskripsi Mutasi</th>
-                  <th className="py-3 px-4">Kategori / Kanal</th>
-                  <th className="py-3 px-4 text-right">Perubahan Koin</th>
-                  <th className="py-3 px-4 text-right">Sisa Saldo</th>
-                  <th className="py-3 px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {filteredList.length > 0 ? (
-                  filteredList.map((tx) => {
-                    const isPlus = tx.coinChange > 0;
-                    return (
-                      <tr key={tx.id} className="hover:bg-teal-50/30 dark:hover:bg-teal-950/20 transition-colors">
-                        {/* 1. Date & Invoice */}
-                        <td className="py-3.5 px-4 font-nunito">
-                          <p className="font-semibold text-slate-900 dark:text-white">{tx.date}</p>
-                          <span className="text-[10px] font-mono text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 px-1.5 py-0.5 rounded border border-teal-200/80 dark:border-teal-800">
-                            {tx.invoiceNumber}
-                          </span>
-                        </td>
-
-                        {/* 2. Description */}
-                        <td className="py-3.5 px-4">
-                          <p className="font-bold text-slate-900 dark:text-white font-heading">{tx.title}</p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito">{tx.targetParty}</p>
-                        </td>
-
-                        {/* 3. Category & Method */}
-                        <td className="py-3.5 px-4">
-                          <span className="inline-block font-semibold text-slate-700 dark:text-slate-300">
-                            {tx.category}
-                          </span>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">{tx.paymentMethod}</p>
-                        </td>
-
-                        {/* 4. Coin Change */}
-                        <td className="py-3.5 px-4 text-right">
-                          <span
-                            className={`font-mono font-bold text-sm ${
-                              isPlus ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"
-                            }`}
-                          >
-                            {isPlus ? `+${tx.coinChange}` : tx.coinChange} Koin
-                          </span>
-                          {tx.amountRupiah && (
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">
-                              Rp {tx.amountRupiah.toLocaleString("id-ID")}
-                            </p>
-                          )}
-                        </td>
-
-                        {/* 5. Balance After */}
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
-                          {tx.coinBalanceAfter} Koin
-                        </td>
-
-                        {/* 6. Invoice Button */}
-                        <td className="py-3.5 px-4 text-center">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenInvoice(tx)}
-                            className="h-8 text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 px-2.5 gap-1 font-semibold cursor-pointer"
-                            title="Buka Kuitansi Resmi"
-                          >
-                            <FileText size={13} className="text-teal-600 dark:text-teal-400" />
-                            <span>Kuitansi</span>
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="text-center py-10 text-slate-400 dark:text-slate-500">
-                      Tidak ada mutasi koin yang sesuai dengan filter pencarian.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="hidden md:block">
+            <Tables
+              columns={columns}
+              data={filteredList}
+              emptyTitle="Tidak ada mutasi koin"
+              emptyDescription="Tidak ada mutasi koin yang sesuai dengan filter pencarian."
+            />
           </div>
         </CardContent>
       </Card>

@@ -26,6 +26,7 @@ import {
 import { usePayoutStore, PayoutRecord } from "@/store/payout-store";
 import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
+import { Tables, Column } from "@/components/shared/atoms/Table";
 
 const payoutChannels = [
   { id: "bca", name: "Bank Central Asia (BCA)", type: "bank", icon: Building2 },
@@ -170,6 +171,129 @@ export default function CounselorEarningsPage() {
       setTimeout(() => setPayoutSuccessMsg(false), 4000);
     }, 450);
   };
+
+  const payoutColumns: Column<PayoutRecord>[] = [
+    {
+      label: "Tanggal & Saluran",
+      className: "w-[34%]",
+      renderCell: (p) => (
+        <div>
+          <p className="font-bold text-slate-900 dark:text-white">{p.date}</p>
+          <span className="text-[11px] text-slate-500 block truncate max-w-[180px]">
+            {p.bankName} • {p.accountNo}
+          </span>
+          <span className="font-mono text-[10px] text-slate-400">{p.invoiceNo}</span>
+        </div>
+      ),
+    },
+    {
+      label: "Koin Ditukar",
+      className: "w-[20%]",
+      renderCell: (p) => (
+        <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
+          -{p.coinsDeducted} Koin
+        </span>
+      ),
+    },
+    {
+      label: "Nominal Rupiah",
+      className: "w-[24%]",
+      renderCell: (p) => (
+        <span className="font-semibold text-slate-900 dark:text-white font-mono">
+          Rp {p.amountRupiah.toLocaleString("id-ID")}
+        </span>
+      ),
+    },
+    {
+      label: "Status",
+      align: "right",
+      className: "w-[22%]",
+      renderCell: (p) => (
+        <div className="text-right">
+          <Badge
+            className={`text-[10px] ${
+              p.status === "Berhasil"
+                ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200"
+                : p.status === "Diproses"
+                ? "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200"
+                : "bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200"
+            }`}
+          >
+            {p.status}
+          </Badge>
+          {p.notes && (
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 max-w-[160px] ml-auto truncate" title={p.notes}>
+              {p.notes}
+            </p>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  const sessionColumns: Column<SessionEarningItem>[] = [
+    {
+      label: "Tanggal & Sesi",
+      className: "w-[22%]",
+      renderCell: (item) => (
+        <div>
+          <p className="font-bold text-slate-900 dark:text-white">{item.date}</p>
+          <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1 mt-0.5">
+            <CheckCircle2 size={11} /> {item.status}
+          </span>
+        </div>
+      ),
+    },
+    {
+      label: "Nama Klien & Topik",
+      className: "w-[26%]",
+      renderCell: (item) => (
+        <div>
+          <p className="font-bold text-slate-800 dark:text-slate-200">{item.clientName}</p>
+          <p className="text-[11px] text-slate-500 line-clamp-1">{item.topic}</p>
+        </div>
+      ),
+    },
+    {
+      label: "Moda Layanan",
+      className: "w-[16%]",
+      renderCell: (item) => (
+        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+          {item.serviceType}
+        </span>
+      ),
+    },
+    {
+      label: "Tarif Pasien",
+      align: "right",
+      className: "w-[12%]",
+      renderCell: (item) => (
+        <span className="font-mono text-slate-700 dark:text-slate-300">
+          {item.grossCoins} Koin
+        </span>
+      ),
+    },
+    {
+      label: "Bagi Platform (10%)",
+      align: "right",
+      className: "w-[12%]",
+      renderCell: (item) => (
+        <span className="font-mono text-slate-400">
+          -{item.platformCutCoins} Koin
+        </span>
+      ),
+    },
+    {
+      label: "Honor Bersih (90%)",
+      align: "right",
+      className: "w-[12%]",
+      renderCell: (item) => (
+        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+          +{item.netCoins} Koin (Rp {(item.netCoins * 10000).toLocaleString("id-ID")})
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -405,56 +529,13 @@ export default function CounselorEarningsPage() {
               </Badge>
             </CardHeader>
 
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
-                      <th className="p-3 pl-4">Tanggal & Saluran</th>
-                      <th className="p-3">Koin Ditukar</th>
-                      <th className="p-3">Nominal Rupiah</th>
-                      <th className="p-3 pr-4 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {payouts.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                        <td className="p-3 pl-4">
-                          <p className="font-bold text-slate-900 dark:text-white">{p.date}</p>
-                          <span className="text-[11px] text-slate-500 block truncate max-w-[180px]">
-                            {p.bankName} • {p.accountNo}
-                          </span>
-                          <span className="font-mono text-[10px] text-slate-400">{p.invoiceNo}</span>
-                        </td>
-                        <td className="p-3 font-mono font-semibold text-rose-600 dark:text-rose-400">
-                          -{p.coinsDeducted} Koin
-                        </td>
-                        <td className="p-3 font-semibold text-slate-900 dark:text-white font-mono">
-                          Rp {p.amountRupiah.toLocaleString("id-ID")}
-                        </td>
-                        <td className="p-3 pr-4 text-right">
-                          <Badge
-                            className={`text-[10px] ${
-                              p.status === "Berhasil"
-                                ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200"
-                                : p.status === "Diproses"
-                                ? "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200"
-                                : "bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200"
-                            }`}
-                          >
-                            {p.status}
-                          </Badge>
-                          {p.notes && (
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 max-w-[160px] ml-auto truncate" title={p.notes}>
-                              {p.notes}
-                            </p>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <CardContent className="p-0 sm:p-2">
+              <Tables
+                columns={payoutColumns}
+                data={payouts}
+                emptyTitle="Tidak ada riwayat mutasi penarikan"
+                emptyDescription="Belum ada transaksi pencairan honor yang diajukan."
+              />
             </CardContent>
           </Card>
         </div>
@@ -479,51 +560,13 @@ export default function CounselorEarningsPage() {
           </div>
         </CardHeader>
 
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="p-3 pl-5">Tanggal & Sesi</th>
-                  <th className="p-3">Nama Klien & Topik</th>
-                  <th className="p-3">Moda Layanan</th>
-                  <th className="p-3 text-right">Tarif Pasien</th>
-                  <th className="p-3 text-right">Bagi Platfom (10%)</th>
-                  <th className="p-3 pr-5 text-right">Honor Bersih (90%)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {mockSessionEarnings.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                    <td className="p-3 pl-5">
-                      <p className="font-bold text-slate-900 dark:text-white">{item.date}</p>
-                      <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1 mt-0.5">
-                        <CheckCircle2 size={11} /> {item.status}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <p className="font-bold text-slate-800 dark:text-slate-200">{item.clientName}</p>
-                      <p className="text-[11px] text-slate-500 line-clamp-1">{item.topic}</p>
-                    </td>
-                    <td className="p-3">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                        {item.serviceType}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                      {item.grossCoins} Koin
-                    </td>
-                    <td className="p-3 text-right font-mono text-slate-400">
-                      -{item.platformCutCoins} Koin
-                    </td>
-                    <td className="p-3 pr-5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      +{item.netCoins} Koin (Rp {(item.netCoins * 10000).toLocaleString("id-ID")})
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <CardContent className="p-0 sm:p-2">
+          <Tables
+            columns={sessionColumns}
+            data={mockSessionEarnings}
+            emptyTitle="Tidak ada riwayat honor sesi"
+            emptyDescription="Belum ada honor konsultasi yang tercatat."
+          />
         </CardContent>
       </Card>
     </div>

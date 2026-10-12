@@ -6,7 +6,13 @@ import TablePagination from "@/components/shared/atoms/Table/TablePagination";
 import Tables from "@/components/shared/atoms/Table/Tables";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Calendar as CalendarIcon,
@@ -41,7 +47,9 @@ function PatientScheduleContent() {
 
   // Modal states
   const [isBookingOpen, setIsBookingOpen] = useState<boolean>(false);
-  const [selectedSession, setSelectedSession] = useState<ScheduleItem | null>(null);
+  const [selectedSession, setSelectedSession] = useState<ScheduleItem | null>(
+    null,
+  );
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
 
   useEffect(() => {
@@ -56,7 +64,8 @@ function PatientScheduleContent() {
   // Filter Data
   const filteredData = useMemo(() => {
     return scheduleList.filter((item) => {
-      const matchStatus = statusFilter === "all" || item.status === statusFilter;
+      const matchStatus =
+        statusFilter === "all" || item.status === statusFilter;
       const q = searchQuery.toLowerCase();
       const matchQuery =
         !q ||
@@ -92,19 +101,28 @@ function PatientScheduleContent() {
       );
     } else if (status === "menunggu") {
       return (
-        <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800 text-xs font-semibold py-0.5 px-2.5">
+        <Badge
+          variant="outline"
+          className="bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800 text-xs font-semibold py-0.5 px-2.5"
+        >
           Menunggu Konfirmasi
         </Badge>
       );
     } else if (status === "dibatalkan") {
       return (
-        <Badge variant="outline" className="bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900 text-xs font-semibold py-0.5 px-2.5">
+        <Badge
+          variant="outline"
+          className="bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900 text-xs font-semibold py-0.5 px-2.5"
+        >
           Dibatalkan
         </Badge>
       );
     } else {
       return (
-        <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 text-xs font-semibold py-0.5 px-2.5">
+        <Badge
+          variant="outline"
+          className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 text-xs font-semibold py-0.5 px-2.5"
+        >
           Selesai
         </Badge>
       );
@@ -129,10 +147,16 @@ function PatientScheduleContent() {
               <p className="font-bold text-slate-900 dark:text-white text-sm font-heading group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors">
                 {row.consultant}
               </p>
-              {row.initials !== "TB" && <MdVerified className="text-sky-500 text-xs shrink-0" />}
+              {row.initials !== "TB" && (
+                <MdVerified className="text-sky-500 text-xs shrink-0" />
+              )}
             </div>
-            <p className="text-xs text-teal-700 dark:text-teal-400 font-medium">{row.title}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">{row.topic}</p>
+            <p className="text-xs text-teal-700 dark:text-teal-400 font-medium">
+              {row.title}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+              {row.topic}
+            </p>
           </div>
         </div>
       ),
@@ -143,12 +167,18 @@ function PatientScheduleContent() {
       renderCell: (row: ScheduleItem) => (
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 font-medium text-xs text-slate-800 dark:text-slate-200">
-            <CalendarIcon size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
+            <CalendarIcon
+              size={13}
+              className="text-teal-600 dark:text-teal-400 shrink-0"
+            />
             <span>{row.date}</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-nunito">
             <span className="flex items-center gap-1">
-              <Clock size={12} className="text-teal-600 dark:text-teal-400 shrink-0" />
+              <Clock
+                size={12}
+                className="text-teal-600 dark:text-teal-400 shrink-0"
+              />
               {row.time}
             </span>
             <span className="text-[10px] font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 border border-teal-200/80 dark:border-teal-800 px-2 py-0.5 rounded-md">
@@ -167,7 +197,7 @@ function PatientScheduleContent() {
       label: "Aksi",
       className: "w-[20%]",
       renderCell: (row: ScheduleItem) => (
-        <div className="flex items-center gap-2 justify-end">
+        <div className="flex items-center gap-2 justify-start">
           {row.status === "terjadwal" ? (
             <>
               <Link href="/patient/room">
@@ -241,7 +271,8 @@ function PatientScheduleContent() {
             Jadwal Konseling Saya
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Kelola sesi konsultasi privat aktif, janji temu mendatang, dan catatan pemulihanmu
+            Kelola sesi konsultasi privat aktif, janji temu mendatang, dan
+            catatan pemulihanmu
           </p>
         </div>
 
@@ -249,9 +280,17 @@ function PatientScheduleContent() {
           <Button
             variant="outline"
             className="text-xs border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-3.5 py-2 h-9 font-semibold gap-1.5 cursor-pointer"
-            onClick={() => notify.success("Sinkronisasi Kalender Berhasil", "Jadwal Anda berhasil disinkronkan dengan Google Calendar & Apple Calendar.")}
+            onClick={() =>
+              notify.success(
+                "Sinkronisasi Kalender Berhasil",
+                "Jadwal Anda berhasil disinkronkan dengan Google Calendar & Apple Calendar.",
+              )
+            }
           >
-            <CalendarCheck size={15} className="text-teal-600 dark:text-teal-400" />
+            <CalendarCheck
+              size={15}
+              className="text-teal-600 dark:text-teal-400"
+            />
             Sinkronkan Kalender
           </Button>
 
@@ -280,7 +319,10 @@ function PatientScheduleContent() {
 
             {/* Search Input */}
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={15} />
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
+                size={15}
+              />
               <Input
                 placeholder="Cari psikolog / topik..."
                 className="pl-9 h-9 text-xs bg-slate-50/60 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200/90 dark:border-slate-700 rounded-xl focus-visible:ring-teal-600"
@@ -294,10 +336,18 @@ function PatientScheduleContent() {
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
             {[
               { key: "all", label: "Semua", count: counts.all },
-              { key: "terjadwal", label: "Terkonfirmasi", count: counts.terjadwal },
+              {
+                key: "terjadwal",
+                label: "Terkonfirmasi",
+                count: counts.terjadwal,
+              },
               { key: "menunggu", label: "Menunggu", count: counts.menunggu },
               { key: "selesai", label: "Selesai", count: counts.selesai },
-              { key: "dibatalkan", label: "Dibatalkan", count: counts.dibatalkan },
+              {
+                key: "dibatalkan",
+                label: "Dibatalkan",
+                count: counts.dibatalkan,
+              },
             ].map((tab) => {
               const isActive = statusFilter === tab.key;
               return (
@@ -311,7 +361,8 @@ function PatientScheduleContent() {
                       : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700"
                   }`}
                 >
-                  {tab.label} <span className="opacity-80 text-[11px]">({tab.count})</span>
+                  {tab.label}{" "}
+                  <span className="opacity-80 text-[11px]">({tab.count})</span>
                 </button>
               );
             })}
@@ -341,26 +392,42 @@ function PatientScheduleContent() {
                           <p className="font-bold text-slate-900 dark:text-white text-sm font-heading truncate">
                             {item.consultant}
                           </p>
-                          {item.initials !== "TB" && <MdVerified className="text-sky-500 text-xs shrink-0" />}
+                          {item.initials !== "TB" && (
+                            <MdVerified className="text-sky-500 text-xs shrink-0" />
+                          )}
                         </div>
-                        <p className="text-[11px] text-teal-700 dark:text-teal-400 font-medium truncate">{item.title}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">{item.topic}</p>
+                        <p className="text-[11px] text-teal-700 dark:text-teal-400 font-medium truncate">
+                          {item.title}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                          {item.topic}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="shrink-0">{renderStatusBadge(item.status)}</div>
+                    <div className="shrink-0">
+                      {renderStatusBadge(item.status)}
+                    </div>
                   </div>
 
                   {/* Middle: Schedule & Medium Strip */}
                   <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
                     <div className="flex flex-wrap items-center gap-2 font-medium">
                       <span className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
-                        <CalendarIcon size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
+                        <CalendarIcon
+                          size={13}
+                          className="text-teal-600 dark:text-teal-400 shrink-0"
+                        />
                         {item.date}
                       </span>
-                      <span className="text-slate-300 dark:text-slate-600">•</span>
+                      <span className="text-slate-300 dark:text-slate-600">
+                        •
+                      </span>
                       <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                        <Clock size={12} className="text-teal-600 dark:text-teal-400 shrink-0" />
+                        <Clock
+                          size={12}
+                          className="text-teal-600 dark:text-teal-400 shrink-0"
+                        />
                         {item.time}
                       </span>
                     </div>
@@ -399,7 +466,9 @@ function PatientScheduleContent() {
                         onClick={() => openSessionDetail(item)}
                         className="w-full text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg py-2 font-semibold"
                       >
-                        {item.status === "selesai" ? "Lihat Catatan Konseling" : "Detail Janji Temu"}
+                        {item.status === "selesai"
+                          ? "Lihat Catatan Konseling"
+                          : "Detail Janji Temu"}
                       </Button>
                     )}
                   </div>
@@ -419,6 +488,9 @@ function PatientScheduleContent() {
               data={filteredData}
               currentPage={currentPage}
               itemsPerPage={itemsPerPage}
+              autoPaginate={true}
+              emptyTitle="Tidak ada data jadwal yang cocok"
+              emptyDescription="Coba ubah filter status atau kata kunci pencarian Anda."
             />
           </div>
 
@@ -456,7 +528,13 @@ function PatientScheduleContent() {
 
 export default function PatientSchedulePage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Memuat jadwal...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-8 text-center text-muted-foreground">
+          Memuat jadwal...
+        </div>
+      }
+    >
       <PatientScheduleContent />
     </Suspense>
   );

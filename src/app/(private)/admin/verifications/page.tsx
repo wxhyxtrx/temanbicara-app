@@ -22,6 +22,7 @@ import { MdVerified } from "react-icons/md";
 
 import { useVerificationStore, VerificationItem } from "@/store/verification-store";
 import { notify } from "@/lib/toast";
+import { Tables, Column } from "@/components/shared/atoms/Table";
 
 export default function AdminVerificationsPage() {
   const items = useVerificationStore((state) => state.verifications);
@@ -52,6 +53,102 @@ export default function AdminVerificationsPage() {
       item.credentialNumber.toLowerCase().includes(search.toLowerCase());
     return matchFilter && matchSearch;
   });
+
+  const columns: Column<VerificationItem>[] = [
+    {
+      label: "Praktisi / Pemohon",
+      className: "w-[24%]",
+      renderCell: (item) => (
+        <div>
+          <p className="font-bold font-heading text-slate-900 dark:text-white text-xs sm:text-sm">
+            {item.applicantName}
+          </p>
+          <span className="text-[10px] text-slate-400 font-nunito">Diajukan: {item.submissionDate}</span>
+        </div>
+      ),
+    },
+    {
+      label: "Peran",
+      className: "w-[14%]",
+      renderCell: (item) => (
+        <span className="font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 px-2 py-0.5 rounded border border-teal-200 text-[11px]">
+          {item.roleType}
+        </span>
+      ),
+    },
+    {
+      label: "No. Lisensi / Institusi",
+      className: "w-[22%]",
+      renderCell: (item) => (
+        <div>
+          <p className="font-mono font-semibold text-slate-800 dark:text-slate-200 text-xs">
+            {item.credentialNumber}
+          </p>
+          <p className="text-[11px] text-slate-500 font-nunito">{item.institution}</p>
+        </div>
+      ),
+    },
+    {
+      label: "Dokumen Pendukung",
+      className: "w-[18%]",
+      renderCell: (item) => (
+        <span className="inline-flex items-center gap-1 text-[11px] text-slate-700 dark:text-slate-300 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+          <FileCheck2 size={13} className="text-teal-600" />
+          {item.documentName}
+        </span>
+      ),
+    },
+    {
+      label: "Status",
+      className: "w-[10%]",
+      renderCell: (item) => (
+        <Badge
+          className={`text-[10px] ${
+            item.status === "approved"
+              ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200"
+              : item.status === "rejected"
+              ? "bg-rose-50 text-rose-800 border-rose-200"
+              : "bg-amber-50 text-amber-800 border-amber-200"
+          }`}
+        >
+          {item.status === "approved"
+            ? "Disetujui"
+            : item.status === "rejected"
+            ? "Ditolak"
+            : "Menunggu"}
+        </Badge>
+      ),
+    },
+    {
+      label: "Aksi Tinjauan",
+      align: "center",
+      className: "w-[12%]",
+      renderCell: (item) =>
+        item.status === "pending" ? (
+          <div className="flex items-center justify-center gap-1.5">
+            <Button
+              size="sm"
+              onClick={() => handleAction(item.id, "approved", item.applicantName)}
+              className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-2.5 font-semibold gap-1 cursor-pointer"
+            >
+              <CheckCircle2 size={13} />
+              Setujui
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleAction(item.id, "rejected", item.applicantName)}
+              className="h-7 text-xs border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg px-2.5 font-semibold gap-1 cursor-pointer"
+            >
+              <XCircle size={13} />
+              Tolak
+            </Button>
+          </div>
+        ) : (
+          <span className="text-[11px] text-slate-400 font-nunito flex justify-center">Tindakan Selesai</span>
+        ),
+    },
+  ];
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -107,101 +204,13 @@ export default function AdminVerificationsPage() {
         </div>
       </div>
 
-      {/* 3. Verification Items Table / Cards */}
-      <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
-        <CardContent className="p-0 sm:p-2">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="p-3.5 pl-4">Praktisi / Pemohon</th>
-                  <th className="p-3.5">Peran</th>
-                  <th className="p-3.5">No. Lisensi / Institusi</th>
-                  <th className="p-3.5">Dokumen Pendukung</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 pr-4 text-center">Aksi Tinjauan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                    <td className="p-3.5 pl-4">
-                      <p className="font-bold font-heading text-slate-900 dark:text-white text-xs sm:text-sm">
-                        {item.applicantName}
-                      </p>
-                      <span className="text-[10px] text-slate-400 font-nunito">Diajukan: {item.submissionDate}</span>
-                    </td>
-
-                    <td className="p-3.5">
-                      <span className="font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 px-2 py-0.5 rounded border border-teal-200 text-[11px]">
-                        {item.roleType}
-                      </span>
-                    </td>
-
-                    <td className="p-3.5">
-                      <p className="font-mono font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                        {item.credentialNumber}
-                      </p>
-                      <p className="text-[11px] text-slate-500 font-nunito">{item.institution}</p>
-                    </td>
-
-                    <td className="p-3.5">
-                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-700 dark:text-slate-300 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
-                        <FileCheck2 size={13} className="text-teal-600" />
-                        {item.documentName}
-                      </span>
-                    </td>
-
-                    <td className="p-3.5">
-                      <Badge
-                        className={`text-[10px] ${
-                          item.status === "approved"
-                            ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200"
-                            : item.status === "rejected"
-                            ? "bg-rose-50 text-rose-800 border-rose-200"
-                            : "bg-amber-50 text-amber-800 border-amber-200"
-                        }`}
-                      >
-                        {item.status === "approved"
-                          ? "Disetujui"
-                          : item.status === "rejected"
-                          ? "Ditolak"
-                          : "Menunggu"}
-                      </Badge>
-                    </td>
-
-                    <td className="p-3.5 pr-4 text-center">
-                      {item.status === "pending" ? (
-                        <div className="flex items-center justify-center gap-1.5">
-                          <Button
-                            size="sm"
-                            onClick={() => handleAction(item.id, "approved", item.applicantName)}
-                            className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-2.5 font-semibold gap-1 cursor-pointer"
-                          >
-                            <CheckCircle2 size={13} />
-                            Setujui
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleAction(item.id, "rejected", item.applicantName)}
-                            className="h-7 text-xs border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg px-2.5 font-semibold gap-1 cursor-pointer"
-                          >
-                            <XCircle size={13} />
-                            Tolak
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-slate-400 font-nunito">Tindakan Selesai</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* 3. Verification Items Table */}
+      <Tables
+        columns={columns}
+        data={filtered}
+        emptyTitle="Tidak ada permohonan verifikasi"
+        emptyDescription="Tidak ada data verifikasi yang cocok dengan filter saat ini."
+      />
     </div>
   );
 }
