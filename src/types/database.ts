@@ -27,6 +27,9 @@ export interface UserEntity {
 export interface PasienProfileEntity {
   user_id: string;
   nama_lengkap: string;
+  kontak_darurat_nama?: string | null;
+  kontak_darurat_wa?: string | null;
+  is_anonim_default?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +41,10 @@ export interface RelawanProfileEntity {
   dokumen_cv_url: string;
   alasan_bergabung: string;
   total_sesi: number;
+  alias_name?: string | null;
+  is_available?: boolean;
+  topik_keahlian?: string[];
+  rating_rata_rata?: number | null;
   created_at: string;
   updated_at: string;
 }
