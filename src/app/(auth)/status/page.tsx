@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
+import { authService } from "@/services/auth.service";
 import {
   Clock,
   Mail,
@@ -72,10 +73,15 @@ function StatusContent() {
     }
   }, [searchParams, user]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // Ignore
+    }
     logout();
     notify.info("Keluar Akun", "Anda telah keluar dari akun.");
-    router.replace("/login");
+    window.location.href = "/login";
   };
 
   const handleResendEmail = () => {

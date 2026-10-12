@@ -364,9 +364,9 @@ export const useUserStore = create<UserState>()(
         if (typeof window !== "undefined") {
           localStorage.removeItem("tb_access_token");
           localStorage.removeItem("tb_user_store_v4");
-          document.cookie = "tb_access_token=; path=/; max-age=0";
-          document.cookie = "tb_user_role=; path=/; max-age=0";
-          document.cookie = "tb_user_status=; path=/; max-age=0";
+          document.cookie = "tb_access_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          document.cookie = "tb_user_role=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          document.cookie = "tb_user_status=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         }
         set({
           isAuthenticated: false,

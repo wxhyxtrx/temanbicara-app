@@ -5,6 +5,7 @@ import {
   RegisterRelawanDTO,
 } from '@/lib/validations/auth';
 import { AccountStatus, UserRole } from '@/types/database';
+import { supabasePublic } from '@/lib/supabase/client';
 
 export interface UserAuthSession {
   id: string;
@@ -139,6 +140,21 @@ export const authService = {
     });
     if (!res.ok) {
       throw new Error('Gagal mengunggah berkas ke penyimpanan.');
+    }
+  },
+
+  async logout(): Promise<void> {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore network errors on logout
+    }
+    try {
+      if (typeof window !== 'undefined') {
+        await supabasePublic.auth.signOut();
+      }
+    } catch {
+      // Ignore supabase client signOut error if already logged out
     }
   },
 };
