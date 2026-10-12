@@ -35,9 +35,11 @@ export default function ListenerBerandaPage() {
 
   const listenerData = {
     listenerBadge: user.listenerData?.listenerBadge || "Pendengar Empatik Terlatih",
-    sessionsCompleted: user.listenerData?.sessionsCompleted || 89,
-    rating: user.listenerData?.rating || 4.9,
+    sessionsCompleted: user.listenerData?.sessionsCompleted ?? 0,
+    rating: user.listenerData?.rating ?? 5.0,
   };
+
+  const displayName = user.fullName || user.alias || "Sahabat Pendengar";
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -54,7 +56,7 @@ export default function ListenerBerandaPage() {
             </div>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white tracking-tight leading-snug">
-              Halo, {user.fullName || "Dewi Lestari"}
+              Halo, {displayName}
             </h1>
 
             <p className="text-sm sm:text-base text-teal-100/80 leading-relaxed max-w-xl">

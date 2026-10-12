@@ -1,3 +1,5 @@
+import type { MeProfile } from "@/types/user-profile";
+
 export type UserRole = "patient" | "counselor" | "peer_listener" | "admin";
 
 export interface PatientData {
@@ -62,6 +64,7 @@ export interface UserProfile {
   counselorData?: CounselorData;
   listenerData?: ListenerData;
   adminData?: AdminData;
+  rawProfile?: MeProfile | null;
 }
 
 export const mockUsers: Record<UserRole, UserProfile> = {

@@ -49,31 +49,29 @@ export default function PatientSettingsPage() {
 
   React.useEffect(() => {
     setMounted(true);
-    const initialName = user.fullName && !["Matthew Johnson", "Matthew"].includes(user.fullName) ? user.fullName : "Wahyu Tricahyo";
-    const initialAlias = user.alias && !["Matt", "Matthew", "Pasien"].includes(user.alias) ? user.alias : (initialName.trim().split(" ")[0] || "Wahyu");
+    const initialName = user.fullName || (user.email ? user.email.split("@")[0] : "");
+    const initialAlias = user.alias || (initialName ? initialName.trim().split(" ")[0] : "");
     setFullName(initialName);
     setAlias(initialAlias);
-    setEmail(user.email);
-    setPhone(user.phone);
-    setEmergencyContact(user.emergencyContact);
-    setMentalNotes(user.mentalNotes);
+    setEmail(user.email || "");
+    setPhone(user.phone || "");
+    setEmergencyContact(user.emergencyContact || "");
+    setMentalNotes(user.mentalNotes || "");
     setIsAnonymousDefault(user.isAnonymousDefault || false);
   }, [user]);
 
   const handleFullNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setFullName(val);
-    const firstName = val.trim().split(" ")[0] || "Wahyu";
-    if (!alias || ["Matt", "Matthew", "Pasien"].includes(alias) || alias === fullName.trim().split(" ")[0]) {
+    const firstName = val.trim().split(" ")[0] || "";
+    if (!alias || alias === fullName.trim().split(" ")[0]) {
       setAlias(firstName);
     }
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const resolvedAlias = (alias && !["Matt", "Matthew", "Pasien"].includes(alias.trim()))
-      ? alias.trim()
-      : (fullName.trim().split(" ")[0] || "Wahyu");
+    const resolvedAlias = alias.trim() || (fullName.trim().split(" ")[0] || "");
     updateProfile({
       fullName: fullName.trim(),
       alias: resolvedAlias,

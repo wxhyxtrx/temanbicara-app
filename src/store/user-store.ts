@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { mockUsers, UserProfile, UserRole } from "@/constant/mock-users";
+import type {
+  MeProfile,
+  PasienProfile,
+  PsikologProfile,
+  RelawanProfile,
+  AdminProfile,
+} from "@/types/user-profile";
 
 export type { UserProfile, UserRole } from "@/constant/mock-users";
 
@@ -38,8 +45,10 @@ export interface UserState {
       status: string;
       avatar_url: string | null;
       fullName?: string;
+      no_wa?: string | null;
     },
-    token?: string
+    token?: string,
+    profile?: MeProfile | null
   ) => void;
   syncSession: () => Promise<void>;
   logout: () => void;
@@ -264,7 +273,7 @@ export const useUserStore = create<UserState>()(
         return true;
       },
 
-      setAuthSession: (sessionUser, token) => {
+      setAuthSession: (sessionUser, token, profile) => {
         const roleMap: Record<string, UserRole> = {
           pasien: "patient",
           relawan: "peer_listener",
@@ -279,14 +288,93 @@ export const useUserStore = create<UserState>()(
         const baseProfile = profiles[mappedRole] || mockUsers[mappedRole] || mockUsers.patient;
 
         const displayName = sessionUser.fullName || sessionUser.email.split("@")[0];
+
+        let patientData = baseProfile.patientData;
+        let counselorData = baseProfile.counselorData;
+        let listenerData = baseProfile.listenerData;
+        let adminData = baseProfile.adminData;
+
+        let alias = sessionUser.fullName ? sessionUser.fullName.split(" ")[0] : displayName;
+        let phone = sessionUser.no_wa || baseProfile.phone || "";
+        let emergencyContact = baseProfile.emergencyContact || "";
+        let isAnonymousDefault = baseProfile.isAnonymousDefault || false;
+
+        if (profile) {
+          if (mappedRole === "patient") {
+            const p = profile as PasienProfile;
+            alias = p.nama_lengkap ? p.nama_lengkap.split(" ")[0] : alias;
+            emergencyContact = p.kontak_darurat_nama
+              ? `${p.kontak_darurat_nama}${p.kontak_darurat_wa ? `: ${p.kontak_darurat_wa}` : ""}`
+              : "";
+            isAnonymousDefault = Boolean(p.is_anonim_default);
+            patientData = {
+              patientId: p.user_id,
+              coins: baseProfile.coins || 0,
+              emergencyContact,
+              mentalNotes: baseProfile.mentalNotes || "",
+              isAnonymousDefault,
+            };
+          } else if (mappedRole === "counselor") {
+            const c = profile as PsikologProfile;
+            alias = c.nama_lengkap_gelar || displayName;
+            counselorData = {
+              licenseNumber: c.nomor_sipp_str || "",
+              sippkNumber: c.nomor_sipp_str || "",
+              specialty:
+                Array.isArray(c.spesialisasi) && c.spesialisasi.length > 0
+                  ? c.spesialisasi.join(", ")
+                  : "Psikologi Klinis",
+              specializations: c.spesialisasi || [],
+              title: c.nama_lengkap_gelar || displayName,
+              experienceYears: c.tahun_pengalaman || 0,
+              hourlyRateCoins: Number(c.tarif_sesi) || 0,
+              rating: 5.0,
+              totalConsultations: 0,
+              consultationMethods: ["chat", "voice"],
+              earningsCoins: Number(c.saldo) || 0,
+              isAvailable: true,
+            };
+          } else if (mappedRole === "peer_listener") {
+            const l = profile as RelawanProfile;
+            alias =
+              l.alias_name || (l.nama_lengkap ? l.nama_lengkap.split(" ")[0] : "Teman Pendengar");
+            listenerData = {
+              listenerBadge: "Pendengar Terlatih",
+              badgeLevel: "Relawan",
+              topicsHandled: l.topik_keahlian || [],
+              supportTopics: l.topik_keahlian || [],
+              sessionsCompleted: l.total_sesi || 0,
+              rating: l.rating_rata_rata != null ? Number(l.rating_rata_rata) : 5.0,
+              empathyScore: 95,
+              status: l.is_available ? "online" : "offline",
+              isOnline: Boolean(l.is_available),
+            };
+          } else if (mappedRole === "admin") {
+            const a = profile as AdminProfile;
+            adminData = {
+              department: a.level || "Operator",
+              permissions: ["all"],
+            };
+          }
+        }
+
         const updatedUser: UserProfile = {
           ...baseProfile,
           id: sessionUser.id,
           email: sessionUser.email,
-          fullName: sessionUser.fullName || baseProfile.fullName,
+          fullName: sessionUser.fullName || displayName,
+          alias,
+          phone,
           role: mappedRole,
           avatarInitials: generateInitials(displayName),
           avatarUrl: sessionUser.avatar_url || baseProfile.avatarUrl,
+          rawProfile: profile || null,
+          patientData,
+          counselorData,
+          listenerData,
+          adminData,
+          emergencyContact,
+          isAnonymousDefault,
         };
 
         set({
@@ -332,13 +420,13 @@ export const useUserStore = create<UserState>()(
           counselor: "counselor",
         };
 
-        // 1. Coba fetch sesi real-time dari backend
+        // 1. Fetch sesi real-time dari backend (/api/users/me)
         try {
-          const res = await fetch("/api/auth/me");
+          const res = await fetch("/api/users/me");
           if (res.ok) {
             const json = await res.json();
             if (json?.data?.user) {
-              get().setAuthSession(json.data.user, token);
+              get().setAuthSession(json.data.user, token, json.data.profile || null);
               return;
             }
           }

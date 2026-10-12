@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   recentConversations,
-  verifiedConsultants,
   Consultant,
   RecentConversationItem,
 } from "@/constant/beranda";
+import { userService } from "@/services/user.service";
+import type { PublicPsychologist } from "@/types/user-profile";
 import {
   Calendar,
   ChevronRight,
@@ -47,23 +48,70 @@ export default function PatientBerandaPage() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingConsultantId, setBookingConsultantId] = useState<number | undefined>(undefined);
 
+  // Dynamic Psychologists from API
+  const [psychologists, setPsychologists] = useState<PublicPsychologist[]>([]);
+  const [loadingPsychologists, setLoadingPsychologists] = useState<boolean>(true);
+
   useEffect(() => {
     setMounted(true);
+
+    async function loadPsychologists() {
+      try {
+        const res = await userService.getPsychologists({ limit: 4 });
+        if (res && res.success && Array.isArray(res.data)) {
+          setPsychologists(res.data);
+        }
+      } catch (err) {
+        console.error("Gagal memuat psikolog terverifikasi:", err);
+      } finally {
+        setLoadingPsychologists(false);
+      }
+    }
+
+    loadPsychologists();
   }, []);
+
+  const convertToConsultant = (p: PublicPsychologist): Consultant => {
+    const initials =
+      p.nama_lengkap_gelar
+        .replace(/(Dr\.|M\.Psi|Psikolog|,|\.)/g, "")
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase() || "")
+        .join("") || "PS";
+
+    return {
+      id: 1,
+      name: p.nama_lengkap_gelar,
+      title: `Psikolog Klinis (${p.tahun_pengalaman} Thn Pengalaman)`,
+      specialty: p.spesialisasi.join(", ") || "Konseling & Terapi Klinis",
+      licenseNumber: "SIPPK Terverifikasi",
+      experienceYears: p.tahun_pengalaman,
+      rating: 5.0,
+      reviews: 0,
+      initials,
+      available: true,
+      nextSlot: "Jadwal Tersedia",
+      almamater: "Magister Profesi Psikologi",
+      bio: `Psikolog klinis berlisensi dengan keahlian di bidang ${p.spesialisasi.join(", ") || "kesehatan mental"}.`,
+      approaches: ["CBT", "Mindfulness", "Solution-Focused Brief Therapy"],
+      handledTopics: p.spesialisasi,
+      hourlyRateCoins: Math.round(Number(p.tarif_sesi) / 10000) || 15,
+      consultationMethods: ["Chat Eksklusif", "Voice Call"],
+    };
+  };
 
   const activeSessions = mounted
     ? rawSchedules.filter((s) => s.status === "terjadwal" || s.status === "menunggu")
     : [];
 
   const getGreetingName = () => {
-    if (!mounted) return "Wahyu";
-    if (user.alias && !["Matthew", "Matt", "Pasien"].includes(user.alias)) {
-      return user.alias;
-    }
-    if (user.fullName && !["Matthew Johnson", "Matthew"].includes(user.fullName)) {
-      return user.fullName.trim().split(" ")[0];
-    }
-    return "Wahyu";
+    if (!mounted) return "";
+    if (user.alias) return user.alias;
+    if (user.fullName) return user.fullName.trim().split(" ")[0];
+    if (user.email) return user.email.split("@")[0];
+    return "Sahabat";
   };
   const displayName = getGreetingName();
 
@@ -409,68 +457,105 @@ export default function PatientBerandaPage() {
             </CardHeader>
 
             <CardContent className="p-3 sm:p-4 space-y-2.5">
-              {verifiedConsultants.map((consultant: Consultant) => (
-                <div
-                  key={consultant.id}
-                  className="p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-800/50 hover:border-teal-200 dark:hover:border-teal-700 hover:bg-slate-50/60 dark:hover:bg-slate-800/90 transition-all flex items-center justify-between gap-3 shadow-2xs"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900 text-teal-800 dark:text-teal-300 font-bold text-xs flex items-center justify-center border border-teal-200 dark:border-teal-700 font-heading">
-                        {consultant.initials}
-                      </div>
-                      {consultant.available && (
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-800" title="Tersedia" />
-                      )}
-                    </div>
-
-                    <div className="min-w-0 space-y-0.5">
-                      <div className="flex items-center gap-1">
-                        <p className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white font-heading truncate">
-                          {consultant.name}
-                        </p>
-                        <MdVerified className="text-sky-500 text-xs shrink-0" />
-                      </div>
-                      <p className="text-[11px] text-teal-700 dark:text-teal-400 font-medium truncate">
-                        {consultant.specialty}
-                      </p>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-                        <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-semibold">
-                          <Star size={10} className="fill-amber-400 text-amber-400" />
-                          {consultant.rating}
-                        </span>
-                        <span>•</span>
-                        <span className="truncate">{consultant.nextSlot}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedConsultant(consultant);
-                        setIsProfileModalOpen(true);
-                      }}
-                      className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold rounded-lg px-2.5 py-1 h-8 cursor-pointer"
-                      title="Lihat detail sertifikasi, pendekatan terapi & biografi"
+              {loadingPsychologists ? (
+                <div className="space-y-2.5">
+                  {[1, 2, 3].map((n) => (
+                    <div
+                      key={n}
+                      className="p-3 rounded-xl border border-slate-100 dark:border-slate-800 animate-pulse flex items-center justify-between gap-3"
                     >
-                      Profil
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setBookingConsultantId(consultant.id);
-                        setIsBookingModalOpen(true);
-                      }}
-                      className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg px-3 py-1 h-8 shadow-2xs cursor-pointer"
-                    >
-                      Jadwal
-                    </Button>
-                  </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700" />
+                        <div className="space-y-1.5">
+                          <div className="w-32 h-3.5 bg-slate-200 dark:bg-slate-700 rounded" />
+                          <div className="w-24 h-2.5 bg-slate-200 dark:bg-slate-700 rounded" />
+                        </div>
+                      </div>
+                      <div className="w-14 h-7 bg-slate-200 dark:bg-slate-700 rounded" />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : psychologists.length === 0 ? (
+                <div className="p-6 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1.5">
+                  <Users className="w-7 h-7 mx-auto text-slate-400 opacity-60" />
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Belum ada psikolog terverifikasi
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Psikolog yang disetujui admin akan tampil otomatis di sini.
+                  </p>
+                </div>
+              ) : (
+                psychologists.map((psychologist) => {
+                  const consultant = convertToConsultant(psychologist);
+                  return (
+                    <div
+                      key={psychologist.id}
+                      className="p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-800/50 hover:border-teal-200 dark:hover:border-teal-700 hover:bg-slate-50/60 dark:hover:bg-slate-800/90 transition-all flex items-center justify-between gap-3 shadow-2xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900 text-teal-800 dark:text-teal-300 font-bold text-xs flex items-center justify-center border border-teal-200 dark:border-teal-700 font-heading">
+                            {consultant.initials}
+                          </div>
+                          <span
+                            className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-800"
+                            title="Tersedia"
+                          />
+                        </div>
+
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-1">
+                            <p className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white font-heading truncate">
+                              {psychologist.nama_lengkap_gelar}
+                            </p>
+                            <MdVerified className="text-sky-500 text-xs shrink-0" />
+                          </div>
+                          <p className="text-[11px] text-teal-700 dark:text-teal-400 font-medium truncate">
+                            {psychologist.spesialisasi.join(", ") || "Konseling Klinis"}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                            <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-semibold">
+                              <Star size={10} className="fill-amber-400 text-amber-400" />
+                              5.0
+                            </span>
+                            <span>•</span>
+                            <span className="truncate">
+                              {psychologist.tahun_pengalaman} Thn Pengalaman
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedConsultant(consultant);
+                            setIsProfileModalOpen(true);
+                          }}
+                          className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold rounded-lg px-2.5 py-1 h-8 cursor-pointer"
+                          title="Lihat detail sertifikasi, pendekatan terapi & biografi"
+                        >
+                          Profil
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedConsultant(consultant);
+                            setBookingConsultantId(consultant.id);
+                            setIsBookingModalOpen(true);
+                          }}
+                          className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg px-3 py-1 h-8 shadow-2xs cursor-pointer"
+                        >
+                          Jadwal
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
 
