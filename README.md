@@ -110,7 +110,7 @@ src/
    npm install
    ```
 
-3. Buat file `.env.local` di root proyek dan isi kredensial Supabase Anda:
+3. Salin `.env.example` menjadi `.env.local` (`cp .env.example .env.local`), lalu isi minimal kredensial Supabase berikut:
    ```bash
    NEXT_PUBLIC_SUPABASE_URL=
    NEXT_PUBLIC_SUPABASE_ANON_KEY=
