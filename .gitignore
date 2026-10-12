@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+*.log
+err.log
 
 # debug
 npm-debug.log*
@@ -39,7 +41,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
- 
-# local tooling 
-.claude/ 
+
+# local tooling & internal development
+.claude/
 .evolver/
+.superpowers/
+superpowers/
+
+# internal documentation & scripts
+docs/
+scripts/
