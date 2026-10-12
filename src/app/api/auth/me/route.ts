@@ -12,8 +12,10 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      // user.fullName dipertahankan untuk kompatibilitas user-store.setAuthSession
-      data: { user: { ...user, fullName }, profile, fullName },
+      data: {
+        user: { ...user, fullName },
+        profile,
+      },
     });
   } catch (err: unknown) {
     return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');

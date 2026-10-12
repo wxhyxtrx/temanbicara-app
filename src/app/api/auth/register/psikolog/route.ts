@@ -10,6 +10,7 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         {
+          success: false,
           error: 'VALIDATION_ERROR',
           message: 'Validasi form psikolog gagal',
           details: parsed.error.flatten().fieldErrors,
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
     if (existingEmail) {
       return NextResponse.json(
         {
+          success: false,
           error: 'EMAIL_ALREADY_EXISTS',
           message: 'Email sudah terdaftar. Silakan gunakan email lain.',
         },
@@ -47,37 +49,39 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Cek duplikasi nomor SIPP / STR
-    const { data: existingStr } = await supabaseAdmin
+    // 2. Cek keunikan nomor SIPP/STR
+    const { data: existingSipp } = await supabaseAdmin
       .from('psikolog_profiles')
       .select('user_id')
       .eq('nomor_sipp_str', nomor_sipp_str)
       .maybeSingle();
 
-    if (existingStr) {
+    if (existingSipp) {
       return NextResponse.json(
         {
-          error: 'STR_ALREADY_EXISTS',
-          message: 'Nomor SIPP / STR sudah pernah didaftarkan.',
+          success: false,
+          error: 'SIPP_STR_ALREADY_EXISTS',
+          message: 'Nomor SIPP / STR sudah terdaftar di sistem TemanBicara.',
         },
         { status: 409 }
       );
     }
 
-    // 3. Buat akun auth
+    // 3. Buat akun di Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       user_metadata: {
         role: 'psikolog',
-        nama_lengkap_gelar,
+        nama_lengkap: nama_lengkap_gelar,
       },
     });
 
     if (authError || !authData.user) {
       return NextResponse.json(
         {
+          success: false,
           error: 'AUTH_CREATION_FAILED',
           message: authError?.message || 'Gagal membuat akun auth',
         },
@@ -101,6 +105,7 @@ export async function POST(req: Request) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
         {
+          success: false,
           error: 'USER_PROFILE_INSERT_FAILED',
           message: userError.message,
         },
@@ -121,8 +126,12 @@ export async function POST(req: Request) {
     });
 
     if (profileError) {
+      // Rollback kompensasi anti-zombie user
+      await supabaseAdmin.from('users').delete().eq('id', userId);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
         {
+          success: false,
           error: 'PROFILE_INSERT_FAILED',
           message: profileError.message,
         },
@@ -147,6 +156,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     return NextResponse.json(
       {
+        success: false,
         error: 'INTERNAL_SERVER_ERROR',
         message: err.message || 'Terjadi kesalahan sistem',
       },

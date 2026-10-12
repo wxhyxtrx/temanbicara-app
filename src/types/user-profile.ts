@@ -90,7 +90,7 @@ export type MeResponse =
       data: {
         user: MeUser;
         profile: MeProfile | null;
-        fullName: string;
+        fullName?: string;
       };
     }
   | ApiError;

@@ -10,6 +10,7 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         {
+          success: false,
           error: 'VALIDATION_ERROR',
           message: 'Validasi form pasien gagal',
           details: parsed.error.flatten().fieldErrors,
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
     if (existingUser) {
       return NextResponse.json(
         {
+          success: false,
           error: 'EMAIL_ALREADY_EXISTS',
           message: 'Email sudah terdaftar. Silakan gunakan email lain atau login.',
         },
@@ -51,6 +53,7 @@ export async function POST(req: Request) {
     if (authError || !authData.user) {
       return NextResponse.json(
         {
+          success: false,
           error: 'AUTH_CREATION_FAILED',
           message: authError?.message || 'Gagal membuat akun auth',
         },
@@ -75,6 +78,7 @@ export async function POST(req: Request) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
         {
+          success: false,
           error: 'USER_PROFILE_INSERT_FAILED',
           message: userError.message,
         },
@@ -89,8 +93,12 @@ export async function POST(req: Request) {
     });
 
     if (profileError) {
+      // Rollback kompensasi: bersihkan data di users dan auth agar tidak menjadi zombie user
+      await supabaseAdmin.from('users').delete().eq('id', userId);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
         {
+          success: false,
           error: 'PROFILE_INSERT_FAILED',
           message: profileError.message,
         },
@@ -115,6 +123,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     return NextResponse.json(
       {
+        success: false,
         error: 'INTERNAL_SERVER_ERROR',
         message: err.message || 'Terjadi kesalahan sistem',
       },
