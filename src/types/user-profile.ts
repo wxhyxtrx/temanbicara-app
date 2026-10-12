@@ -161,3 +161,48 @@ export interface AdminUserQuery {
 export type AdminUserListResponse =
   | { success: true; data: AdminUserRow[]; meta: PageMeta & { totalPages: number } }
   | ApiError;
+
+export interface AdminCreateUserPayload {
+  email: string;
+  password: string;
+  role: ApiRole;
+  fullName: string;
+  no_wa?: string | null;
+  status?: ApiAccountStatus;
+  level?: string;
+  nomor_sipp_str?: string;
+  spesialisasi?: string[];
+  tarif_sesi?: number;
+}
+
+export interface AdminUpdateUserPayload {
+  status?: ApiAccountStatus;
+  no_wa?: string | null;
+  fullName?: string;
+  role?: ApiRole;
+  rejection_reason?: string;
+}
+
+export interface AdminUpdateStatusPayload {
+  status: ApiAccountStatus;
+  rejection_reason?: string;
+}
+
+export type AdminUserDetailResponse =
+  | {
+      success: true;
+      data: {
+        user: AdminUserRow;
+        profile: Record<string, unknown> | null;
+        fullName: string;
+      };
+    }
+  | ApiError;
+
+export type AdminUserActionResponse =
+  | {
+      success: true;
+      message: string;
+      data?: Record<string, unknown>;
+    }
+  | ApiError;

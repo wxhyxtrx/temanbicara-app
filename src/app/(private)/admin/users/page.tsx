@@ -6,29 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Users,
   Search,
   RefreshCw,
   Eye,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  ShieldCheck,
-  Mail,
-  Phone,
-  Calendar,
-  Copy,
-  Check,
+  UserPlus,
+  Filter,
 } from "lucide-react";
 import { userService } from "@/services/user.service";
-import { notify } from "@/lib/toast";
+import { UserDetailModal } from "@/components/views/admin/user-detail-modal";
+import { CreateUserModal } from "@/components/views/admin/create-user-modal";
+import { DeleteUserDialog } from "@/components/views/admin/delete-user-dialog";
 import type { AdminUserRow, ApiAccountStatus, ApiRole } from "@/types/user-profile";
 
 const statusBadgeConfig: Record<
@@ -102,19 +97,23 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [total, setTotal] = useState<number>(0);
 
-  // Detail Modal State
+  // Modals state
   const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
-  const [copiedId, setCopiedId] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [deleteTargetUser, setDeleteTargetUser] = useState<AdminUserRow | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const apiRole = roleFilter === "all" ? undefined : (roleFilter as ApiRole);
+      const apiStatus = statusFilter === "all" ? undefined : (statusFilter as ApiAccountStatus);
       const res = await userService.getAdminUsers({
         role: apiRole,
+        status: apiStatus,
         search: search.trim() || undefined,
         limit: 50,
       });
@@ -133,7 +132,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [roleFilter, search]);
+  }, [roleFilter, statusFilter, search]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -157,15 +156,6 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleCopyId = (id: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(id);
-      setCopiedId(true);
-      notify.success("ID Disalin", "User ID berhasil disalin ke clipboard");
-      setTimeout(() => setCopiedId(false), 2000);
-    }
-  };
-
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Header */}
@@ -179,20 +169,32 @@ export default function AdminUsersPage() {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchUsers}
-          disabled={loading}
-          className="self-start sm:self-auto text-xs gap-1.5 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
-        >
-          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-          <span>Segarkan Data</span>
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Button
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            className="text-xs gap-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold cursor-pointer shadow-xs"
+          >
+            <UserPlus size={14} />
+            <span>Tambah Pengguna</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchUsers}
+            disabled={loading}
+            className="text-xs gap-1.5 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+          >
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+            <span>Segarkan</span>
+          </Button>
+        </div>
       </div>
 
       {/* 2. Filters & Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
+        {/* Role Tabs */}
         <div className="flex flex-wrap items-center gap-1.5">
           {[
             { key: "all", label: "Semua Peran" },
@@ -216,14 +218,36 @@ export default function AdminUsersPage() {
           ))}
         </div>
 
-        <div className="w-full sm:w-64 relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder="Cari nama, email, no WA..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 pl-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl"
-          />
+        {/* Status Filter & Search */}
+        <div className="flex flex-col sm:flex-row items-center gap-2.5">
+          <div className="w-full sm:w-44 flex items-center gap-1.5">
+            <Filter size={14} className="text-slate-400 shrink-0" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-9 text-xs bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl">
+                <SelectValue placeholder="Filter Status" />
+              </SelectTrigger>
+              <SelectContent className="text-xs">
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="active">Aktif</SelectItem>
+                <SelectItem value="suspended">Ditangguhkan</SelectItem>
+                <SelectItem value="pending_approval">Menunggu Persetujuan</SelectItem>
+                <SelectItem value="pending_verification">Verifikasi Berkas</SelectItem>
+                <SelectItem value="rejected">Ditolak</SelectItem>
+                <SelectItem value="unverified_email">Email Belum Verifikasi</SelectItem>
+                <SelectItem value="incomplete_profile">Profil Belum Lengkap</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-full sm:w-60 relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Cari nama, email, no WA..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 pl-8 text-xs bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl"
+            />
+          </div>
         </div>
       </div>
 
@@ -260,7 +284,7 @@ export default function AdminUsersPage() {
                         Tidak ada pengguna yang sesuai
                       </p>
                       <p className="text-[11px] text-slate-400">
-                        Coba sesuaikan kata kunci pencarian atau filter peran akun.
+                        Coba sesuaikan kata kunci pencarian atau filter status dan peran akun.
                       </p>
                     </td>
                   </tr>
@@ -323,7 +347,7 @@ export default function AdminUsersPage() {
                             className="h-7 px-2.5 text-xs text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-lg gap-1 cursor-pointer font-semibold"
                           >
                             <Eye size={13} />
-                            <span>Detail</span>
+                            <span>Detail / Kelola</span>
                           </Button>
                         </td>
                       </tr>
@@ -336,100 +360,33 @@ export default function AdminUsersPage() {
         </CardContent>
       </Card>
 
-      {/* 4. User Detail Modal */}
-      <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-nunito p-6">
-          <DialogHeader className="space-y-1">
-            <DialogTitle className="font-heading text-lg font-bold text-slate-900 dark:text-white">
-              Detail Pengguna
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-              Informasi akun dan profil terdaftar di basis data
-            </DialogDescription>
-          </DialogHeader>
+      {/* 4. Modals */}
+      <UserDetailModal
+        user={selectedUser}
+        open={!!selectedUser}
+        onOpenChange={(open) => !open && setSelectedUser(null)}
+        onUpdated={fetchUsers}
+        onOpenDelete={(u) => {
+          setSelectedUser(null);
+          setDeleteTargetUser(u);
+        }}
+        statusBadgeConfig={statusBadgeConfig}
+        roleBadgeConfig={roleBadgeConfig}
+        formatDate={formatDate}
+      />
 
-          {selectedUser && (
-            <div className="space-y-4 pt-2 text-xs">
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">User ID</span>
-                  <button
-                    onClick={() => handleCopyId(selectedUser.id)}
-                    className="inline-flex items-center gap-1 font-mono text-[11px] text-teal-700 dark:text-teal-400 hover:underline"
-                    title="Klik untuk salin"
-                  >
-                    <span>{selectedUser.id.slice(0, 8)}...{selectedUser.id.slice(-6)}</span>
-                    {copiedId ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
-                  </button>
-                </div>
+      <CreateUserModal
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onCreated={fetchUsers}
+      />
 
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Nama Lengkap</span>
-                  <span className="font-bold text-slate-900 dark:text-white">
-                    {selectedUser.fullName || "-"}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Email</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200">
-                    {selectedUser.email}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">WhatsApp</span>
-                  <span className="font-mono text-slate-800 dark:text-slate-200">
-                    {selectedUser.no_wa || "-"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1">
-                  <span className="text-[11px] text-slate-400 block font-medium">Peran Akun</span>
-                  <span
-                    className={`inline-block font-semibold px-2 py-0.5 rounded text-[11px] border ${
-                      roleBadgeConfig[selectedUser.role]?.className || ""
-                    }`}
-                  >
-                    {roleBadgeConfig[selectedUser.role]?.label || selectedUser.role}
-                  </span>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1">
-                  <span className="text-[11px] text-slate-400 block font-medium">Status Akun</span>
-                  <Badge
-                    className={`text-[10px] border shadow-none ${
-                      statusBadgeConfig[selectedUser.status]?.className || ""
-                    }`}
-                  >
-                    {statusBadgeConfig[selectedUser.status]?.label || selectedUser.status}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1.5">
-                <span className="text-[11px] text-slate-400 block font-medium">Waktu Registrasi</span>
-                <p className="text-slate-700 dark:text-slate-300">
-                  {formatDate(selectedUser.created_at)}
-                </p>
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedUser(null)}
-                  className="rounded-xl border-slate-200 dark:border-slate-700 text-xs"
-                >
-                  Tutup
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <DeleteUserDialog
+        user={deleteTargetUser}
+        open={!!deleteTargetUser}
+        onOpenChange={(open) => !open && setDeleteTargetUser(null)}
+        onDeleted={fetchUsers}
+      />
     </div>
   );
 }

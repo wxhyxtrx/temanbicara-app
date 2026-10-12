@@ -1,6 +1,11 @@
 import {
   AdminUserQuery,
   AdminUserListResponse,
+  AdminUserDetailResponse,
+  AdminUserActionResponse,
+  AdminCreateUserPayload,
+  AdminUpdateUserPayload,
+  ApiAccountStatus,
   MeResponse,
   PsychologistDetailResponse,
   PsychologistListResponse,
@@ -100,5 +105,70 @@ export const userService = {
       credentials: 'include',
     });
     return handleResponse<AdminUserListResponse>(res);
+  },
+
+  /**
+   * Mengambil detail lengkap 1 user (khusus admin aktif)
+   */
+  async getUserById(id: string): Promise<AdminUserDetailResponse> {
+    const res = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<AdminUserDetailResponse>(res);
+  },
+
+  /**
+   * Membuat pengguna baru (khusus admin aktif)
+   */
+  async createUser(payload: AdminCreateUserPayload): Promise<AdminUserActionResponse> {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<AdminUserActionResponse>(res);
+  },
+
+  /**
+   * Memperbarui data profil atau status pengguna (khusus admin aktif)
+   */
+  async updateUser(id: string, payload: AdminUpdateUserPayload): Promise<AdminUserActionResponse> {
+    const res = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<AdminUserActionResponse>(res);
+  },
+
+  /**
+   * Memperbarui status akun pengguna (active, suspended, rejected, dll)
+   */
+  async updateUserStatus(
+    id: string,
+    status: ApiAccountStatus,
+    rejection_reason?: string
+  ): Promise<AdminUserActionResponse> {
+    const res = await fetch(`/api/users/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ status, rejection_reason }),
+    });
+    return handleResponse<AdminUserActionResponse>(res);
+  },
+
+  /**
+   * Menghapus pengguna secara permanen (khusus admin aktif)
+   */
+  async deleteUser(id: string): Promise<AdminUserActionResponse> {
+    const res = await fetch(`/api/users/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    return handleResponse<AdminUserActionResponse>(res);
   },
 };
