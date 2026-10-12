@@ -88,7 +88,7 @@ export function ChatArea() {
         onEndSession={() => setIsReviewTipModalOpen(true)}
       />
       {!selectedConversation.isAI && (
-        <div className="px-3 sm:px-4 py-2 bg-slate-50/70 dark:bg-slate-850/50 border-b border-slate-100 dark:border-slate-800">
+        <div className="px-3 sm:px-4 py-2 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
           <SessionTimerBar
             initialMinutes={selectedConversation.isPeerListener ? 30 : 50}
             sessionTitle={`Sesi Aktif: ${selectedConversation.name}`}

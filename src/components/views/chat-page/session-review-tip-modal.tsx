@@ -296,7 +296,7 @@ export function SessionReviewTipModal({
                           ? "bg-amber-600 text-white border-amber-600 shadow-2xs"
                           : isInsufficient
                           ? "opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-800 border-slate-200 text-slate-400"
-                          : "bg-white dark:bg-slate-850 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400"
+                          : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400"
                       }`}
                     >
                       {amt === 0 ? "Tanpa Tip" : `+${amt} Koin`}

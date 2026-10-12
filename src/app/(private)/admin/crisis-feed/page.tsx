@@ -340,7 +340,7 @@ export default function AdminCrisisFeedPage() {
               {/* Patient and Emergency Contact Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                 {/* Data Pasien */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-250 dark:border-slate-800 space-y-1.5 text-xs">
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs">
                   <p className="font-bold text-slate-900 dark:text-white font-heading flex items-center gap-1.5">
                     <Users size={14} className="text-teal-600 dark:text-teal-400" />
                     Identitas Pasien Terdaftar

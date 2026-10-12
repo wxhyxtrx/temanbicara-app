@@ -6,16 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Users,
   Search,
   RefreshCw,
-  ShieldAlert,
-  ShieldCheck,
+  Eye,
   CheckCircle2,
   Clock,
   XCircle,
+  ShieldCheck,
+  Mail,
+  Phone,
+  Calendar,
+  Copy,
+  Check,
 } from "lucide-react";
 import { userService } from "@/services/user.service";
+import { notify } from "@/lib/toast";
 import type { AdminUserRow, ApiAccountStatus, ApiRole } from "@/types/user-profile";
 
 const statusBadgeConfig: Record<
@@ -24,39 +37,65 @@ const statusBadgeConfig: Record<
 > = {
   active: {
     label: "Aktif",
-    className: "bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+    className:
+      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
   },
   unverified_email: {
     label: "Email Belum Verifikasi",
-    className: "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+    className:
+      "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25",
   },
   incomplete_profile: {
     label: "Profil Belum Lengkap",
-    className: "bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+    className:
+      "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/25",
   },
   pending_approval: {
     label: "Menunggu Persetujuan",
-    className: "bg-pink-50 dark:bg-pink-950 text-pink-800 dark:text-pink-300 border-pink-200 dark:border-pink-800",
+    className:
+      "bg-pink-500/10 text-pink-700 dark:text-pink-400 border-pink-500/25",
   },
   pending_verification: {
     label: "Verifikasi Berkas",
-    className: "bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800",
+    className:
+      "bg-teal-500/10 text-teal-700 dark:text-teal-400 border-teal-500/25",
   },
   rejected: {
     label: "Ditolak",
-    className: "bg-rose-50 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800",
+    className:
+      "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/25",
   },
   suspended: {
     label: "Ditangguhkan",
-    className: "bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800",
+    className:
+      "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/25",
   },
 };
 
-const roleMapLabel: Record<ApiRole, string> = {
-  pasien: "Pasien",
-  psikolog: "Psikolog Klinis",
-  relawan: "Pendengar Sebaya",
-  admin: "Administrator",
+const roleBadgeConfig: Record<
+  ApiRole,
+  { label: string; className: string }
+> = {
+  pasien: {
+    label: "Pasien",
+    className:
+      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+  },
+  psikolog: {
+    label: "Psikolog Klinis",
+    className:
+      "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20",
+  },
+  relawan: {
+    label: "Pendengar Sebaya",
+    className:
+      "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20",
+  },
+  admin: {
+    label: "Administrator",
+    className:
+      "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
+  },
 };
 
 export default function AdminUsersPage() {
@@ -65,6 +104,10 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [total, setTotal] = useState<number>(0);
+
+  // Detail Modal State
+  const [selectedUser, setSelectedUser] = useState<AdminUserRow | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -114,6 +157,15 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleCopyId = (id: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(id);
+      setCopiedId(true);
+      notify.success("ID Disalin", "User ID berhasil disalin ke clipboard");
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Header */}
@@ -132,14 +184,14 @@ export default function AdminUsersPage() {
           size="sm"
           onClick={fetchUsers}
           disabled={loading}
-          className="self-start sm:self-auto text-xs gap-1.5 rounded-xl border-slate-200 dark:border-slate-800"
+          className="self-start sm:self-auto text-xs gap-1.5 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
         >
           <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
           <span>Segarkan Data</span>
         </Button>
       </div>
 
-      {/* 2. Filters */}
+      {/* 2. Filters & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {[
@@ -155,8 +207,8 @@ export default function AdminUsersPage() {
               onClick={() => setRoleFilter(tab.key)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 roleFilter === tab.key
-                  ? "bg-teal-600 text-white shadow-2xs"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                  ? "bg-teal-600 text-white shadow-xs"
+                  : "bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60"
               }`}
             >
               {tab.label}
@@ -177,22 +229,23 @@ export default function AdminUsersPage() {
 
       {/* 3. Users Table */}
       <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
-        <CardContent className="p-0 sm:p-2">
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 text-slate-600 dark:text-slate-400 font-semibold">
-                  <th className="p-3.5 pl-4">Pengguna</th>
-                  <th className="p-3.5">Peran Akun</th>
-                  <th className="p-3.5">Nomor WhatsApp</th>
-                  <th className="p-3.5">Bergabung</th>
-                  <th className="p-3.5">Status Akun</th>
+                <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
+                  <th className="py-3.5 px-4">Pengguna</th>
+                  <th className="py-3.5 px-4">Peran Akun</th>
+                  <th className="py-3.5 px-4">Nomor WhatsApp</th>
+                  <th className="py-3.5 px-4">Bergabung</th>
+                  <th className="py-3.5 px-4">Status Akun</th>
+                  <th className="py-3.5 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-400">
+                    <td colSpan={6} className="p-8 text-center text-slate-400">
                       <div className="flex items-center justify-center gap-2">
                         <RefreshCw size={16} className="animate-spin text-teal-600" />
                         <span>Memuat data pengguna dari database...</span>
@@ -201,7 +254,7 @@ export default function AdminUsersPage() {
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-400 space-y-1">
+                    <td colSpan={6} className="p-8 text-center text-slate-400 space-y-1">
                       <Users size={28} className="mx-auto opacity-40 text-slate-400 mb-2" />
                       <p className="font-semibold text-slate-700 dark:text-slate-300">
                         Tidak ada pengguna yang sesuai
@@ -217,34 +270,61 @@ export default function AdminUsersPage() {
                       label: u.status,
                       className: "bg-slate-100 text-slate-700 border-slate-200",
                     };
+                    const roleCfg = roleBadgeConfig[u.role] || {
+                      label: u.role,
+                      className: "bg-slate-100 text-slate-700 border-slate-200",
+                    };
 
                     return (
-                      <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                        <td className="p-3.5 pl-4">
+                      <tr
+                        key={u.id}
+                        className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
+                      >
+                        <td className="py-3.5 px-4">
                           <p className="font-bold font-heading text-slate-900 dark:text-white text-xs sm:text-sm">
                             {u.fullName || u.email.split("@")[0]}
                           </p>
                           <p className="text-[11px] text-slate-400 font-nunito">{u.email}</p>
                         </td>
 
-                        <td className="p-3.5">
-                          <span className="font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 px-2 py-0.5 rounded text-[11px] capitalize">
-                            {roleMapLabel[u.role] || u.role}
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-block font-semibold px-2.5 py-0.5 rounded-lg border text-[11px] ${roleCfg.className}`}
+                          >
+                            {roleCfg.label}
                           </span>
                         </td>
 
-                        <td className="p-3.5 font-mono text-slate-700 dark:text-slate-300">
-                          {u.no_wa || "-"}
+                        <td className="py-3.5 px-4 font-mono text-slate-700 dark:text-slate-300">
+                          {u.no_wa ? (
+                            <span>{u.no_wa}</span>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">
+                              Tidak ada
+                            </span>
+                          )}
                         </td>
 
-                        <td className="p-3.5 text-slate-500 font-nunito">
+                        <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 font-nunito">
                           {formatDate(u.created_at)}
                         </td>
 
-                        <td className="p-3.5">
-                          <Badge className={`text-[10px] border ${statusCfg.className}`}>
+                        <td className="py-3.5 px-4">
+                          <Badge className={`text-[10px] border shadow-none ${statusCfg.className}`}>
                             {statusCfg.label}
                           </Badge>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedUser(u)}
+                            className="h-7 px-2.5 text-xs text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-lg gap-1 cursor-pointer font-semibold"
+                          >
+                            <Eye size={13} />
+                            <span>Detail</span>
+                          </Button>
                         </td>
                       </tr>
                     );
@@ -255,6 +335,101 @@ export default function AdminUsersPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 4. User Detail Modal */}
+      <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
+        <DialogContent className="max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-nunito p-6">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="font-heading text-lg font-bold text-slate-900 dark:text-white">
+              Detail Pengguna
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+              Informasi akun dan profil terdaftar di basis data
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedUser && (
+            <div className="space-y-4 pt-2 text-xs">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">User ID</span>
+                  <button
+                    onClick={() => handleCopyId(selectedUser.id)}
+                    className="inline-flex items-center gap-1 font-mono text-[11px] text-teal-700 dark:text-teal-400 hover:underline"
+                    title="Klik untuk salin"
+                  >
+                    <span>{selectedUser.id.slice(0, 8)}...{selectedUser.id.slice(-6)}</span>
+                    {copiedId ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Nama Lengkap</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {selectedUser.fullName || "-"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Email</span>
+                  <span className="font-mono text-slate-800 dark:text-slate-200">
+                    {selectedUser.email}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">WhatsApp</span>
+                  <span className="font-mono text-slate-800 dark:text-slate-200">
+                    {selectedUser.no_wa || "-"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1">
+                  <span className="text-[11px] text-slate-400 block font-medium">Peran Akun</span>
+                  <span
+                    className={`inline-block font-semibold px-2 py-0.5 rounded text-[11px] border ${
+                      roleBadgeConfig[selectedUser.role]?.className || ""
+                    }`}
+                  >
+                    {roleBadgeConfig[selectedUser.role]?.label || selectedUser.role}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1">
+                  <span className="text-[11px] text-slate-400 block font-medium">Status Akun</span>
+                  <Badge
+                    className={`text-[10px] border shadow-none ${
+                      statusBadgeConfig[selectedUser.status]?.className || ""
+                    }`}
+                  >
+                    {statusBadgeConfig[selectedUser.status]?.label || selectedUser.status}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                <span className="text-[11px] text-slate-400 block font-medium">Waktu Registrasi</span>
+                <p className="text-slate-700 dark:text-slate-300">
+                  {formatDate(selectedUser.created_at)}
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedUser(null)}
+                  className="rounded-xl border-slate-200 dark:border-slate-700 text-xs"
+                >
+                  Tutup
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
