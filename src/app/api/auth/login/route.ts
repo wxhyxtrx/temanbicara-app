@@ -26,6 +26,17 @@ export async function POST(req: Request) {
       password,
     });
 
+    // Supabase menolak akun belum konfirmasi email sebelum cek profil di bawah
+    if (authError?.code === 'email_not_confirmed') {
+      return NextResponse.json(
+        {
+          error: 'EMAIL_UNVERIFIED',
+          message: 'Email belum diverifikasi. Silakan periksa inbox email Anda.',
+        },
+        { status: 403 }
+      );
+    }
+
     if (authError || !authData.user) {
       return NextResponse.json(
         {

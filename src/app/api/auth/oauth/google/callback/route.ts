@@ -30,8 +30,8 @@ export async function GET(req: Request) {
     const cookieStore = await cookies();
 
     const supabaseServer = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mcciuvlqvvvptgmelexi.supabase.co',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_JshNaL_CvRDPS1JD5nJs7g_iYKI0oIV',
+      (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL)!,
+      (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY)!,
       {
         cookies: {
           getAll() {
@@ -54,7 +54,8 @@ export async function GET(req: Request) {
     const { data: sessionData, error: sessionError } =
       await supabaseServer.auth.exchangeCodeForSession(code);
 
-    if (sessionError || !sessionData.user) {
+    // Tanpa session tidak ada token sah; jangan pernah memakai user id sebagai token
+    if (sessionError || !sessionData.user || !sessionData.session) {
       console.error('[OAUTH EXCHANGE FAILED]:', sessionError?.message);
       return NextResponse.redirect(
         `${origin}/login?error=OAUTH_EXCHANGE_FAILED&message=${encodeURIComponent(sessionError?.message || '')}`
@@ -62,6 +63,14 @@ export async function GET(req: Request) {
     }
 
     const authUser = sessionData.user;
+    const accessToken = sessionData.session.access_token;
+    const withSessionCookies = (res: NextResponse, role: string, status: string) => {
+      const opts = { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' as const };
+      res.cookies.set('tb_access_token', accessToken, opts);
+      res.cookies.set('tb_user_role', role, opts);
+      res.cookies.set('tb_user_status', status, opts);
+      return res;
+    };
     const email = authUser.email!;
     const fullName =
       authUser.user_metadata?.full_name ||
@@ -80,6 +89,12 @@ export async function GET(req: Request) {
       .maybeSingle();
 
     if (existingUser) {
+      // Akun diblokir: hapus cookie session Supabase yang baru dibuat, jangan beri akses
+      if (existingUser.status === 'suspended' || existingUser.status === 'rejected') {
+        await supabaseServer.auth.signOut();
+        return NextResponse.redirect(`${origin}/login?error=ACCOUNT_BLOCKED`);
+      }
+
       // User sudah ada -> pastikan google_id terhubung
       await supabaseAdmin
         .from('users')
@@ -111,29 +126,25 @@ export async function GET(req: Request) {
           ? '/listener/beranda'
           : '/patient/beranda';
 
-      const redirectRes = NextResponse.redirect(`${origin}${redirectPath}`);
-      redirectRes.cookies.set('tb_access_token', sessionData.session?.access_token || authUser.id, {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7,
-        sameSite: 'lax',
-      });
-      redirectRes.cookies.set('tb_user_role', existingUser.role, {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7,
-        sameSite: 'lax',
-      });
-      redirectRes.cookies.set('tb_user_status', existingUser.status, {
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7,
-        sameSite: 'lax',
-      });
-      return redirectRes;
+      return withSessionCookies(
+        NextResponse.redirect(`${origin}${redirectPath}`),
+        existingUser.role,
+        existingUser.status
+      );
     }
 
-    // 3. User BARU
+    // 3. User BARU: jika insert gagal, hapus auth user (cascade ke public.users) agar tidak jadi akun zombie
+    const failNewUser = async (insertError: unknown) => {
+      console.error('[OAUTH NEW USER INSERT FAILED]:', insertError);
+      await supabaseServer.auth.signOut();
+      const { error: rollbackError } = await supabaseAdmin.auth.admin.deleteUser(authUser.id);
+      if (rollbackError) console.error('[OAUTH ROLLBACK FAILED]:', rollbackError);
+      return NextResponse.redirect(`${origin}/login?error=OAUTH_INTERNAL_ERROR`);
+    };
+
     if (intentRole === 'relawan' || intentRole === 'psikolog') {
       // Calon Mitra -> role sesuai intent, status incomplete_profile
-      await supabaseAdmin.from('users').insert({
+      const { error: mitraError } = await supabaseAdmin.from('users').insert({
         id: authUser.id,
         email,
         google_id: authUser.id,
@@ -142,6 +153,7 @@ export async function GET(req: Request) {
         avatar_url: avatarUrl,
         is_email_verified: true,
       });
+      if (mitraError) return failNewUser(mitraError);
 
       return NextResponse.redirect(
         `${origin}${intentRole === 'psikolog' ? '/register/counselor' : '/register/listener'}`
@@ -149,7 +161,7 @@ export async function GET(req: Request) {
     }
 
     // Default Pasien -> Auto-register active
-    await supabaseAdmin.from('users').insert({
+    const { error: userError } = await supabaseAdmin.from('users').insert({
       id: authUser.id,
       email,
       google_id: authUser.id,
@@ -158,33 +170,17 @@ export async function GET(req: Request) {
       avatar_url: avatarUrl,
       is_email_verified: true,
     });
+    if (userError) return failNewUser(userError);
 
-    await supabaseAdmin.from('pasien_profiles').insert({
+    const { error: profileError } = await supabaseAdmin.from('pasien_profiles').insert({
       user_id: authUser.id,
       nama_lengkap: fullName,
     });
+    if (profileError) return failNewUser(profileError);
 
-    const newPatientRes = NextResponse.redirect(`${origin}/patient/beranda`);
-    newPatientRes.cookies.set('tb_access_token', sessionData.session?.access_token || authUser.id, {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-      sameSite: 'lax',
-    });
-    newPatientRes.cookies.set('tb_user_role', 'pasien', {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-      sameSite: 'lax',
-    });
-    newPatientRes.cookies.set('tb_user_status', 'active', {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-      sameSite: 'lax',
-    });
-    return newPatientRes;
-  } catch (err: any) {
+    return withSessionCookies(NextResponse.redirect(`${origin}/patient/beranda`), 'pasien', 'active');
+  } catch (err: unknown) {
     console.error('[OAUTH INTERNAL ERROR]:', err);
-    return NextResponse.redirect(
-      `${origin}/login?error=OAUTH_INTERNAL_ERROR&message=${encodeURIComponent(err.message || '')}`
-    );
+    return NextResponse.redirect(`${origin}/login?error=OAUTH_INTERNAL_ERROR`);
   }
 }

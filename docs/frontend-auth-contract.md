@@ -165,7 +165,7 @@ Digunakan oleh Calon Relawan (Upload CV) dan Calon Psikolog (Upload SIPP/STR).
 - Psikolog: `/counselor/beranda`
 - Relawan: `/listener/beranda`
 - Admin: `/admin/beranda`
-```
+
 - **Response Error (403 Forbidden - Khusus Akun Belum Lolos Verifikasi):**
 ```json
 {
@@ -173,6 +173,40 @@ Digunakan oleh Calon Relawan (Upload CV) dan Calon Psikolog (Upload SIPP/STR).
   "message": "Akun Anda telah dinonaktifkan oleh administrator. Hubungi bantuan."
 }
 ```
+- **Response Error (403 Forbidden - Email Belum Dikonfirmasi):** tampilkan ajakan cek inbox, bukan "password salah".
+```json
+{
+  "error": "EMAIL_UNVERIFIED",
+  "message": "Email belum diverifikasi. Silakan periksa inbox email Anda."
+}
+```
+
+---
+
+## 5b. Login / Daftar dengan Google (OAuth PKCE)
+- **Callback BE:** `GET /api/auth/oauth/google/callback?code=...&intent_role=relawan|psikolog` (dipanggil otomatis oleh Supabase, bukan oleh FE).
+- **Wajib di FE:** mulai login dengan client dari `@supabase/ssr` `createBrowserClient` (sudah dipakai oleh `supabasePublic` di browser). Client ini menyimpan `code_verifier` PKCE di cookie sehingga callback server bisa membacanya.
+```typescript
+import { supabasePublic } from '@/lib/supabase/client';
+
+// intent_role hanya diisi saat daftar sebagai mitra; kosongkan untuk pasien / login biasa
+await supabasePublic.auth.signInWithOAuth({
+  provider: 'google',
+  options: {
+    redirectTo: `${window.location.origin}/api/auth/oauth/google/callback?intent_role=relawan`,
+  },
+});
+```
+- **Hasil sukses:** cookie `tb_access_token` (JWT Supabase asli), `tb_user_role`, `tb_user_status` dipasang, lalu redirect sesuai mapping di bagian 5. Calon mitra baru diarahkan ke `/register/counselor` atau `/register/listener` tanpa cookie `tb_*`.
+- **Redirect error** (baca query `error` di halaman `/login`):
+
+| `error` | Arti |
+| --- | --- |
+| `OAUTH_CODE_MISSING` | Callback dipanggil tanpa `code`. |
+| `OAUTH_EXCHANGE_FAILED` | Pertukaran code gagal atau session kosong (query `message` berisi alasan dari Supabase). |
+| `ACCOUNT_BLOCKED` | Akun berstatus `suspended` atau `rejected`; session dihapus, tidak ada cookie yang dipasang. |
+| `OAUTH_INTERNAL_ERROR` | Gagal menyimpan user baru; akun dibatalkan, user boleh mencoba lagi. |
+| lainnya | Error dari Google/Supabase, diteruskan apa adanya beserta query `message`. |
 
 ---
 
@@ -210,4 +244,11 @@ export interface LoginResponse {
     redirect_to: string;
   };
 }
+
+// Nilai query `error` di /login setelah redirect dari callback Google
+export type OAuthCallbackError =
+  | 'OAUTH_CODE_MISSING'
+  | 'OAUTH_EXCHANGE_FAILED'
+  | 'ACCOUNT_BLOCKED'
+  | 'OAUTH_INTERNAL_ERROR';
 ```
