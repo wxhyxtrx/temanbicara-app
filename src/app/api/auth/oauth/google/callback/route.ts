@@ -89,10 +89,13 @@ export async function GET(req: Request) {
       .maybeSingle();
 
     if (existingUser) {
-      // Akun diblokir: hapus cookie session Supabase yang baru dibuat, jangan beri akses
+      // Akun ditangguhkan / ditolak: tetap pasang session, middleware membatasi ke /status
       if (existingUser.status === 'suspended' || existingUser.status === 'rejected') {
-        await supabaseServer.auth.signOut();
-        return NextResponse.redirect(`${origin}/login?error=ACCOUNT_BLOCKED`);
+        return withSessionCookies(
+          NextResponse.redirect(`${origin}/status`),
+          existingUser.role,
+          existingUser.status
+        );
       }
 
       // User sudah ada -> pastikan google_id terhubung

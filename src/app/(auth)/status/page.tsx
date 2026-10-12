@@ -24,6 +24,18 @@ import {
   MessageCircle,
 } from "lucide-react";
 
+interface NextStep {
+  title: string;
+  description: string;
+}
+
+const SUPPORT_WA = "6281234567890";
+
+const PENDING_STEPS: NextStep[] = [
+  { title: "Verifikasi Dokumen", description: "Estimasi proses review 1 - 3 hari kerja" },
+  { title: "Aktivasi Portal Modul", description: "Notifikasi status dikirim langsung ke email Anda" },
+];
+
 interface StatusDetail {
   badge: string;
   badgeColor: string;
@@ -38,15 +50,23 @@ interface StatusDetail {
     onClick?: () => void;
   };
   contactSupport?: boolean;
+  supportMessage?: string;
+  nextSteps?: NextStep[];
 }
 
 function StatusContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, logout } = useUserStore();
+  const { user, logout, syncSession } = useUserStore();
   const [currentStatus, setCurrentStatus] =
     useState<string>("pending_approval");
   const [resendingEmail, setResendingEmail] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
+  // Ambil profil terbaru (termasuk alasan penolakan) dan sinkronkan cookie status dari server
+  useEffect(() => {
+    syncSession();
+  }, [syncSession]);
 
   useEffect(() => {
     // 1. Baca query param ?state=... jika ada
@@ -83,6 +103,28 @@ function StatusContent() {
     notify.info("Keluar Akun", "Anda telah keluar dari akun.");
     window.location.href = "/login";
   };
+
+  // syncSession memperbarui cookie tb_user_status dari server; jika sudah aktif,
+  // reload membuat middleware mengarahkan akun ke dashboard-nya.
+  const handleCheckStatus = async () => {
+    setCheckingStatus(true);
+    await syncSession();
+    const latest = document.cookie.match(/tb_user_status=([^;]+)/)?.[1];
+    if (latest === "active") {
+      notify.success("Akun Aktif", "Akun Anda sudah dipulihkan. Mengalihkan ke beranda...");
+      window.location.reload();
+      return;
+    }
+    if (latest) setCurrentStatus(latest);
+    setCheckingStatus(false);
+    notify.info("Status Belum Berubah", "Tim kami masih meninjau akun Anda.");
+  };
+
+  const rejectionReason =
+    user?.rawProfile && "rejection_reason" in user.rawProfile
+      ? user.rawProfile.rejection_reason
+      : null;
+  const accountEmail = user?.email || "-";
 
   const handleResendEmail = () => {
     setResendingEmail(true);
@@ -144,6 +186,7 @@ function StatusContent() {
         "bg-pink-50 dark:bg-pink-950/60 border-pink-200 dark:border-pink-800",
       iconColor: "text-pink-600 dark:text-pink-400",
       contactSupport: true,
+      nextSteps: PENDING_STEPS,
     },
     pending_verification: {
       badge: "Verifikasi Dokumen Medis",
@@ -156,6 +199,7 @@ function StatusContent() {
         "bg-teal-50 dark:bg-teal-950/60 border-teal-200 dark:border-teal-800",
       iconColor: "text-teal-600 dark:text-teal-400",
       contactSupport: true,
+      nextSteps: PENDING_STEPS,
     },
     rejected: {
       badge: "Pendaftaran Belum Diterima",
@@ -163,19 +207,31 @@ function StatusContent() {
         "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300",
       title: "Pengajuan Belum Memenuhi Syarat",
       description:
-        "Mohon maaf, berkas yang Anda unggah belum memenuhi standar kurasi klinis TemanBicara (misal: dokumen kurang terbaca atau masa berlaku habis). Anda dapat mengunggah ulang dokumen perbaikan.",
+        "Mohon maaf, berkas pendaftaran Anda belum memenuhi standar kurasi TemanBicara. Akun Anda tetap tersimpan, dan Anda dapat mengajukan klarifikasi atau mengirim dokumen perbaikan ke tim kurasi.",
       icon: XCircle,
       iconBg:
         "bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800",
       iconColor: "text-rose-600 dark:text-rose-400",
       actionPrimary: {
-        label: "Unggah Ulang Dokumen Perbaikan",
-        href:
-          user?.role === "counselor"
-            ? "/register/counselor"
-            : "/register/listener",
+        label: checkingStatus ? "Memeriksa Status..." : "Periksa Ulang Status Akun",
+        onClick: handleCheckStatus,
       },
       contactSupport: true,
+      supportMessage: `Halo Tim Kurasi TemanBicara, pendaftaran mitra saya dengan email ${accountEmail} ditolak. Saya ingin meminta klarifikasi / mengirim dokumen perbaikan.`,
+      nextSteps: [
+        {
+          title: "Pelajari Alasan Penolakan",
+          description: "Periksa catatan dari tim kurasi di atas (jika tersedia).",
+        },
+        {
+          title: "Hubungi Tim Kurasi",
+          description: "Kirim klarifikasi atau dokumen perbaikan lewat WhatsApp bantuan.",
+        },
+        {
+          title: "Peninjauan Ulang (1 - 3 hari kerja)",
+          description: 'Tekan "Periksa Ulang Status Akun" setelah dihubungi.',
+        },
+      ],
     },
     suspended: {
       badge: "Akun Ditangguhkan",
@@ -183,12 +239,31 @@ function StatusContent() {
         "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300",
       title: "Akses Akun Dinonaktifkan Sementara",
       description:
-        "Akun ini sementara waktu dinonaktifkan oleh administrator terkait peninjauan kepatuhan kode etik telekonseling atau keamanan platform.",
+        "Akun ini sementara waktu dinonaktifkan oleh administrator terkait peninjauan kepatuhan kode etik telekonseling atau keamanan platform. Selama ditangguhkan, Anda tidak dapat mengakses sesi, jadwal, maupun saldo.",
       icon: ShieldAlert,
       iconBg:
         "bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800",
       iconColor: "text-rose-600 dark:text-rose-400",
+      actionPrimary: {
+        label: checkingStatus ? "Memeriksa Status..." : "Periksa Ulang Status Akun",
+        onClick: handleCheckStatus,
+      },
       contactSupport: true,
+      supportMessage: `Halo Admin TemanBicara, akun saya dengan email ${accountEmail} ditangguhkan. Saya ingin menanyakan alasannya dan mengajukan banding.`,
+      nextSteps: [
+        {
+          title: "Ajukan Banding",
+          description: "Hubungi layanan bantuan dan sebutkan email akun Anda.",
+        },
+        {
+          title: "Peninjauan oleh Admin (1 - 3 hari kerja)",
+          description: "Data dan saldo Anda tetap tersimpan aman.",
+        },
+        {
+          title: "Akun Dipulihkan",
+          description: 'Tekan "Periksa Ulang Status Akun" untuk kembali ke beranda.',
+        },
+      ],
     },
   };
 
@@ -234,37 +309,37 @@ function StatusContent() {
           </p>
         </div>
 
-        {/* Estimated Info Timeline Box */}
-        {(currentStatus === "pending_approval" ||
-          currentStatus === "pending_verification") && (
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold text-xs shrink-0">
-                1
-              </div>
-              <div className="text-xs">
-                <p className="font-bold text-slate-800 dark:text-slate-200">
-                  Verifikasi Dokumen
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Estimasi proses review 1 - 3 hari kerja
-                </p>
-              </div>
+        {/* Alasan penolakan dari tim kurasi */}
+        {currentStatus === "rejected" && rejectionReason && (
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-left flex gap-3">
+            <AlertTriangle size={18} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <p className="font-bold text-rose-800 dark:text-rose-300">Catatan Tim Kurasi</p>
+              <p className="text-rose-700 dark:text-rose-300/90 leading-relaxed">{rejectionReason}</p>
             </div>
+          </div>
+        )}
 
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xs shrink-0">
-                2
+        {/* Langkah selanjutnya */}
+        {activeConfig.nextSteps && (
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left space-y-3">
+            {activeConfig.nextSteps.map((step, i) => (
+              <div key={step.title} className="flex items-center gap-3">
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                    i === 0
+                      ? "bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300"
+                      : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  {i + 1}
+                </div>
+                <div className="text-xs">
+                  <p className="font-bold text-slate-800 dark:text-slate-200">{step.title}</p>
+                  <p className="text-[11px] text-slate-500">{step.description}</p>
+                </div>
               </div>
-              <div className="text-xs">
-                <p className="font-bold text-slate-700 dark:text-slate-300">
-                  Aktivasi Portal Modul
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Notifikasi status dikirim langsung ke email Anda
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         )}
 
@@ -285,12 +360,12 @@ function StatusContent() {
               ) : (
                 <Button
                   onClick={activeConfig.actionPrimary.onClick}
-                  disabled={resendingEmail}
+                  disabled={resendingEmail || checkingStatus}
                   className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow-md shadow-teal-700/20 gap-2 cursor-pointer"
                 >
                   <RefreshCw
                     size={15}
-                    className={resendingEmail ? "animate-spin" : ""}
+                    className={resendingEmail || checkingStatus ? "animate-spin" : ""}
                   />
                   <span>{activeConfig.actionPrimary.label}</span>
                 </Button>
@@ -300,7 +375,10 @@ function StatusContent() {
 
           {activeConfig.contactSupport && (
             <a
-              href="https://wa.me/6281234567890?text=Halo%20Admin%20TemanBicara%2C%20saya%20ingin%20menanyakan%20status%20verifikasi%20akun%20saya."
+              href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent(
+                activeConfig.supportMessage ||
+                  "Halo Admin TemanBicara, saya ingin menanyakan status verifikasi akun saya.",
+              )}`}
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full"

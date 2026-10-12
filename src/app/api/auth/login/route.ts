@@ -67,26 +67,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Evaluasi status akun
-    if (userProfile.status === 'suspended') {
-      return NextResponse.json(
-        {
-          error: 'ACCOUNT_SUSPENDED',
-          message: 'Akun Anda telah dinonaktifkan oleh administrator. Hubungi bantuan.',
-        },
-        { status: 403 }
-      );
-    }
-
-    if (userProfile.status === 'rejected') {
-      return NextResponse.json(
-        {
-          error: 'ACCOUNT_REJECTED',
-          message: 'Pengajuan akun ditolak oleh administrator.',
-        },
-        { status: 403 }
-      );
-    }
-
+    // suspended / rejected TIDAK ditolak di sini: tetap login agar user melihat penjelasan di /status
     if (userProfile.status === 'unverified_email' || !userProfile.is_email_verified) {
       return NextResponse.json(
         {
@@ -100,7 +81,9 @@ export async function POST(req: Request) {
     // 4. Penentuan redirect URL berdasarkan role & status
     let redirectTo = '/patient/beranda';
 
-    if (userProfile.status === 'incomplete_profile') {
+    if (userProfile.status === 'suspended' || userProfile.status === 'rejected') {
+      redirectTo = '/status';
+    } else if (userProfile.status === 'incomplete_profile') {
       redirectTo = '/register';
     } else if (userProfile.status === 'pending_approval') {
       redirectTo = '/register/listener';

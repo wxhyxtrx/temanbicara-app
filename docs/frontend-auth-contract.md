@@ -166,11 +166,16 @@ Digunakan oleh Calon Relawan (Upload CV) dan Calon Psikolog (Upload SIPP/STR).
 - Relawan: `/listener/beranda`
 - Admin: `/admin/beranda`
 
-- **Response Error (403 Forbidden - Khusus Akun Belum Lolos Verifikasi):**
+- **Akun `suspended` / `rejected` (200 OK, bukan error):** login tetap berhasil dan cookie `tb_*` dipasang dengan status tersebut, tetapi `redirect_to` bernilai `/status`. FE wajib memakai `redirect_to` bila `data.user.status !== 'active'`. Middleware mengunci akun ini hanya ke `/status`, `/`, dan `/help-center`.
 ```json
 {
-  "error": "ACCOUNT_SUSPENDED",
-  "message": "Akun Anda telah dinonaktifkan oleh administrator. Hubungi bantuan."
+  "success": true,
+  "message": "Login berhasil",
+  "data": {
+    "user": { "id": "...", "email": "...", "role": "psikolog", "status": "rejected", "avatar_url": null },
+    "session": { "access_token": "eyJhbGciOi...", "refresh_token": "...", "expires_at": 1728645000 },
+    "redirect_to": "/status"
+  }
 }
 ```
 - **Response Error (403 Forbidden - Email Belum Dikonfirmasi):** tampilkan ajakan cek inbox, bukan "password salah".
@@ -197,16 +202,29 @@ await supabasePublic.auth.signInWithOAuth({
   },
 });
 ```
-- **Hasil sukses:** cookie `tb_access_token` (JWT Supabase asli), `tb_user_role`, `tb_user_status` dipasang, lalu redirect sesuai mapping di bagian 5. Calon mitra baru diarahkan ke `/register/counselor` atau `/register/listener` tanpa cookie `tb_*`.
+- **Hasil sukses:** cookie `tb_access_token` (JWT Supabase asli), `tb_user_role`, `tb_user_status` dipasang, lalu redirect sesuai mapping di bagian 5. Akun `suspended` / `rejected` juga mendapat cookie, lalu diarahkan ke `/status`. Calon mitra baru diarahkan ke `/register/counselor` atau `/register/listener` tanpa cookie `tb_*`.
 - **Redirect error** (baca query `error` di halaman `/login`):
 
 | `error` | Arti |
 | --- | --- |
 | `OAUTH_CODE_MISSING` | Callback dipanggil tanpa `code`. |
 | `OAUTH_EXCHANGE_FAILED` | Pertukaran code gagal atau session kosong (query `message` berisi alasan dari Supabase). |
-| `ACCOUNT_BLOCKED` | Akun berstatus `suspended` atau `rejected`; session dihapus, tidak ada cookie yang dipasang. |
 | `OAUTH_INTERNAL_ERROR` | Gagal menyimpan user baru; akun dibatalkan, user boleh mencoba lagi. |
 | lainnya | Error dari Google/Supabase, diteruskan apa adanya beserta query `message`. |
+
+---
+
+## 5c. Halaman Status Akun (`/status`)
+Satu halaman untuk semua akun yang belum `active`. Status dibaca dari cookie `tb_user_status`, lalu disinkronkan ke server lewat `GET /api/users/me` (endpoint ini tetap bisa diakses akun `suspended` / `rejected`).
+
+| Status | Isi tampilan | Aksi utama | Langkah selanjutnya |
+| --- | --- | --- | --- |
+| `pending_approval` / `pending_verification` | Sedang ditinjau | WhatsApp bantuan | Tunggu 1-3 hari kerja |
+| `suspended` | Akun ditangguhkan, akses sesi/jadwal/saldo terkunci | **Periksa Ulang Status Akun**, WhatsApp (pesan banding terisi otomatis) | Banding, lalu admin meninjau, lalu akun dipulihkan |
+| `rejected` | Pendaftaran mitra ditolak + **Catatan Tim Kurasi** (`profile.rejection_reason`, saat ini hanya psikolog) | **Periksa Ulang Status Akun**, WhatsApp (pesan klarifikasi terisi otomatis) | Klarifikasi / kirim dokumen perbaikan, lalu ditinjau ulang |
+
+- **Periksa Ulang Status Akun:** memanggil `syncSession()` sehingga cookie `tb_user_status` diperbarui dari server. Jika sudah `active`, halaman di-reload dan middleware mengarahkan ke dashboard role.
+- **Keluar dari Akun:** `POST /api/auth/logout`, lalu ke `/login`.
 
 ---
 
@@ -249,6 +267,5 @@ export interface LoginResponse {
 export type OAuthCallbackError =
   | 'OAUTH_CODE_MISSING'
   | 'OAUTH_EXCHANGE_FAILED'
-  | 'ACCOUNT_BLOCKED'
   | 'OAUTH_INTERNAL_ERROR';
 ```

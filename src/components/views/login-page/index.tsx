@@ -80,7 +80,8 @@ export default function Login() {
 
       if (res.success && res.data) {
         setAuthSession(res.data.user, res.data.session.access_token);
-        notify.success("Masuk Berhasil", res.message || "Selamat datang kembali!");
+        const isActive = res.data.user.status === "active";
+        if (isActive) notify.success("Masuk Berhasil", res.message || "Selamat datang kembali!");
 
         const roleRoutes: Record<string, string> = {
           pasien: "/patient/beranda",
@@ -88,7 +89,10 @@ export default function Login() {
           relawan: "/listener/beranda",
           admin: "/admin/beranda",
         };
-        const dest = roleRoutes[res.data.user.role] || res.data.redirect_to || "/patient/beranda";
+        // Akun belum aktif (pending / suspended / rejected) diarahkan BE ke halaman status
+        const dest = isActive
+          ? roleRoutes[res.data.user.role] || res.data.redirect_to || "/patient/beranda"
+          : res.data.redirect_to || "/status";
         router.push(dest);
       }
     } catch (err: unknown) {
