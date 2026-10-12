@@ -34,7 +34,8 @@ TemanBicara membagi hak akses dan fungsionalitas ke dalam empat portal kerja:
 
 ## Tech Stack
 
-- **Framework:** Next.js 15 (App Router, Turbopack)
+- **Framework:** Next.js 15 (App Router, Turbopack, Route Handlers sebagai API)
+- **Backend & Autentikasi:** Supabase (Auth, Database, Google OAuth)
 - **Bahasa:** TypeScript
 - **Styling:** Tailwind CSS v4, Shadcn UI (Radix UI primitives)
 - **Ikon:** Lucide React, React Icons
@@ -48,6 +49,7 @@ TemanBicara membagi hak akses dan fungsionalitas ke dalam empat portal kerja:
 src/
 ├── app/
 │   ├── (auth)/             # Halaman autentikasi (login, register)
+│   ├── api/                # Route handlers (auth, users, psychologists, volunteers, upload)
 │   ├── (private)/          # Portal aplikasi terlindungi
 │   │   ├── admin/          # Dasbor, verifikasi, audit transaksi, crisis feed
 │   │   ├── counselor/      # Dasbor konselor, jadwal slot, klien, earnings
@@ -59,22 +61,35 @@ src/
 │   ├── shared/             # Komponen bersama (layouts, navigasi, sidebar dinamis)
 │   ├── ui/                 # Primitif UI (Shadcn/Radix UI)
 │   └── views/              # Komponen modular per tampilan halaman
-├── constant/               # Data statis, konfigurasi menu peran, dan mock users
+├── constant/               # Data statis, konfigurasi menu peran, dan tipe peran
 ├── hooks/                  # Custom React hooks
-├── lib/                    # Fungsi pembantu dan konfigurasi utilitas
-└── store/                  # Store Zustand untuk autentikasi dan preferensi sesi
+├── lib/                    # Klien Supabase, validasi, dan fungsi utilitas
+├── services/               # Pemanggil API sisi klien
+├── store/                  # Store Zustand untuk autentikasi dan preferensi sesi
+├── types/                  # Definisi tipe TypeScript
+└── middleware.ts           # Proteksi rute berdasarkan sesi dan peran
 ```
 
-## Akun Demo Pengujian
+## Pemberitahuan Status Pengembangan
 
-Aplikasi menyediakan tombol Quick Demo pada halaman login untuk menguji alur kerja setiap peran tanpa konfigurasi database tambahan:
+> **Akun demo dan tombol Quick Demo sudah dihapus.** Seluruh autentikasi kini berjalan melalui Supabase, sehingga akun demo lama (`*@temanbicara.id` / `password123`) tidak lagi berlaku.
 
-| Peran | Email | Kata Sandi | Keterangan |
-| :--- | :--- | :--- | :--- |
-| Pasien | `wahyu@temanbicara.id` | `password123` | Saldo awal 50 koin |
-| Konselor | `anita@temanbicara.id` | `password123` | Psikolog Klinis Dewasa (SIPPK terverifikasi) |
-| Peer Listener | `rian@temanbicara.id` | `password123` | Relawan terlatih PFA |
-| Administrator | `admin@temanbicara.id` | `password123` | Hak akses pengawasan platform |
+**Sudah terhubung ke backend (Supabase):**
+- Login email & kata sandi serta masuk dengan Google (OAuth).
+- Registrasi terpisah untuk Pasien, Psikolog, dan Relawan (`/api/auth/register/*`).
+- Status akun: akun yang ditangguhkan atau ditolak diarahkan ke halaman status, bukan diblokir saat login.
+- Profil pengguna (`/api/users/me`) serta direktori psikolog dan relawan.
+- Manajemen pengguna oleh Administrator (CRUD, ubah status akun, filter) dengan perlindungan agar admin tidak menghapus akunnya sendiri.
+- Logout otomatis ketika sesi kedaluwarsa (respons 401).
+
+**Masih menggunakan data statis (belum terhubung ke backend):**
+- Ruang chat dan panggilan sesi.
+- Jadwal sesi, dompet koin, top-up, dan pembayaran.
+- Pendapatan konselor (earnings), crisis feed, dan audit transaksi.
+
+**Catatan akun:**
+- Akun Pasien, Psikolog, dan Relawan dibuat melalui halaman register. Akun Psikolog dan Relawan memerlukan verifikasi Administrator.
+- Akun Administrator tidak dapat didaftarkan melalui halaman register dan harus dibuat langsung di proyek Supabase.
 
 ## Memulai Pengembangan
 
@@ -87,7 +102,7 @@ Aplikasi menyediakan tombol Quick Demo pada halaman login untuk menguji alur ker
 1. Clone repositori ini:
    ```bash
    git clone https://github.com/wxhyxtrx/temanbicara-app.git
-   cd temanbicara
+   cd temanbicara-app
    ```
 
 2. Pasang dependensi proyek:
@@ -95,12 +110,20 @@ Aplikasi menyediakan tombol Quick Demo pada halaman login untuk menguji alur ker
    npm install
    ```
 
-3. Jalankan server pengembangan lokal:
+3. Buat file `.env.local` di root proyek dan isi kredensial Supabase Anda:
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=
+   SUPABASE_SERVICE_ROLE_KEY=   # hanya dipakai di server, jangan diekspos ke klien
+   ```
+   Untuk login Google, aktifkan provider Google di Supabase dan tambahkan `http://localhost:3000/api/auth/oauth/google/callback` ke daftar Redirect URL.
+
+4. Jalankan server pengembangan lokal:
    ```bash
    npm run dev
    ```
 
-4. Buka peramban di [http://localhost:3000](http://localhost:3000).
+5. Buka peramban di [http://localhost:3000](http://localhost:3000).
 
 ### Build Produksi
 
