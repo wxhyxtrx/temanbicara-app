@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { ThemeToggle } from "@/components/shared/atoms/theme-toggle";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
@@ -246,8 +247,7 @@ export default function Login() {
                 Lupa kata sandi?
               </a>
             </div>
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="••••••••"
               {...register("password")}
               className={`h-10 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 rounded-xl focus-visible:ring-teal-600 ${

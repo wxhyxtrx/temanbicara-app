@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { ThemeToggle } from "@/components/shared/atoms/theme-toggle";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
@@ -339,8 +341,7 @@ export default function Register() {
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Kata Sandi Akun
               </label>
-              <Input
-                type="password"
+              <PasswordInput
                 placeholder="Minimal 8 karakter"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -353,8 +354,7 @@ export default function Register() {
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Konfirmasi Kata Sandi
               </label>
-              <Input
-                type="password"
+              <PasswordInput
                 placeholder="Ulangi kata sandi"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -414,9 +414,8 @@ export default function Register() {
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Nomor WhatsApp Pasien
               </label>
-              <Input
-                type="tel"
-                placeholder="081234567890"
+              <PhoneInput
+                placeholder="812 3456 7890"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"
@@ -441,9 +440,8 @@ export default function Register() {
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   No. Telepon Kontak Darurat
                 </label>
-                <Input
-                  type="tel"
-                  placeholder="081198765432"
+                <PhoneInput
+                  placeholder="811 9876 5432"
                   value={emergencyPhone}
                   onChange={(e) => setEmergencyPhone(e.target.value)}
                   className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"

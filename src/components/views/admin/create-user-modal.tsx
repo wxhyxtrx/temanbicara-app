@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -136,8 +138,7 @@ export function CreateUserModal({
               <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
                 Password <span className="text-rose-500">*</span>
               </Label>
-              <Input
-                type="password"
+              <PasswordInput
                 placeholder="Min. 6 karakter"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -187,8 +188,8 @@ export function CreateUserModal({
             <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
               Nomor WhatsApp (Opsional)
             </Label>
-            <Input
-              placeholder="081234567890"
+            <PhoneInput
+              placeholder="812 3456 7890"
               value={noWa}
               onChange={(e) => setNoWa(e.target.value)}
               className="h-8.5 text-xs bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl"

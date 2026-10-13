@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -254,11 +256,12 @@ export default function PatientSettingsPage() {
                     <Label htmlFor="phone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Nomor WhatsApp (Pengingat Sesi)
                     </Label>
-                    <Input
+                    <PhoneInput
                       id="phone"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-teal-600"
+                      placeholder="812 3456 7890"
+                      className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-within:ring-teal-600"
                     />
                   </div>
 
@@ -466,19 +469,19 @@ export default function PatientSettingsPage() {
                   <Label htmlFor="currentPassword" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Kata Sandi Saat Ini
                   </Label>
-                  <Input id="currentPassword" type="password" placeholder="••••••••" className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" />
+                  <PasswordInput id="currentPassword" placeholder="••••••••" className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="newPassword" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Kata Sandi Baru
                   </Label>
-                  <Input id="newPassword" type="password" placeholder="••••••••" className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" />
+                  <PasswordInput id="newPassword" placeholder="••••••••" className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="confirmPassword" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Konfirmasi Kata Sandi Baru
                   </Label>
-                  <Input id="confirmPassword" type="password" placeholder="••••••••" className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" />
+                  <PasswordInput id="confirmPassword" placeholder="••••••••" className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" />
                 </div>
                 <div className="pt-2">
                   <Button type="submit" className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-5 py-2 cursor-pointer shadow-xs">

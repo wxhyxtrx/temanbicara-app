@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/shared/atoms/theme-toggle";
 import {
@@ -318,11 +320,11 @@ export default function CounselorRegistrationPage() {
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Nomor WhatsApp Aktif
                     </label>
-                    <Input
+                    <PhoneInput
                       required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="081234567890"
+                      placeholder="812 3456 7890"
                       className="h-10 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 rounded-xl"
                       disabled={loading}
                     />
@@ -348,9 +350,8 @@ export default function CounselorRegistrationPage() {
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Kata Sandi
                     </label>
-                    <Input
+                    <PasswordInput
                       required
-                      type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Minimal 8 karakter"
@@ -363,9 +364,8 @@ export default function CounselorRegistrationPage() {
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Konfirmasi Kata Sandi
                     </label>
-                    <Input
+                    <PasswordInput
                       required
-                      type="password"
                       value={passwordConfirmation}
                       onChange={(e) => setPasswordConfirmation(e.target.value)}
                       placeholder="Ulangi kata sandi"
