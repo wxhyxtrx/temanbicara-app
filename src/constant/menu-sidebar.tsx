@@ -189,11 +189,10 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         icon: Home,
       },
       {
-        title: "Verifikasi SIPPK",
-        description: "Validasi lisensi psikolog",
-        url: "/admin/verifications",
-        icon: FileCheck2,
-        badge: "3",
+        title: "Manajemen Pengguna",
+        description: "Daftar akun & verifikasi mitra",
+        url: "/admin/users",
+        icon: Users,
       },
       {
         title: "Eskalasi Krisis",
@@ -209,12 +208,6 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         description: "Audit koin & pembayaran",
         url: "/admin/transactions",
         icon: History,
-      },
-      {
-        title: "Manajemen Pengguna",
-        description: "Daftar akun & moderasi",
-        url: "/admin/users",
-        icon: Users,
       },
       {
         title: "Pengaturan Sistem",

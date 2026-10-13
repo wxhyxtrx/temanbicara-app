@@ -66,7 +66,7 @@ export default function AdminBerandaPage() {
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link href="/admin/verifications">
+              <Link href="/admin/users?tab=verifications">
                 <Button className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-5 py-5 text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-2">
                   <FileCheck2 size={17} />
                   Verifikasi Lisensi ({pendingVerifications.length} Baru)
@@ -190,7 +190,7 @@ export default function AdminBerandaPage() {
                     Permintaan pendaftaran psikolog baru yang memerlukan pemeriksaan nomor SIPPK
                   </CardDescription>
                 </div>
-                <Link href="/admin/verifications">
+                <Link href="/admin/users?tab=verifications">
                   <Button variant="ghost" size="sm" className="text-xs text-teal-700 dark:text-teal-400 font-semibold gap-1">
                     Semua <ArrowRight size={13} />
                   </Button>
@@ -219,7 +219,7 @@ export default function AdminBerandaPage() {
                         {item.credentialNumber} • {item.institution}
                       </p>
                     </div>
-                    <Link href="/admin/verifications" className="shrink-0">
+                    <Link href="/admin/users?tab=verifications" className="shrink-0">
                       <Button size="sm" className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg h-7 px-3 font-semibold">
                         Tinjau
                       </Button>
