@@ -132,10 +132,21 @@ export const toLocalInput = (iso: string | null) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
+export const isValidLocalInput = (value: string) => {
+  if (!value) return true;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [, year, month, day, hour, minute] = match.map(Number);
+  const date = new Date(0);
+  date.setFullYear(year, month - 1, day);
+  date.setHours(hour, minute, 0, 0);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day && date.getHours() === hour && date.getMinutes() === minute;
+};
+
 export const fromLocalInput = (value: string) => {
   if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  if (!isValidLocalInput(value)) return null;
+  return new Date(value).toISOString();
 };
 
 export const formatWib = (iso: string) => {

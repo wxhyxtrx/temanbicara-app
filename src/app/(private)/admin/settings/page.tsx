@@ -11,6 +11,7 @@ import {
   type FlatGroup,
   type FlatKey,
   fromLocalInput,
+  isValidLocalInput,
   inputClass,
   invalidNumberKeys,
   labelClass,
@@ -100,15 +101,15 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     if (!form || isFallback || isSaving) return;
     const invalid = invalidNumberKeys(form);
-    const invalidMaintenanceDate = Object.values(maintenanceDraft).some((value) => value !== "" && !Number.isFinite(new Date(value).getTime()));
+    const invalidMaintenanceDate = Object.values(maintenanceDraft).some((value) => !isValidLocalInput(value));
+    setSaveSuccess(false);
+    setRefreshWarning(null);
     if (invalidMaintenanceDate) {
-      setSaveSuccess(false);
       setFieldErrors({ maintenance: "Isi tanggal maintenance yang valid atau kosongkan waktunya." });
       setSaveError("Tanggal maintenance tidak valid. Periksa kartu bertanda merah.");
       return;
     }
     if (invalid.length) {
-      setSaveSuccess(false);
       setFieldErrors(Object.fromEntries(invalid.map((k) => [k, "Isi semua angka dengan nilai yang valid."])));
       setSaveError("Ada angka kosong atau tidak valid. Periksa kartu bertanda merah.");
       return;
