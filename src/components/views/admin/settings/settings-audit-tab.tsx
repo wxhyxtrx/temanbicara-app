@@ -20,7 +20,7 @@ const LIMIT = 20;
 export function SettingsAuditTab() {
   const [items, setItems] = useState<SystemSettingsAuditItem[]>([]);
   const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState({ total: 0, totalPages: 0 });
+  const [meta, setMeta] = useState({ page: 1, limit: LIMIT, total: 0, totalPages: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,8 +29,9 @@ export function SettingsAuditTab() {
     setError(null);
     const res = await systemSettingsClient.getAdminSettingsAudit({ page: target, limit: LIMIT });
     setItems(res.items);
-    setMeta({ total: res.total, totalPages: res.totalPages });
+    // Error result carries placeholder totals; keep last known meta.
     if (res.error) setError(res.error);
+    else setMeta({ page: res.page, limit: res.limit, total: res.total, totalPages: res.totalPages });
     setIsLoading(false);
   }, []);
 
@@ -38,21 +39,20 @@ export function SettingsAuditTab() {
     fetchAudit(page);
   }, [fetchAudit, page]);
 
-  const isFirstPage = page <= 1;
-  const isLastPage = page >= meta.totalPages;
+  const isFirstPage = meta.page <= 1;
+  const isLastPage = meta.page >= meta.totalPages;
 
   const formatDate = (isoString: string) => {
-    try {
-      return new Date(isoString).toLocaleString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return isoString;
-    }
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return isoString;
+    return date.toLocaleString("id-ID", {
+      timeZone: "Asia/Jakarta",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const renderValuePreview = (val: unknown) => {
@@ -152,16 +152,17 @@ export function SettingsAuditTab() {
         </Table>
       </div>
 
+      {!error && (
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
         <span>
-          Halaman {page} dari {Math.max(meta.totalPages, 1)} · {meta.total} catatan
+          Halaman {meta.page} dari {Math.max(meta.totalPages, 1)} · {meta.total} catatan
         </span>
         <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => p - 1)}
+            onClick={() => setPage(meta.page - 1)}
             disabled={isLoading || isFirstPage}
             className="h-8 text-xs rounded-lg gap-1 cursor-pointer"
           >
@@ -172,7 +173,7 @@ export function SettingsAuditTab() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => setPage(meta.page + 1)}
             disabled={isLoading || isLastPage}
             className="h-8 text-xs rounded-lg gap-1 cursor-pointer"
           >
@@ -181,6 +182,7 @@ export function SettingsAuditTab() {
           </Button>
         </div>
       </div>
+      )}
     </div>
   );
 }
