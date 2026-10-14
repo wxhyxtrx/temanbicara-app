@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 export const maintenanceSchema = z
   .object({
-    scheduled_start: z.string().datetime({ offset: true }).nullable().or(z.null()),
-    estimated_end: z.string().datetime({ offset: true }).nullable().or(z.null()),
+    scheduled_start: z.string().datetime({ offset: true }).nullable(),
+    estimated_end: z.string().datetime({ offset: true }).nullable(),
     message: z.string().max(500, 'Pesan maintenance maksimal 500 karakter'),
   })
   .refine(

@@ -47,14 +47,15 @@ export async function PATCH(req: Request) {
     );
 
     if (!result.success) {
+      const isValidationError = result.error === 'VALIDATION_ERROR' || result.error === 'NO_UPDATES_PROVIDED';
       return NextResponse.json(
         {
           success: false,
-          error: result.error || 'VALIDATION_ERROR',
-          message: 'Validasi pengaturan gagal',
+          error: result.error || 'INTERNAL_SERVER_ERROR',
+          message: isValidationError ? 'Validasi pengaturan gagal' : 'Gagal memperbarui pengaturan sistem',
           details: result.details,
         },
-        { status: 422 }
+        { status: isValidationError ? 422 : 500 }
       );
     }
 

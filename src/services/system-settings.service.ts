@@ -19,9 +19,27 @@ import type {
 } from '@/types/system-settings';
 
 export class SystemSettingsService {
+  // In-memory cache untuk public settings (TTL 30 detik)
+  private static publicCache: { data: PublicSettings; expiresAt: number } | null = null;
+  private static readonly CACHE_TTL_MS = 30 * 1000;
+
   /**
-   * Menghitung fase maintenance secara dinamis berdasarkan waktu saat ini
-   * dan kondisi sesi yang sedang berjalan (§8 spec).
+   * Reset cache publik secara instan (dipanggil otomatis setelah PATCH setting)
+   */
+  public static invalidateCache(): void {
+    this.publicCache = null;
+  }
+
+  /**
+   * Menghitung fase maintenance secara dinamis berdasarkan waktu saat ini (§8 spec).
+   *
+   * Catatan Fase 1:
+   * Tabel `bookings` baru diimplementasikan di Fase 3, sehingga penghitungan fase 'draining'
+   * (mengecek booking yang in_progress saat maintenance dimulai) belum tersedia.
+   * Untuk sementara di Fase 1: jika now >= scheduled_start, fase langsung dianggap 'active'.
+   *
+   * TODO (Fase 3/4): Setelah tabel `bookings` aktif, tambahkan pengecekan:
+   * if (now >= scheduled_start && count(bookings.status = 'in_progress') > 0) return 'draining';
    */
   public static async calculateMaintenancePhase(
     scheduledStart: string | null
@@ -36,35 +54,26 @@ export class SystemSettingsService {
       return 'scheduled';
     }
 
-    // Waktu sudah masuk/lewat scheduled_start
-    // Periksa apakah masih ada booking yang in_progress
-    try {
-      if (supabaseAdmin) {
-        const { count, error } = await supabaseAdmin
-          .from('bookings')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'in_progress');
-
-        if (!error && (count ?? 0) > 0) {
-          return 'draining';
-        }
-      }
-    } catch {
-      // Jika tabel bookings belum ada (Fase 1-2), langsung anggap active
-    }
-
+    // TODO (Fase 3/4): Cek booking in_progress untuk fase 'draining'.
+    // Sementara Fase 1: langsung 'active'.
     return 'active';
   }
 
   /**
    * Mengambil setting yang aman dibaca publik / frontend umum (§3 & §9 spec).
+   * Dilengkapi in-memory cache 30 detik yang di-reset saat PATCH.
    */
   public static async getPublicSettings(): Promise<PublicSettings> {
+    const now = Date.now();
+    if (this.publicCache && this.publicCache.expiresAt > now) {
+      return this.publicCache.data;
+    }
+
     const adminSettings = await this.getRawSettingsMap();
     const maintenance = adminSettings.settings.maintenance;
     const phase = await this.calculateMaintenancePhase(maintenance.scheduled_start);
 
-    return {
+    const publicData: PublicSettings = {
       topup: adminSettings.settings.topup,
       tip: adminSettings.settings.tip,
       payout: adminSettings.settings.payout,
@@ -78,6 +87,13 @@ export class SystemSettingsService {
         phase,
       },
     };
+
+    this.publicCache = {
+      data: publicData,
+      expiresAt: now + this.CACHE_TTL_MS,
+    };
+
+    return publicData;
   }
 
   /**
@@ -129,7 +145,8 @@ export class SystemSettingsService {
   }
 
   /**
-   * Memperbarui satu atau lebih key setting dengan validasi Zod ketat dan mencatat audit.
+   * Memperbarui satu atau lebih key setting dengan validasi Zod ketat
+   * dan mencatat audit dalam SATU transaksi atomik DB (RPC/Trigger).
    */
   public static async updateSettings(
     updates: Record<string, unknown>,
@@ -147,7 +164,7 @@ export class SystemSettingsService {
     const validationErrors: Record<string, string> = {};
     const validUpdates: Record<string, unknown> = {};
 
-    // Validasi setiap key yang dikirim
+    // 1. Validasi Zod per key
     for (const [key, rawVal] of Object.entries(updates)) {
       if (!(key in systemSettingsValidators)) {
         validationErrors[key] = `Key '${key}' bukan konfigurasi yang valid`;
@@ -180,37 +197,26 @@ export class SystemSettingsService {
       };
     }
 
-    // Ambil nilai lama untuk dicatat di audit
-    const currentSettings = await this.getRawSettingsMap();
+    // 2. Eksekusi atomik: Panggil RPC update_system_settings_batch (transaksi tunggal di DB)
+    // Trigger trg_system_settings_audit di DB secara otomatis mencatat audit per baris
+    // dalam transaksi yang sama.
+    const { error: rpcError } = await supabaseAdmin.rpc('update_system_settings_batch', {
+      p_entries: validUpdates,
+      p_user_id: userId,
+    });
 
-    for (const [key, newValue] of Object.entries(validUpdates)) {
-      const oldValue = currentSettings.settings[key as keyof SystemSettings] ?? null;
-
-      // 1. Update ke tabel system_settings
-      const { error: upsertError } = await supabaseAdmin.from('system_settings').upsert({
-        key,
-        value: newValue,
-        updated_by: userId,
-        updated_at: new Date().toISOString(),
-      });
-
-      if (upsertError) {
-        return {
-          success: false,
-          error: 'DB_ERROR',
-          details: { [key]: upsertError.message },
-        };
-      }
-
-      // 2. Tulis riwayat audit
-      await supabaseAdmin.from('system_settings_audit').insert({
-        key,
-        old_value: oldValue,
-        new_value: newValue,
-        changed_by: userId,
-        changed_at: new Date().toISOString(),
-      });
+    if (rpcError) {
+      // Jangan fallback ke beberapa upsert terpisah: akan melanggar atomisitas batch.
+      console.error('Atomic settings update RPC failed:', rpcError.message);
+      return {
+        success: false,
+        error: 'DB_ERROR',
+        details: { message: 'Gagal memperbarui pengaturan secara atomik' },
+      };
     }
+
+    // 3. Reset in-memory cache agar GET /api/settings/public langsung fresh
+    this.invalidateCache();
 
     const latest = await this.getRawSettingsMap();
     return { success: true, data: latest };
