@@ -88,12 +88,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isSystemSettings(value: unknown): value is SystemSettings {
-  if (!isRecord(value)) return false;
-  const numericGroups = ['topup', 'tip', 'holding', 'payout', 'psikolog_late', 'patient_noshow', 'extension_price', 'relawan', 'upload', 'media_retention'] as const;
-  if (!isRecord(value.maintenance) || !(value.maintenance.scheduled_start === null || typeof value.maintenance.scheduled_start === 'string') || !(value.maintenance.estimated_end === null || typeof value.maintenance.estimated_end === 'string') || typeof value.maintenance.message !== 'string') return false;
+  const expectedKeys = Object.keys(DEFAULT_SYSTEM_SETTINGS);
+  if (!isRecord(value) || expectedKeys.some((key) => !Object.hasOwn(value, key))) return false;
+  const validDate = (date: unknown) => date === null || (typeof date === 'string' && date.length > 0 && Number.isFinite(Date.parse(date)));
+  if (!isRecord(value.maintenance) || !validDate(value.maintenance.scheduled_start) || !validDate(value.maintenance.estimated_end) || typeof value.maintenance.message !== 'string') return false;
   if (!isRecord(value.revenue_share) || typeof value.revenue_share.mitra_bps !== 'number' || !Number.isFinite(value.revenue_share.mitra_bps)) return false;
   if (!Array.isArray(value.refund_policy) || !value.refund_policy.every((tier) => isRecord(tier) && typeof tier.min_minutes_before === 'number' && Number.isFinite(tier.min_minutes_before) && typeof tier.refund_pct === 'number' && Number.isFinite(tier.refund_pct))) return false;
-  return numericGroups.every((key) => isRecord(value[key]) && Object.values(value[key]).every((item) => typeof item === 'number' && Number.isFinite(item)));
+  return expectedKeys.filter((key) => key !== 'maintenance' && key !== 'refund_policy').every((key) => {
+    const group = value[key];
+    const expectedGroup = DEFAULT_SYSTEM_SETTINGS[key as keyof SystemSettings];
+    return isRecord(group) && isRecord(expectedGroup) && Object.keys(expectedGroup).every((field) => typeof group[field] === 'number' && Number.isFinite(group[field]));
+  });
 }
 
 function readSettingsEnvelope(value: unknown): AdminSettingsResponse | undefined {

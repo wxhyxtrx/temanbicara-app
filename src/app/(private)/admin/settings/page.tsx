@@ -47,6 +47,8 @@ export default function AdminSettingsPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [revenueShareDraft, setRevenueShareDraft] = useState<string | null>(null);
+  const [maintenanceDraft, setMaintenanceDraft] = useState({ scheduled_start: "", estimated_end: "" });
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
   const [loadRequest, setLoadRequest] = useState(0);
 
   const load = useCallback(async () => {
@@ -59,6 +61,7 @@ export default function AdminSettingsPage() {
     void systemSettingsClient.getAdminSettings().then((res) => {
       if (!active) return;
       setForm(res.settings);
+      setMaintenanceDraft({ scheduled_start: toLocalInput(res.settings.maintenance.scheduled_start), estimated_end: toLocalInput(res.settings.maintenance.estimated_end) });
       setMeta(res.meta);
       setIsFallback(res.isFallback);
       setLoadError(res.error ?? null);
@@ -97,6 +100,13 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     if (!form || isFallback || isSaving) return;
     const invalid = invalidNumberKeys(form);
+    const invalidMaintenanceDate = Object.values(maintenanceDraft).some((value) => value !== "" && !Number.isFinite(new Date(value).getTime()));
+    if (invalidMaintenanceDate) {
+      setSaveSuccess(false);
+      setFieldErrors({ maintenance: "Isi tanggal maintenance yang valid atau kosongkan waktunya." });
+      setSaveError("Tanggal maintenance tidak valid. Periksa kartu bertanda merah.");
+      return;
+    }
     if (invalid.length) {
       setSaveSuccess(false);
       setFieldErrors(Object.fromEntries(invalid.map((k) => [k, "Isi semua angka dengan nilai yang valid."])));
@@ -106,6 +116,11 @@ export default function AdminSettingsPage() {
     const revenueSharePercent = Number(revenueShareDraft ?? String(form.revenue_share.mitra_bps / 100));
     const payload: SystemSettings = {
       ...form,
+      maintenance: {
+        ...form.maintenance,
+        scheduled_start: maintenanceDraft.scheduled_start ? fromLocalInput(maintenanceDraft.scheduled_start) : null,
+        estimated_end: maintenanceDraft.estimated_end ? fromLocalInput(maintenanceDraft.estimated_end) : null,
+      },
       revenue_share: { mitra_bps: Math.round(revenueSharePercent * 100) },
     };
     if (!Number.isFinite(revenueSharePercent) || revenueSharePercent < 0) {
@@ -115,6 +130,7 @@ export default function AdminSettingsPage() {
     }
     setIsSaving(true);
     setSaveSuccess(false);
+    setRefreshWarning(null);
     setSaveError(null);
     setFieldErrors({});
     // All 13 groups; server validates each key independently.
@@ -122,6 +138,7 @@ export default function AdminSettingsPage() {
       const res = await systemSettingsClient.updateAdminSettings(payload);
       if (res.success && res.settings) {
         setForm(res.settings);
+        setMaintenanceDraft({ scheduled_start: toLocalInput(res.settings.maintenance.scheduled_start), estimated_end: toLocalInput(res.settings.maintenance.estimated_end) });
         setRevenueShareDraft(String(res.settings.revenue_share.mitra_bps / 100));
         setSaveSuccess(true);
         // Refresh meta (updated_at); a failed refresh must not replace saved values with defaults.
@@ -130,10 +147,13 @@ export default function AdminSettingsPage() {
           if (!fresh.isFallback) {
             setForm(fresh.settings);
             setMeta(fresh.meta);
+            setMaintenanceDraft({ scheduled_start: toLocalInput(fresh.settings.maintenance.scheduled_start), estimated_end: toLocalInput(fresh.settings.maintenance.estimated_end) });
             setRevenueShareDraft(String(fresh.settings.revenue_share.mitra_bps / 100));
+          } else {
+            setRefreshWarning(`Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui${fresh.error ? `: ${fresh.error}` : "."}`);
           }
         } catch (error) {
-          setSaveError(error instanceof Error ? `Tersimpan, tetapi metadata gagal dimuat: ${error.message}` : "Tersimpan, tetapi metadata gagal dimuat.");
+          setRefreshWarning(error instanceof Error ? `Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui: ${error.message}` : "Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui.");
         }
       } else {
         setFieldErrors(res.details ?? {});
@@ -266,7 +286,12 @@ export default function AdminSettingsPage() {
               Memuat pengaturan sistem...
             </div>
           ) : !form ? (
-            <p className="text-xs text-slate-500 text-center h-40">Pengaturan sistem tidak tersedia.</p>
+            <div role="alert" className="flex flex-col items-center justify-center gap-3 h-40 text-xs text-red-700 dark:text-red-300">
+              <p>{loadError ?? "Pengaturan sistem tidak tersedia."}</p>
+              <Button type="button" variant="outline" onClick={() => load()} className="h-8 text-xs rounded-xl gap-1.5 cursor-pointer">
+                <RefreshCw size={13} /> Muat ulang
+              </Button>
+            </div>
           ) : (
             <>
               {isFallback && (
@@ -297,6 +322,13 @@ export default function AdminSettingsPage() {
                 <p className="text-xs text-slate-500">
                   Belum ada perubahan tersimpan; menampilkan nilai default dari server.
                 </p>
+              )}
+
+              {refreshWarning && (
+                <div role="alert" className="flex items-start gap-2 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-semibold">
+                  <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                  <span className="break-words">{refreshWarning}</span>
+                </div>
               )}
 
               {saveSuccess && (
@@ -339,24 +371,22 @@ export default function AdminSettingsPage() {
                           id="maintenance-start"
                           {...maintenanceAria}
                           type="datetime-local"
-                          value={toLocalInput(form.maintenance.scheduled_start)}
-                          onChange={(e) =>
-                            updateGroup("maintenance", {
-                              ...form.maintenance,
-                              scheduled_start: fromLocalInput(e.target.value),
-                            })
-                          }
+                          value={maintenanceDraft.scheduled_start}
+                          onChange={(e) => {
+                            setMaintenanceDraft((draft) => ({ ...draft, scheduled_start: e.target.value }));
+                            updateGroup("maintenance", { ...form.maintenance, scheduled_start: fromLocalInput(e.target.value) });
+                          }}
                           className={`${inputClass} min-w-0`}
                         />
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() =>
-                            updateGroup("maintenance", {
-                              ...form.maintenance,
-                              scheduled_start: new Date().toISOString(),
-                            })
-                          }
+                          onClick={() => {
+                            const now = new Date();
+                            const localValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+                            setMaintenanceDraft((draft) => ({ ...draft, scheduled_start: localValue }));
+                            updateGroup("maintenance", { ...form.maintenance, scheduled_start: now.toISOString() });
+                          }}
                           className="h-9 text-xs rounded-xl cursor-pointer shrink-0"
                         >
                           Aktifkan sekarang
@@ -371,13 +401,11 @@ export default function AdminSettingsPage() {
                         id="maintenance-end"
                         {...maintenanceAria}
                         type="datetime-local"
-                        value={toLocalInput(form.maintenance.estimated_end)}
-                        onChange={(e) =>
-                          updateGroup("maintenance", {
-                            ...form.maintenance,
-                            estimated_end: fromLocalInput(e.target.value),
-                          })
-                        }
+                        value={maintenanceDraft.estimated_end}
+                        onChange={(e) => {
+                          setMaintenanceDraft((draft) => ({ ...draft, estimated_end: e.target.value }));
+                          updateGroup("maintenance", { ...form.maintenance, estimated_end: fromLocalInput(e.target.value) });
+                        }}
                         className={inputClass}
                       />
                     </div>
