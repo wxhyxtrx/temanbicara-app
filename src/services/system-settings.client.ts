@@ -1,6 +1,5 @@
 import { DEFAULT_PUBLIC_SETTINGS, DEFAULT_SYSTEM_SETTINGS } from '@/constant/system-settings';
 import type {
-  AdminSettingsAuditResponse,
   AdminSettingsResponse,
   PublicSettings,
   SystemSettings,
@@ -19,6 +18,28 @@ export interface AdminSettingsResult {
   meta?: AdminSettingsResponse['meta'];
   isFallback: boolean;
   error?: string;
+}
+
+export interface AdminSettingsAuditResult {
+  items: SystemSettingsAuditItem[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  error?: string;
+}
+
+export interface UpdateAdminSettingsResult {
+  success: boolean;
+  settings?: SystemSettings;
+  error?: string;
+  details?: Record<string, string>;
+}
+
+function readDetails(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const entries = Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string');
+  return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
 async function readError(response: Response): Promise<string> {
@@ -63,11 +84,7 @@ export const systemSettingsClient = {
     }
   },
 
-  async updateAdminSettings(payload: Partial<SystemSettings>): Promise<{
-    success: boolean;
-    settings?: SystemSettings;
-    error?: string;
-  }> {
+  async updateAdminSettings(payload: Partial<SystemSettings>): Promise<UpdateAdminSettingsResult> {
     try {
       const response = await fetch('/api/admin/settings', {
         method: 'PATCH',
@@ -75,14 +92,19 @@ export const systemSettingsClient = {
         credentials: 'include',
         body: JSON.stringify(payload),
       });
-      const result = (await response.json()) as {
-        success: boolean;
+      const result = (await response.json().catch(() => null)) as {
+        success?: boolean;
         message?: string;
         error?: string;
+        details?: unknown;
         data?: AdminSettingsResponse;
-      };
-      if (!response.ok || !result.success || !result.data?.settings) {
-        throw new Error(result.message || result.error || `HTTP ${response.status}: Gagal menyimpan`);
+      } | null;
+      if (!response.ok || !result?.success || !result.data?.settings) {
+        return {
+          success: false,
+          error: result?.message || result?.error || `HTTP ${response.status}: Gagal menyimpan`,
+          details: readDetails(result?.details),
+        };
       }
       return { success: true, settings: result.data.settings };
     } catch (error) {
@@ -90,15 +112,30 @@ export const systemSettingsClient = {
     }
   },
 
-  async getAdminSettingsAudit(): Promise<{ items: SystemSettingsAuditItem[]; error?: string }> {
+  async getAdminSettingsAudit({ page, limit }: { page: number; limit: number }): Promise<AdminSettingsAuditResult> {
     try {
-      const response = await fetch('/api/admin/settings/audit?page=1&limit=20', { credentials: 'include' });
+      const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+      const response = await fetch(`/api/admin/settings/audit?${query}`, { credentials: 'include' });
       if (!response.ok) throw new Error(await readError(response));
-      const result = (await response.json()) as AdminSettingsAuditResponse & { success: boolean };
-      if (!result.success || !Array.isArray(result.data)) throw new Error('Respons audit settings tidak valid');
-      return { items: result.data };
+      const result = (await response.json()) as {
+        success: boolean;
+        data: SystemSettingsAuditItem[];
+        meta?: { page: number; limit: number; total: number; totalPages: number };
+      };
+      if (!result.success || !Array.isArray(result.data) || !result.meta) {
+        throw new Error('Respons audit settings tidak valid');
+      }
+      const { meta } = result;
+      return { items: result.data, page: meta.page, limit: meta.limit, total: meta.total, totalPages: meta.totalPages };
     } catch (error) {
-      return { items: [], error: error instanceof Error ? error.message : 'Gagal memuat log audit' };
+      return {
+        items: [],
+        page,
+        limit,
+        total: 0,
+        totalPages: 0,
+        error: error instanceof Error ? error.message : 'Gagal memuat log audit',
+      };
     }
   },
 };
