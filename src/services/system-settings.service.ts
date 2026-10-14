@@ -1,8 +1,7 @@
+import 'server-only';
+
 import { supabaseAdmin } from '@/lib/supabase/client';
-import {
-  DEFAULT_PUBLIC_SETTINGS,
-  DEFAULT_SYSTEM_SETTINGS,
-} from '@/constant/system-settings';
+import { DEFAULT_SYSTEM_SETTINGS } from '@/constant/system-settings';
 import {
   systemSettingsValidators,
   type SettingKey,
@@ -19,135 +18,79 @@ import type {
 } from '@/types/system-settings';
 
 export class SystemSettingsService {
-  // In-memory cache untuk public settings (TTL 30 detik)
   private static publicCache: { data: PublicSettings; expiresAt: number } | null = null;
-  private static readonly CACHE_TTL_MS = 30 * 1000;
+  private static readonly CACHE_TTL_MS = 30_000;
 
-  /**
-   * Reset cache publik secara instan (dipanggil otomatis setelah PATCH setting)
-   */
   public static invalidateCache(): void {
     this.publicCache = null;
   }
 
-  /**
-   * Menghitung fase maintenance secara dinamis berdasarkan waktu saat ini (§8 spec).
-   *
-   * Catatan Fase 1:
-   * Tabel `bookings` baru diimplementasikan di Fase 3, sehingga penghitungan fase 'draining'
-   * (mengecek booking yang in_progress saat maintenance dimulai) belum tersedia.
-   * Untuk sementara di Fase 1: jika now >= scheduled_start, fase langsung dianggap 'active'.
-   *
-   * TODO (Fase 3/4): Setelah tabel `bookings` aktif, tambahkan pengecekan:
-   * if (now >= scheduled_start && count(bookings.status = 'in_progress') > 0) return 'draining';
-   */
-  public static async calculateMaintenancePhase(
-    scheduledStart: string | null
-  ): Promise<MaintenancePhase> {
+  /** Fase 1: bookings belum tersedia, maka maintenance yang waktunya tiba langsung active. */
+  public static async calculateMaintenancePhase(scheduledStart: string | null): Promise<MaintenancePhase> {
     if (!scheduledStart) return 'none';
-
-    const now = Date.now();
     const startTime = new Date(scheduledStart).getTime();
-    if (isNaN(startTime)) return 'none';
+    if (!Number.isFinite(startTime)) return 'none';
+    if (Date.now() < startTime) return 'scheduled';
 
-    if (now < startTime) {
-      return 'scheduled';
-    }
-
-    // TODO (Fase 3/4): Cek booking in_progress untuk fase 'draining'.
-    // Sementara Fase 1: langsung 'active'.
+    // TODO Fase 3/4: setelah tabel bookings tersedia, cek sesi in_progress dan hasilkan draining.
     return 'active';
   }
 
-  /**
-   * Mengambil setting yang aman dibaca publik / frontend umum (§3 & §9 spec).
-   * Dilengkapi in-memory cache 30 detik yang di-reset saat PATCH.
-   */
   public static async getPublicSettings(): Promise<PublicSettings> {
     const now = Date.now();
-    if (this.publicCache && this.publicCache.expiresAt > now) {
-      return this.publicCache.data;
-    }
+    if (this.publicCache && this.publicCache.expiresAt > now) return this.publicCache.data;
 
-    const adminSettings = await this.getRawSettingsMap();
-    const maintenance = adminSettings.settings.maintenance;
-    const phase = await this.calculateMaintenancePhase(maintenance.scheduled_start);
-
-    const publicData: PublicSettings = {
-      topup: adminSettings.settings.topup,
-      tip: adminSettings.settings.tip,
-      payout: adminSettings.settings.payout,
-      extension_price: adminSettings.settings.extension_price,
-      relawan: adminSettings.settings.relawan,
-      upload: adminSettings.settings.upload,
-      refund_policy: adminSettings.settings.refund_policy,
-      revenue_share: adminSettings.settings.revenue_share,
+    const { settings } = await this.getRawSettingsMap();
+    const result: PublicSettings = {
+      topup: settings.topup,
+      tip: settings.tip,
+      payout: settings.payout,
+      extension_price: settings.extension_price,
+      relawan: settings.relawan,
+      upload: settings.upload,
+      refund_policy: settings.refund_policy,
+      revenue_share: settings.revenue_share,
       maintenance: {
-        ...maintenance,
-        phase,
+        ...settings.maintenance,
+        phase: await this.calculateMaintenancePhase(settings.maintenance.scheduled_start),
       },
     };
 
-    this.publicCache = {
-      data: publicData,
-      expiresAt: now + this.CACHE_TTL_MS,
-    };
-
-    return publicData;
+    this.publicCache = { data: result, expiresAt: now + this.CACHE_TTL_MS };
+    return result;
   }
 
-  /**
-   * Mengambil seluruh setting lengkap beserta metadata per key untuk Admin.
-   */
   public static async getAdminSettings(): Promise<AdminSettingsResponse> {
     return this.getRawSettingsMap();
   }
 
-  /**
-   * Mengambil map raw settings dari DB dengan fallback nilai default.
-   */
   private static async getRawSettingsMap(): Promise<AdminSettingsResponse> {
     const settings: SystemSettings = { ...DEFAULT_SYSTEM_SETTINGS };
-    const meta: Record<string, { updated_at: string; updated_by: string | null }> = {};
+    const meta: AdminSettingsResponse['meta'] = {};
+    const defaultTimestamp = new Date(0).toISOString();
 
-    // Inisialisasi metadata default
-    for (const key of Object.keys(DEFAULT_SYSTEM_SETTINGS)) {
-      meta[key] = {
-        updated_at: new Date(0).toISOString(),
-        updated_by: null,
-      };
+    for (const key of Object.keys(DEFAULT_SYSTEM_SETTINGS) as (keyof SystemSettings)[]) {
+      meta[key] = { updated_at: defaultTimestamp, updated_by: null };
     }
 
-    if (!supabaseAdmin) {
-      return { settings, meta };
-    }
+    if (!supabaseAdmin) return { settings, meta };
 
     const { data, error } = await supabaseAdmin
       .from('system_settings')
       .select('key, value, updated_by, updated_at');
-
-    if (error || !data) {
-      return { settings, meta };
-    }
+    if (error) throw new Error(`Gagal membaca system settings: ${error.message}`);
+    if (!data) return { settings, meta };
 
     for (const row of data as SystemSettingRow[]) {
       if (row.key in settings) {
         const key = row.key as keyof SystemSettings;
         (settings as Record<string, unknown>)[key] = row.value;
-        meta[key] = {
-          updated_at: row.updated_at,
-          updated_by: row.updated_by,
-        };
+        meta[key] = { updated_at: row.updated_at, updated_by: row.updated_by };
       }
     }
-
     return { settings, meta };
   }
 
-  /**
-   * Memperbarui satu atau lebih key setting dengan validasi Zod ketat
-   * dan mencatat audit dalam SATU transaksi atomik DB (RPC/Trigger).
-   */
   public static async updateSettings(
     updates: Record<string, unknown>,
     userId: string
@@ -158,153 +101,87 @@ export class SystemSettingsService {
     data?: AdminSettingsResponse;
   }> {
     if (!supabaseAdmin) {
-      return { success: false, error: 'Database client tidak tersedia' };
+      return { success: false, error: 'SERVER_CONFIG_ERROR', details: { message: 'Database client tidak tersedia' } };
     }
 
     const validationErrors: Record<string, string> = {};
     const validUpdates: Record<string, unknown> = {};
-
-    // 1. Validasi Zod per key
-    for (const [key, rawVal] of Object.entries(updates)) {
+    for (const [key, rawValue] of Object.entries(updates)) {
       if (!(key in systemSettingsValidators)) {
         validationErrors[key] = `Key '${key}' bukan konfigurasi yang valid`;
         continue;
       }
-
-      const validator = systemSettingsValidators[key as SettingKey];
-      const parsed = validator.safeParse(rawVal);
+      const parsed = systemSettingsValidators[key as SettingKey].safeParse(rawValue);
       if (!parsed.success) {
-        const firstIssue = parsed.error.issues[0]?.message || 'Nilai tidak valid';
-        validationErrors[key] = firstIssue;
+        validationErrors[key] = parsed.error.issues[0]?.message ?? 'Nilai tidak valid';
       } else {
         validUpdates[key] = parsed.data;
       }
     }
 
-    if (Object.keys(validationErrors).length > 0) {
-      return {
-        success: false,
-        error: 'VALIDATION_ERROR',
-        details: validationErrors,
-      };
+    if (Object.keys(validationErrors).length) {
+      return { success: false, error: 'VALIDATION_ERROR', details: validationErrors };
+    }
+    if (!Object.keys(validUpdates).length) {
+      return { success: false, error: 'NO_UPDATES_PROVIDED', details: { message: 'Tidak ada konfigurasi yang diubah' } };
     }
 
-    if (Object.keys(validUpdates).length === 0) {
-      return {
-        success: false,
-        error: 'NO_UPDATES_PROVIDED',
-        details: { message: 'Tidak ada konfigurasi yang diubah' },
-      };
-    }
-
-    // 2. Eksekusi atomik: Panggil RPC update_system_settings_batch (transaksi tunggal di DB)
-    // Trigger trg_system_settings_audit di DB secara otomatis mencatat audit per baris
-    // dalam transaksi yang sama.
-    const { error: rpcError } = await supabaseAdmin.rpc('update_system_settings_batch', {
+    const { error } = await supabaseAdmin.rpc('update_system_settings_batch', {
       p_entries: validUpdates,
       p_user_id: userId,
     });
-
-    if (rpcError) {
-      // Jangan fallback ke beberapa upsert terpisah: akan melanggar atomisitas batch.
-      console.error('Atomic settings update RPC failed:', rpcError.message);
-      return {
-        success: false,
-        error: 'DB_ERROR',
-        details: { message: 'Gagal memperbarui pengaturan secara atomik' },
-      };
+    if (error) {
+      console.error('Atomic settings update RPC failed:', error.message);
+      return { success: false, error: 'DB_ERROR', details: { message: 'Gagal memperbarui pengaturan secara atomik' } };
     }
 
-    // 3. Reset in-memory cache agar GET /api/settings/public langsung fresh
     this.invalidateCache();
-
-    const latest = await this.getRawSettingsMap();
-    return { success: true, data: latest };
+    return { success: true, data: await this.getRawSettingsMap() };
   }
 
-  /**
-   * Mengambil riwayat audit konfigurasi sistem dengan pagination.
-   */
   public static async getAuditLog(params: {
     page: number;
     limit: number;
     key?: string | null;
   }): Promise<AdminSettingsAuditResponse> {
     const { page, limit, key } = params;
-    const from = (page - 1) * limit;
-    const to = page * limit - 1;
-
-    if (!supabaseAdmin) {
-      return { data: [], total: 0, page, limit };
-    }
+    if (!supabaseAdmin) return { data: [], total: 0, page, limit };
 
     let query = supabaseAdmin
       .from('system_settings_audit')
-      .select('id, key, old_value, new_value, changed_by, changed_at', {
-        count: 'exact',
-      })
+      .select('id, key, old_value, new_value, changed_by, changed_at', { count: 'exact' })
       .order('changed_at', { ascending: false })
-      .range(from, to);
-
-    if (key) {
-      query = query.eq('key', key);
-    }
+      .range((page - 1) * limit, page * limit - 1);
+    if (key) query = query.eq('key', key);
 
     const { data: rows, count, error } = await query;
+    if (error) throw new Error(`Gagal membaca audit settings: ${error.message}`);
+    if (!rows) return { data: [], total: count ?? 0, page, limit };
 
-    if (error || !rows) {
-      return { data: [], total: 0, page, limit };
-    }
-
-    // Ambil nama admin pengubah (enrichment data)
-    const userIds = Array.from(
-      new Set(
-        (rows as SystemSettingAuditRow[])
-          .map((r) => r.changed_by)
-          .filter((id): id is string => Boolean(id))
-      )
-    );
-
+    const auditRows = rows as SystemSettingAuditRow[];
+    const userIds = Array.from(new Set(auditRows.map((row) => row.changed_by).filter((id): id is string => Boolean(id))));
     const nameMap = new Map<string, string>();
-    if (userIds.length > 0) {
-      const { data: adminProfiles } = await supabaseAdmin
-        .from('admin_profiles')
-        .select('user_id, nama_lengkap')
-        .in('user_id', userIds);
+    if (userIds.length) {
+      const { data: profiles, error: profileError } = await supabaseAdmin
+        .from('admin_profiles').select('user_id, nama_lengkap').in('user_id', userIds);
+      if (profileError) throw new Error(`Gagal membaca nama admin audit: ${profileError.message}`);
+      for (const profile of profiles ?? []) nameMap.set(profile.user_id, profile.nama_lengkap);
 
-      for (const p of adminProfiles || []) {
-        nameMap.set(p.user_id, p.nama_lengkap);
-      }
-
-      const { data: users } = await supabaseAdmin
-        .from('users')
-        .select('id, email')
-        .in('id', userIds);
-
-      for (const u of users || []) {
-        if (!nameMap.has(u.id)) {
-          nameMap.set(u.id, u.email);
-        }
-      }
+      const { data: users, error: usersError } = await supabaseAdmin
+        .from('users').select('id, email').in('id', userIds);
+      if (usersError) throw new Error(`Gagal membaca email admin audit: ${usersError.message}`);
+      for (const user of users ?? []) if (!nameMap.has(user.id)) nameMap.set(user.id, user.email);
     }
 
-    const items: SystemSettingsAuditItem[] = (rows as SystemSettingAuditRow[]).map(
-      (r) => ({
-        id: r.id,
-        key: r.key,
-        old_value: r.old_value,
-        new_value: r.new_value,
-        changed_by: r.changed_by,
-        changed_by_name: r.changed_by ? nameMap.get(r.changed_by) ?? null : null,
-        changed_at: r.changed_at,
-      })
-    );
-
-    return {
-      data: items,
-      total: count ?? items.length,
-      page,
-      limit,
-    };
+    const items: SystemSettingsAuditItem[] = auditRows.map((row) => ({
+      id: row.id,
+      key: row.key,
+      old_value: row.old_value,
+      new_value: row.new_value,
+      changed_by: row.changed_by,
+      changed_by_name: row.changed_by ? nameMap.get(row.changed_by) ?? null : null,
+      changed_at: row.changed_at,
+    }));
+    return { data: items, total: count ?? items.length, page, limit };
   }
 }

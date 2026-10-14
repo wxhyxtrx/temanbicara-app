@@ -173,6 +173,11 @@ export interface AdminCreateUserPayload {
   nomor_sipp_str?: string;
   spesialisasi?: string[];
   tarif_sesi?: number;
+  tahun_pengalaman?: number;
+  dokumen_sipp_str_url?: string;
+  dokumen_cv_url?: string;
+  latar_belakang?: string;
+  alasan_bergabung?: string;
 }
 
 export interface AdminUpdateUserPayload {
