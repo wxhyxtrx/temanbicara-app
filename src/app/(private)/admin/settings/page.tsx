@@ -11,6 +11,7 @@ import {
   type FlatGroup,
   type FlatKey,
   fromLocalInput,
+  isMaintenanceRangeValid,
   isValidLocalInput,
   inputClass,
   invalidNumberKeys,
@@ -63,9 +64,15 @@ export default function AdminSettingsPage() {
       if (!active) return;
       setForm(res.settings);
       setMaintenanceDraft({ scheduled_start: toLocalInput(res.settings.maintenance.scheduled_start), estimated_end: toLocalInput(res.settings.maintenance.estimated_end) });
+      setRevenueShareDraft(null);
       setMeta(res.meta);
       setIsFallback(res.isFallback);
       setLoadError(res.error ?? null);
+      // Fresh form replaced every value, so earlier save/validation messages are stale.
+      setSaveError(null);
+      setFieldErrors({});
+      setSaveSuccess(false);
+      setRefreshWarning(null);
     }).catch((error: unknown) => {
       if (!active) return;
       setForm(null);
@@ -82,8 +89,20 @@ export default function AdminSettingsPage() {
     load();
   }, [load]);
 
-  const updateGroup = <K extends SettingKey>(key: K, value: SystemSettings[K]) => {
+  // Editing a group clears its stale red error and the global validation banner.
+  const clearErrorFor = (key: SettingKey) => {
     setSaveSuccess(false);
+    setSaveError(null);
+    setFieldErrors((errors) => {
+      if (!errors[key]) return errors;
+      const next = { ...errors };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const updateGroup = <K extends SettingKey>(key: K, value: SystemSettings[K]) => {
+    clearErrorFor(key);
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
@@ -102,11 +121,12 @@ export default function AdminSettingsPage() {
     if (!form || isFallback || isSaving) return;
     const invalid = invalidNumberKeys(form);
     const invalidMaintenanceDate = Object.values(maintenanceDraft).some((value) => !isValidLocalInput(value));
+    const invalidMaintenanceRange = !isMaintenanceRangeValid(maintenanceDraft.scheduled_start, maintenanceDraft.estimated_end);
     setSaveSuccess(false);
     setRefreshWarning(null);
-    if (invalidMaintenanceDate) {
-      setFieldErrors({ maintenance: "Isi tanggal maintenance yang valid atau kosongkan waktunya." });
-      setSaveError("Tanggal maintenance tidak valid. Periksa kartu bertanda merah.");
+    if (invalidMaintenanceDate || invalidMaintenanceRange) {
+      setFieldErrors({ maintenance: invalidMaintenanceRange ? "Estimasi selesai harus lebih akhir dari mulai terjadwal." : "Isi tanggal maintenance yang valid atau kosongkan waktunya." });
+      setSaveError(invalidMaintenanceRange ? "Rentang maintenance tidak valid. Periksa kartu bertanda merah." : "Tanggal maintenance tidak valid. Periksa kartu bertanda merah.");
       return;
     }
     if (invalid.length) {
@@ -145,7 +165,10 @@ export default function AdminSettingsPage() {
         // Refresh meta (updated_at); a failed refresh must not replace saved values with defaults.
         try {
           const fresh = await systemSettingsClient.getAdminSettings();
+          setIsFallback(fresh.isFallback);
+          setLoadError(fresh.error ?? null);
           if (!fresh.isFallback) {
+            setRefreshWarning(null);
             setForm(fresh.settings);
             setMeta(fresh.meta);
             setMaintenanceDraft({ scheduled_start: toLocalInput(fresh.settings.maintenance.scheduled_start), estimated_end: toLocalInput(fresh.settings.maintenance.estimated_end) });
@@ -154,6 +177,9 @@ export default function AdminSettingsPage() {
             setRefreshWarning(`Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui${fresh.error ? `: ${fresh.error}` : "."}`);
           }
         } catch (error) {
+          // Unknown server state: keep saved form, block save until a manual reload succeeds.
+          setIsFallback(true);
+          setLoadError(error instanceof Error ? error.message : null);
           setRefreshWarning(error instanceof Error ? `Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui: ${error.message}` : "Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui.");
         }
       } else {
@@ -185,7 +211,10 @@ export default function AdminSettingsPage() {
                 min={0}
                 step={0.01}
                 value={revenueShareDraft ?? String(form.revenue_share.mitra_bps / 100)}
-                onChange={(event) => setRevenueShareDraft(event.target.value)}
+                onChange={(event) => {
+                  clearErrorFor("revenue_share");
+                  setRevenueShareDraft(event.target.value);
+                }}
                 aria-invalid={!!errorId || undefined}
                 aria-describedby={errorId}
                 className={inputClass}
@@ -303,8 +332,9 @@ export default function AdminSettingsPage() {
                   <div className="flex items-start gap-2 flex-1 min-w-0">
                     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                     <span className="break-words">
-                      Gagal memuat pengaturan dari server{loadError ? ` (${loadError})` : ""}. Nilai di bawah adalah
-                      default lokal dan tidak bisa disimpan.
+                      Gagal memuat pengaturan dari server{loadError ? ` (${loadError})` : ""}.{" "}
+                      {refreshWarning ? "Nilai di bawah adalah data yang baru disimpan" : "Nilai di bawah adalah default lokal"}; muat ulang
+                      data admin terbaru sebelum menyimpan lagi.
                     </span>
                   </div>
                   <Button

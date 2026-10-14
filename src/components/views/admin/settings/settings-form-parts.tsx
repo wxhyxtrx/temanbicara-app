@@ -143,6 +143,10 @@ export const isValidLocalInput = (value: string) => {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day && date.getHours() === hour && date.getMinutes() === minute;
 };
 
+// Spec §3: when both are set, estimated_end must be later than scheduled_start. Empty values are allowed.
+export const isMaintenanceRangeValid = (start: string, end: string) =>
+  !start || !end || !isValidLocalInput(start) || !isValidLocalInput(end) || new Date(end).getTime() > new Date(start).getTime();
+
 export const fromLocalInput = (value: string) => {
   if (!value) return null;
   if (!isValidLocalInput(value)) return null;
