@@ -46,9 +46,12 @@ function readDetails(value: unknown): Record<string, string> | undefined {
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
-function readFiniteNumber(source: Record<string, unknown>, key: string): number {
+// Number.isInteger rejects NaN/Infinity, so it also covers finiteness.
+function readInt(source: Record<string, unknown>, key: string, min: number): number {
   const value = source[key];
-  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('Respons audit settings tidak valid');
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < min) {
+    throw new Error('Respons audit settings tidak valid');
+  }
   return value;
 }
 
@@ -138,16 +141,16 @@ export const systemSettingsClient = {
         meta?: unknown;
       } | null;
       const meta = result?.meta;
-      if (!result?.success || !Array.isArray(result.data) || !meta || typeof meta !== 'object' || Array.isArray(meta)) {
+      if (result?.success !== true || !Array.isArray(result.data) || !meta || typeof meta !== 'object' || Array.isArray(meta)) {
         throw new Error('Respons audit settings tidak valid');
       }
       const fields = meta as Record<string, unknown>;
       return {
         items: result.data as SystemSettingsAuditItem[],
-        page: readFiniteNumber(fields, 'page'),
-        limit: readFiniteNumber(fields, 'limit'),
-        total: readFiniteNumber(fields, 'total'),
-        totalPages: readFiniteNumber(fields, 'totalPages'),
+        page: readInt(fields, 'page', 1),
+        limit: readInt(fields, 'limit', 1),
+        total: readInt(fields, 'total', 0),
+        totalPages: readInt(fields, 'totalPages', 0),
       };
     } catch (error) {
       return {
