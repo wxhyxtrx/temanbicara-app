@@ -36,11 +36,24 @@ export interface UpdateAdminSettingsResult {
   details?: Record<string, string>;
 }
 
+// Only real SystemSettings keys count as field errors; generic `details.message` is dropped.
 function readDetails(value: unknown): Record<string, string> | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const entries = Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string');
+  const entries = Object.entries(value).filter(
+    (entry): entry is [string, string] =>
+      Object.hasOwn(DEFAULT_SYSTEM_SETTINGS, entry[0]) && typeof entry[1] === 'string'
+  );
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
+
+function readFiniteNumber(source: Record<string, unknown>, key: string): number {
+  const value = source[key];
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('Respons audit settings tidak valid');
+  return value;
+}
+
+const toPositiveInt = (value: number, fallback: number) =>
+  Number.isFinite(value) && value >= 1 ? Math.floor(value) : fallback;
 
 async function readError(response: Response): Promise<string> {
   const body: unknown = await response.json().catch(() => null);
@@ -112,21 +125,30 @@ export const systemSettingsClient = {
     }
   },
 
-  async getAdminSettingsAudit({ page, limit }: { page: number; limit: number }): Promise<AdminSettingsAuditResult> {
+  async getAdminSettingsAudit(params: { page: number; limit: number }): Promise<AdminSettingsAuditResult> {
+    const page = toPositiveInt(params.page, 1);
+    const limit = toPositiveInt(params.limit, 20);
     try {
       const query = new URLSearchParams({ page: String(page), limit: String(limit) });
       const response = await fetch(`/api/admin/settings/audit?${query}`, { credentials: 'include' });
       if (!response.ok) throw new Error(await readError(response));
-      const result = (await response.json()) as {
-        success: boolean;
-        data: SystemSettingsAuditItem[];
-        meta?: { page: number; limit: number; total: number; totalPages: number };
-      };
-      if (!result.success || !Array.isArray(result.data) || !result.meta) {
+      const result = (await response.json().catch(() => null)) as {
+        success?: unknown;
+        data?: unknown;
+        meta?: unknown;
+      } | null;
+      const meta = result?.meta;
+      if (!result?.success || !Array.isArray(result.data) || !meta || typeof meta !== 'object' || Array.isArray(meta)) {
         throw new Error('Respons audit settings tidak valid');
       }
-      const { meta } = result;
-      return { items: result.data, page: meta.page, limit: meta.limit, total: meta.total, totalPages: meta.totalPages };
+      const fields = meta as Record<string, unknown>;
+      return {
+        items: result.data as SystemSettingsAuditItem[],
+        page: readFiniteNumber(fields, 'page'),
+        limit: readFiniteNumber(fields, 'limit'),
+        total: readFiniteNumber(fields, 'total'),
+        totalPages: readFiniteNumber(fields, 'totalPages'),
+      };
     } catch (error) {
       return {
         items: [],
