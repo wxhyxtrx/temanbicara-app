@@ -89,13 +89,6 @@ export function SettingsAuditTab() {
         </Button>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs">
-          <AlertCircle size={15} className="shrink-0" />
-          <span>{error} (Audit log belum tersedia di server)</span>
-        </div>
-      )}
-
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900">
         <Table className="min-w-[720px]">
           <TableHeader className="bg-slate-50 dark:bg-slate-800/60">
@@ -114,6 +107,15 @@ export function SettingsAuditTab() {
                   <div className="flex items-center justify-center gap-2">
                     <RefreshCw size={14} className="animate-spin text-teal-600" />
                     Memuat catatan audit...
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-32 text-center text-xs text-red-600 dark:text-red-400">
+                  <div role="alert" className="flex items-center justify-center gap-2">
+                    <AlertCircle size={15} className="shrink-0" />
+                    {error}
                   </div>
                 </TableCell>
               </TableRow>
