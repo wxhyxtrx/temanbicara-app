@@ -33,16 +33,29 @@ export interface UpdateAdminSettingsResult {
   success: boolean;
   settings?: SystemSettings;
   error?: string;
-  details?: Record<string, string>;
+  details?: Partial<Record<keyof SystemSettings, string>>;
 }
 
-// Only real SystemSettings keys count as field errors; generic `details.message` is dropped.
+function detailMessage(value: unknown): string | undefined {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    const messages = value.map(detailMessage).filter((item): item is string => !!item);
+    return messages.length ? messages.join('; ') : undefined;
+  }
+  if (!value || typeof value !== 'object') return undefined;
+  const record = value as Record<string, unknown>;
+  if (typeof record.message === 'string') return record.message;
+  const messages = Object.values(record).map(detailMessage).filter((item): item is string => !!item);
+  return messages.length ? messages.join('; ') : undefined;
+}
+
+// Map details to known settings cards; retain useful messages from structured server responses.
 function readDetails(value: unknown): Record<string, string> | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const entries = Object.entries(value).filter(
-    (entry): entry is [string, string] =>
-      Object.hasOwn(DEFAULT_SYSTEM_SETTINGS, entry[0]) && typeof entry[1] === 'string'
-  );
+  const entries = Object.entries(value)
+    .filter(([key]) => Object.hasOwn(DEFAULT_SYSTEM_SETTINGS, key))
+    .map(([key, detail]) => [key, detailMessage(detail)] as const)
+    .filter((entry): entry is readonly [string, string] => !!entry[1]);
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
 

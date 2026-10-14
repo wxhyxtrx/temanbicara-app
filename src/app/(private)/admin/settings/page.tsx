@@ -46,16 +46,26 @@ export default function AdminSettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [revenueShareDraft, setRevenueShareDraft] = useState<string | null>(null);
+  const [loadRequest, setLoadRequest] = useState(0);
 
   const load = useCallback(async () => {
-    setIsLoading(true);
-    const res = await systemSettingsClient.getAdminSettings();
-    setForm(res.settings);
-    setMeta(res.meta);
-    setIsFallback(res.isFallback);
-    setLoadError(res.error ?? null);
-    setIsLoading(false);
+    setLoadRequest((request) => request + 1);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    void systemSettingsClient.getAdminSettings().then((res) => {
+      if (!active) return;
+      setForm(res.settings);
+      setMeta(res.meta);
+      setIsFallback(res.isFallback);
+      setLoadError(res.error ?? null);
+      setIsLoading(false);
+    });
+    return () => { active = false; };
+  }, [loadRequest]);
 
   useEffect(() => {
     load();
@@ -86,12 +96,22 @@ export default function AdminSettingsPage() {
       setSaveError("Ada angka kosong atau tidak valid. Periksa kartu bertanda merah.");
       return;
     }
+    const revenueSharePercent = Number(revenueShareDraft ?? String(form.revenue_share.mitra_bps / 100));
+    const payload: SystemSettings = {
+      ...form,
+      revenue_share: { mitra_bps: Math.round(revenueSharePercent * 100) },
+    };
+    if (!Number.isFinite(revenueSharePercent) || revenueSharePercent < 0) {
+      setFieldErrors({ revenue_share: "Isi porsi mitra dengan persentase valid." });
+      setSaveError("Ada angka kosong atau tidak valid. Periksa kartu bertanda merah.");
+      return;
+    }
     setIsSaving(true);
     setSaveSuccess(false);
     setSaveError(null);
     setFieldErrors({});
     // All 13 groups; server validates each key independently.
-    const res = await systemSettingsClient.updateAdminSettings(form);
+    const res = await systemSettingsClient.updateAdminSettings(payload);
     if (res.success && res.settings) {
       setForm(res.settings);
       setSaveSuccess(true);
@@ -117,14 +137,22 @@ export default function AdminSettingsPage() {
       return (
         <SettingSection key={key} title="Bagi Hasil Mitra" icon={Percent} {...common}>
           <div className="max-w-md">
-            <NumberField
-              id="revenue_share-mitra"
-              errorId={errorId}
-              label="Porsi mitra (%)"
-              step={0.01}
-              value={form.revenue_share.mitra_bps / 100}
-              onChange={(pct) => updateGroup("revenue_share", { mitra_bps: Math.round(pct * 100) })}
-            />
+            <div className="space-y-1.5 min-w-0">
+              <Label htmlFor="revenue_share-mitra" className={labelClass}>Porsi mitra (%)</Label>
+              <Input
+                id="revenue_share-mitra"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step={0.01}
+                value={revenueShareDraft ?? String(form.revenue_share.mitra_bps / 100)}
+                onChange={(event) => setRevenueShareDraft(event.target.value)}
+                aria-invalid={!!errorId || undefined}
+                aria-describedby={errorId}
+                className={inputClass}
+                required
+              />
+            </div>
             <span className="text-[11px] text-slate-400">Disimpan sebagai {form.revenue_share.mitra_bps} bps</span>
           </div>
         </SettingSection>
