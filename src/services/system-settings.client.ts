@@ -73,10 +73,32 @@ const toPositiveInt = (value: number, fallback: number) =>
 
 async function readError(response: Response): Promise<string> {
   const body: unknown = await response.json().catch(() => null);
-  if (body && typeof body === 'object' && 'message' in body && typeof body.message === 'string') {
-    return body.message;
+  if (body && typeof body === 'object') {
+    const record = body as Record<string, unknown>;
+    if (typeof record.message === 'string' && record.message.trim()) return record.message;
+    const nested = detailMessage(record.details);
+    if (nested) return nested;
+    if (typeof record.error === 'string' && record.error.trim()) return record.error;
   }
   return `HTTP ${response.status}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isSystemSettings(value: unknown): value is SystemSettings {
+  if (!isRecord(value)) return false;
+  const numericGroups = ['topup', 'tip', 'holding', 'payout', 'psikolog_late', 'patient_noshow', 'extension_price', 'relawan', 'upload', 'media_retention'] as const;
+  if (!isRecord(value.maintenance) || !(value.maintenance.scheduled_start === null || typeof value.maintenance.scheduled_start === 'string') || !(value.maintenance.estimated_end === null || typeof value.maintenance.estimated_end === 'string') || typeof value.maintenance.message !== 'string') return false;
+  if (!isRecord(value.revenue_share) || typeof value.revenue_share.mitra_bps !== 'number' || !Number.isFinite(value.revenue_share.mitra_bps)) return false;
+  if (!Array.isArray(value.refund_policy) || !value.refund_policy.every((tier) => isRecord(tier) && typeof tier.min_minutes_before === 'number' && Number.isFinite(tier.min_minutes_before) && typeof tier.refund_pct === 'number' && Number.isFinite(tier.refund_pct))) return false;
+  return numericGroups.every((key) => isRecord(value[key]) && Object.values(value[key]).every((item) => typeof item === 'number' && Number.isFinite(item)));
+}
+
+function readSettingsEnvelope(value: unknown): AdminSettingsResponse | undefined {
+  if (!isRecord(value) || value.success !== true || !isRecord(value.data) || !isSystemSettings(value.data.settings) || !isRecord(value.data.meta)) return undefined;
+  return { settings: value.data.settings, meta: value.data.meta as AdminSettingsResponse['meta'] };
 }
 
 export const systemSettingsClient = {
@@ -101,9 +123,9 @@ export const systemSettingsClient = {
     try {
       const response = await fetch('/api/admin/settings', { credentials: 'include' });
       if (!response.ok) throw new Error(await readError(response));
-      const result = (await response.json()) as { success: boolean; data: AdminSettingsResponse };
-      if (!result.success || !result.data?.settings) throw new Error('Respons admin settings tidak valid');
-      return { settings: result.data.settings, meta: result.data.meta, isFallback: false };
+      const result = readSettingsEnvelope(await response.json());
+      if (!result) throw new Error('Respons admin settings tidak valid');
+      return { settings: result.settings, meta: result.meta, isFallback: false };
     } catch (error) {
       return {
         settings: DEFAULT_SYSTEM_SETTINGS,
@@ -121,21 +143,17 @@ export const systemSettingsClient = {
         credentials: 'include',
         body: JSON.stringify(payload),
       });
-      const result = (await response.json().catch(() => null)) as {
-        success?: boolean;
-        message?: string;
-        error?: string;
-        details?: unknown;
-        data?: AdminSettingsResponse;
-      } | null;
-      if (!response.ok || !result?.success || !result.data?.settings) {
+      const body: unknown = await response.json().catch(() => null);
+      const result = isRecord(body) ? body : undefined;
+      const envelope = result && readSettingsEnvelope(result);
+      if (!response.ok || !envelope) {
         return {
           success: false,
-          error: result?.message || result?.error || `HTTP ${response.status}: Gagal menyimpan`,
+          error: result && typeof result.message === 'string' ? result.message : result && typeof result.error === 'string' ? result.error : result ? detailMessage(result.details) ?? `HTTP ${response.status}: Gagal menyimpan` : `HTTP ${response.status}: Gagal menyimpan`,
           details: readDetails(result?.details),
         };
       }
-      return { success: true, settings: result.data.settings };
+      return { success: true, settings: envelope.settings };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Gagal menyimpan konfigurasi' };
     }

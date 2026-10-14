@@ -62,7 +62,14 @@ export default function AdminSettingsPage() {
       setMeta(res.meta);
       setIsFallback(res.isFallback);
       setLoadError(res.error ?? null);
-      setIsLoading(false);
+    }).catch((error: unknown) => {
+      if (!active) return;
+      setForm(null);
+      setMeta(undefined);
+      setIsFallback(false);
+      setLoadError(error instanceof Error ? error.message : "Gagal memuat pengaturan sistem");
+    }).finally(() => {
+      if (active) setIsLoading(false);
     });
     return () => { active = false; };
   }, [loadRequest]);
@@ -111,21 +118,32 @@ export default function AdminSettingsPage() {
     setSaveError(null);
     setFieldErrors({});
     // All 13 groups; server validates each key independently.
-    const res = await systemSettingsClient.updateAdminSettings(payload);
-    if (res.success && res.settings) {
-      setForm(res.settings);
-      setSaveSuccess(true);
-      // Refresh meta (updated_at); a failed refresh must not replace saved values with defaults.
-      const fresh = await systemSettingsClient.getAdminSettings();
-      if (!fresh.isFallback) {
-        setForm(fresh.settings);
-        setMeta(fresh.meta);
+    try {
+      const res = await systemSettingsClient.updateAdminSettings(payload);
+      if (res.success && res.settings) {
+        setForm(res.settings);
+        setRevenueShareDraft(String(res.settings.revenue_share.mitra_bps / 100));
+        setSaveSuccess(true);
+        // Refresh meta (updated_at); a failed refresh must not replace saved values with defaults.
+        try {
+          const fresh = await systemSettingsClient.getAdminSettings();
+          if (!fresh.isFallback) {
+            setForm(fresh.settings);
+            setMeta(fresh.meta);
+            setRevenueShareDraft(String(fresh.settings.revenue_share.mitra_bps / 100));
+          }
+        } catch (error) {
+          setSaveError(error instanceof Error ? `Tersimpan, tetapi metadata gagal dimuat: ${error.message}` : "Tersimpan, tetapi metadata gagal dimuat.");
+        }
+      } else {
+        setFieldErrors(res.details ?? {});
+        setSaveError(res.details ? "Beberapa parameter tidak valid. Periksa kartu bertanda merah." : res.error ?? "Gagal menyimpan konfigurasi");
       }
-    } else {
-      setFieldErrors(res.details ?? {});
-      setSaveError(res.details ? "Beberapa parameter tidak valid. Periksa kartu bertanda merah." : res.error ?? "Gagal menyimpan konfigurasi");
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Gagal menyimpan konfigurasi");
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const renderGroup = (key: SettingKey) => {
