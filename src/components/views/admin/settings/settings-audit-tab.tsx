@@ -55,16 +55,22 @@ export function SettingsAuditTab() {
     });
   };
 
+  // Truncate on an inner block (table cells ignore max-width); title keeps full value readable.
   const renderValuePreview = (val: unknown) => {
-    if (val === null || val === undefined) return <span className="text-slate-400 italic">null</span>;
-    if (typeof val === "object") {
-      return (
-        <code className="text-[11px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-800 dark:text-slate-200">
-          {JSON.stringify(val)}
-        </code>
-      );
-    }
-    return <span className="font-mono text-xs">{String(val)}</span>;
+    const isNull = val === null || val === undefined;
+    const isObject = !isNull && typeof val === "object";
+    const text = isNull ? "null" : isObject ? JSON.stringify(val) : String(val);
+    const style = isNull
+      ? "text-slate-400 italic"
+      : isObject
+        ? "text-[11px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-800 dark:text-slate-200"
+        : "font-mono text-xs";
+    const Tag = isObject ? "code" : "span";
+    return (
+      <Tag title={text} className={`block max-w-[200px] truncate ${style}`}>
+        {text}
+      </Tag>
+    );
   };
 
   return (
@@ -136,10 +142,10 @@ export function SettingsAuditTab() {
                       {row.key}
                     </Badge>
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate">
+                  <TableCell>
                     {renderValuePreview(row.old_value)}
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate text-emerald-600 dark:text-emerald-400">
+                  <TableCell className="text-emerald-600 dark:text-emerald-400">
                     {renderValuePreview(row.new_value)}
                   </TableCell>
                   <TableCell className="text-slate-600 dark:text-slate-300">
