@@ -111,11 +111,16 @@ export const inputClass =
   "h-9 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl";
 export const labelClass = "text-xs font-semibold text-slate-700 dark:text-slate-300";
 
-// Empty/invalid input becomes 0 so the payload never carries NaN; server validates bounds.
-export const toNumber = (raw: string) => {
-  const n = Number(raw);
-  return raw.trim() !== "" && Number.isFinite(n) ? n : 0;
-};
+// Empty/invalid input becomes NaN (never coerced to 0); handleSave blocks submit via invalidNumberKeys.
+export const toNumber = (raw: string) => (raw.trim() === "" ? NaN : Number(raw));
+
+const hasBadNumber = (v: unknown): boolean =>
+  typeof v === "number"
+    ? !Number.isFinite(v)
+    : typeof v === "object" && v !== null && Object.values(v).some(hasBadNumber);
+
+export const invalidNumberKeys = (s: SystemSettings) =>
+  (Object.keys(s) as SettingKey[]).filter((k) => hasBadNumber(s[k]));
 
 export const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -151,10 +156,11 @@ export interface SectionProps {
   icon: LucideIcon;
   meta?: { updated_at: string; updated_by: string | null };
   error?: string;
+  errorId?: string;
   children: React.ReactNode;
 }
 
-export function SettingSection({ title, icon: Icon, meta, error, children }: SectionProps) {
+export function SettingSection({ title, icon: Icon, meta, error, errorId, children }: SectionProps) {
   return (
     <Card
       className={`rounded-2xl border bg-white dark:bg-slate-900 shadow-xs ${
@@ -174,7 +180,7 @@ export function SettingSection({ title, icon: Icon, meta, error, children }: Sec
       </CardHeader>
       <CardContent className="p-4 sm:p-6 space-y-4">
         {error && (
-          <p role="alert" className="flex items-start gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400">
+          <p id={errorId} role="alert" className="flex items-start gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400">
             <AlertCircle size={14} className="shrink-0 mt-0.5" />
             {error}
           </p>
@@ -191,9 +197,18 @@ export interface NumberFieldProps {
   value: number;
   onChange: (value: number) => void;
   step?: number;
+  errorId?: string;
 }
 
-export function NumberField({ id, label, value, onChange, step = 1 }: NumberFieldProps) {
+const toText = (n: number) => (Number.isFinite(n) ? String(n) : "");
+
+export function NumberField({ id, label, value, onChange, step = 1, errorId }: NumberFieldProps) {
+  // Local text keeps empty/partial input while typing; resync only when the parent value really changes.
+  const [text, setText] = React.useState(() => toText(value));
+  React.useEffect(() => {
+    setText((prev) => (Object.is(toNumber(prev), value) ? prev : toText(value)));
+  }, [value]);
+
   return (
     <div className="space-y-1.5 min-w-0">
       <Label htmlFor={id} className={labelClass}>
@@ -205,8 +220,13 @@ export function NumberField({ id, label, value, onChange, step = 1 }: NumberFiel
         inputMode="decimal"
         min={0}
         step={step}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(e) => onChange(toNumber(e.target.value))}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(toNumber(e.target.value));
+        }}
+        aria-invalid={!!errorId || undefined}
+        aria-describedby={errorId}
         className={inputClass}
         required
       />

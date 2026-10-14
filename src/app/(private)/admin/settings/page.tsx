@@ -12,6 +12,7 @@ import {
   type FlatKey,
   fromLocalInput,
   inputClass,
+  invalidNumberKeys,
   labelClass,
   NumberField,
   ORDER,
@@ -70,9 +71,21 @@ export default function AdminSettingsPage() {
     updateGroup(key, { ...form[key], [field]: value });
   };
 
+  // Section error <p> id; only set when that key has an error so aria-describedby never points at nothing.
+  const errorIdFor = (key: SettingKey) => (fieldErrors[key] ? `settings-error-${key}` : undefined);
+  const maintenanceErrorId = errorIdFor("maintenance");
+  const maintenanceAria = { "aria-invalid": !!maintenanceErrorId || undefined, "aria-describedby": maintenanceErrorId };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form || isFallback || isSaving) return;
+    const invalid = invalidNumberKeys(form);
+    if (invalid.length) {
+      setSaveSuccess(false);
+      setFieldErrors(Object.fromEntries(invalid.map((k) => [k, "Isi semua angka dengan nilai yang valid."])));
+      setSaveError("Ada angka kosong atau tidak valid. Periksa kartu bertanda merah.");
+      return;
+    }
     setIsSaving(true);
     setSaveSuccess(false);
     setSaveError(null);
@@ -97,7 +110,8 @@ export default function AdminSettingsPage() {
 
   const renderGroup = (key: SettingKey) => {
     if (!form) return null;
-    const common = { meta: meta?.[key], error: fieldErrors[key] };
+    const errorId = errorIdFor(key);
+    const common = { meta: meta?.[key], error: fieldErrors[key], errorId };
 
     if (key === "revenue_share") {
       return (
@@ -105,6 +119,7 @@ export default function AdminSettingsPage() {
           <div className="max-w-md">
             <NumberField
               id="revenue_share-mitra"
+              errorId={errorId}
               label="Porsi mitra (%)"
               step={0.01}
               value={form.revenue_share.mitra_bps / 100}
@@ -131,12 +146,14 @@ export default function AdminSettingsPage() {
               <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <NumberField
                   id={`refund-${i}-minutes`}
+                  errorId={errorId}
                   label={`Tier ${i + 1}: minimal menit sebelum sesi`}
                   value={tier.min_minutes_before}
                   onChange={(v) => setTier(i, { min_minutes_before: v })}
                 />
                 <NumberField
                   id={`refund-${i}-pct`}
+                  errorId={errorId}
                   label={`Tier ${i + 1}: refund (%)`}
                   value={tier.refund_pct}
                   onChange={(v) => setTier(i, { refund_pct: v })}
@@ -159,6 +176,7 @@ export default function AdminSettingsPage() {
             <NumberField
               key={field}
               id={`${key}-${field}`}
+              errorId={errorId}
               label={label}
               value={values[field]}
               onChange={(v) => updateFlat(key, field as keyof SystemSettings[typeof key], v)}
@@ -255,12 +273,15 @@ export default function AdminSettingsPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSave} className="space-y-6">
+              <form onSubmit={handleSave}>
+                {/* Native fieldset disable blocks edits while saving so the response cannot overwrite them. */}
+                <fieldset disabled={isSaving} className="space-y-6 min-w-0">
                 <SettingSection
                   title="Jadwal Pemeliharaan Server (Maintenance)"
                   icon={Server}
                   meta={meta?.maintenance}
                   error={fieldErrors.maintenance}
+                  errorId={maintenanceErrorId}
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5 min-w-0">
@@ -270,6 +291,7 @@ export default function AdminSettingsPage() {
                       <div className="flex gap-2">
                         <Input
                           id="maintenance-start"
+                          {...maintenanceAria}
                           type="datetime-local"
                           value={toLocalInput(form.maintenance.scheduled_start)}
                           onChange={(e) =>
@@ -301,6 +323,7 @@ export default function AdminSettingsPage() {
                       </Label>
                       <Input
                         id="maintenance-end"
+                        {...maintenanceAria}
                         type="datetime-local"
                         value={toLocalInput(form.maintenance.estimated_end)}
                         onChange={(e) =>
@@ -319,6 +342,7 @@ export default function AdminSettingsPage() {
                     </Label>
                     <textarea
                       id="maintenance-message"
+                      {...maintenanceAria}
                       rows={3}
                       maxLength={500}
                       value={form.maintenance.message}
@@ -343,6 +367,7 @@ export default function AdminSettingsPage() {
                     {isSaving ? "Menyimpan..." : "Simpan Konfigurasi Sistem"}
                   </Button>
                 </div>
+                </fieldset>
               </form>
             </>
           )}
