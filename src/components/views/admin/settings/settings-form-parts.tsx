@@ -153,6 +153,86 @@ export const fromLocalInput = (value: string) => {
   return new Date(value).toISOString();
 };
 
+export function getChangedSettings(
+  form: SystemSettings | null,
+  original: SystemSettings | null,
+  maintenanceDraft: { scheduled_start: string; estimated_end: string },
+  revenueShareDraft: string | null
+): Partial<SystemSettings> {
+  if (!form || !original) return {};
+
+  const changes: Partial<SystemSettings> = {};
+
+  const origMaintStart = toLocalInput(original.maintenance.scheduled_start);
+  const origMaintEnd = toLocalInput(original.maintenance.estimated_end);
+  const origMaintMsg = original.maintenance.message ?? "";
+  const currentMaintMsg = form.maintenance.message ?? "";
+
+  if (
+    maintenanceDraft.scheduled_start !== origMaintStart ||
+    maintenanceDraft.estimated_end !== origMaintEnd ||
+    currentMaintMsg !== origMaintMsg
+  ) {
+    changes.maintenance = {
+      message: currentMaintMsg,
+      scheduled_start: maintenanceDraft.scheduled_start
+        ? fromLocalInput(maintenanceDraft.scheduled_start)
+        : null,
+      estimated_end: maintenanceDraft.estimated_end
+        ? fromLocalInput(maintenanceDraft.estimated_end)
+        : null,
+    };
+  }
+
+  const revenueSharePercent = Number(
+    revenueShareDraft ?? String(form.revenue_share.mitra_bps / 100)
+  );
+  const effectiveBps = Number.isFinite(revenueSharePercent)
+    ? Math.round(revenueSharePercent * 100)
+    : NaN;
+
+  if (
+    revenueShareDraft !== null
+      ? effectiveBps !== original.revenue_share.mitra_bps
+      : form.revenue_share.mitra_bps !== original.revenue_share.mitra_bps
+  ) {
+    changes.revenue_share = {
+      mitra_bps: Number.isFinite(effectiveBps)
+        ? effectiveBps
+        : form.revenue_share.mitra_bps,
+    };
+  }
+
+  const origRefund = original.refund_policy ?? [];
+  const currentRefund = form.refund_policy ?? [];
+  const refundChanged =
+    currentRefund.length !== origRefund.length ||
+    currentRefund.some(
+      (tier, i) =>
+        tier.min_minutes_before !== origRefund[i]?.min_minutes_before ||
+        tier.refund_pct !== origRefund[i]?.refund_pct
+    );
+
+  if (refundChanged) {
+    changes.refund_policy = currentRefund;
+  }
+
+  for (const key of ORDER) {
+    if (key === "revenue_share" || key === "refund_policy") continue;
+    const group = FLAT_GROUPS[key as FlatKey];
+    const formGroup = form[key as FlatKey] as Record<string, number>;
+    const origGroup = original[key as FlatKey] as Record<string, number>;
+    const hasDiff = group.fields.some(
+      ({ field }) => formGroup[field] !== origGroup[field]
+    );
+    if (hasDiff) {
+      (changes as Record<string, unknown>)[key] = form[key as FlatKey];
+    }
+  }
+
+  return changes;
+}
+
 export const formatWib = (iso: string) => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;

@@ -11,6 +11,7 @@ import {
   type FlatGroup,
   type FlatKey,
   fromLocalInput,
+  getChangedSettings,
   isMaintenanceRangeValid,
   isValidLocalInput,
   inputClass,
@@ -40,6 +41,7 @@ import {
 
 export default function AdminSettingsPage() {
   const [form, setForm] = useState<SystemSettings | null>(null);
+  const [originalSettings, setOriginalSettings] = useState<SystemSettings | null>(null);
   const [meta, setMeta] = useState<AdminSettingsResult["meta"]>();
   const [isLoading, setIsLoading] = useState(true);
   const [isFallback, setIsFallback] = useState(false);
@@ -51,19 +53,17 @@ export default function AdminSettingsPage() {
   const [revenueShareDraft, setRevenueShareDraft] = useState<string | null>(null);
   const [maintenanceDraft, setMaintenanceDraft] = useState({ scheduled_start: "", estimated_end: "" });
   const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
-  const [loadRequest, setLoadRequest] = useState(0);
 
   const load = useCallback(async () => {
-    setLoadRequest((request) => request + 1);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
     setIsLoading(true);
-    void systemSettingsClient.getAdminSettings().then((res) => {
-      if (!active) return;
+    try {
+      const res = await systemSettingsClient.getAdminSettings();
       setForm(res.settings);
-      setMaintenanceDraft({ scheduled_start: toLocalInput(res.settings.maintenance.scheduled_start), estimated_end: toLocalInput(res.settings.maintenance.estimated_end) });
+      setOriginalSettings(res.settings);
+      setMaintenanceDraft({
+        scheduled_start: toLocalInput(res.settings.maintenance.scheduled_start),
+        estimated_end: toLocalInput(res.settings.maintenance.estimated_end),
+      });
       setRevenueShareDraft(null);
       setMeta(res.meta);
       setIsFallback(res.isFallback);
@@ -73,20 +73,19 @@ export default function AdminSettingsPage() {
       setFieldErrors({});
       setSaveSuccess(false);
       setRefreshWarning(null);
-    }).catch((error: unknown) => {
-      if (!active) return;
+    } catch (error: unknown) {
       setForm(null);
+      setOriginalSettings(null);
       setMeta(undefined);
       setIsFallback(false);
       setLoadError(error instanceof Error ? error.message : "Gagal memuat pengaturan sistem");
-    }).finally(() => {
-      if (active) setIsLoading(false);
-    });
-    return () => { active = false; };
-  }, [loadRequest]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   // Editing a group clears its stale red error and the global validation banner.
@@ -119,48 +118,62 @@ export default function AdminSettingsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form || isFallback || isSaving) return;
-    const invalid = invalidNumberKeys(form);
-    const invalidMaintenanceDate = Object.values(maintenanceDraft).some((value) => !isValidLocalInput(value));
-    const invalidMaintenanceRange = !isMaintenanceRangeValid(maintenanceDraft.scheduled_start, maintenanceDraft.estimated_end);
+    const changes = getChangedSettings(form, originalSettings, maintenanceDraft, revenueShareDraft);
+    if (Object.keys(changes).length === 0) return;
+
     setSaveSuccess(false);
     setRefreshWarning(null);
-    if (invalidMaintenanceDate || invalidMaintenanceRange) {
-      setFieldErrors({ maintenance: invalidMaintenanceRange ? "Estimasi selesai harus lebih akhir dari mulai terjadwal." : "Isi tanggal maintenance yang valid atau kosongkan waktunya." });
-      setSaveError(invalidMaintenanceRange ? "Rentang maintenance tidak valid. Periksa kartu bertanda merah." : "Tanggal maintenance tidak valid. Periksa kartu bertanda merah.");
-      return;
+
+    if (changes.maintenance) {
+      const invalidMaintenanceDate = Object.values(maintenanceDraft).some((value) => !isValidLocalInput(value));
+      const invalidMaintenanceRange = !isMaintenanceRangeValid(maintenanceDraft.scheduled_start, maintenanceDraft.estimated_end);
+      if (invalidMaintenanceDate || invalidMaintenanceRange) {
+        setFieldErrors({
+          maintenance: invalidMaintenanceRange
+            ? "Estimasi selesai harus lebih akhir dari mulai terjadwal."
+            : "Isi tanggal maintenance yang valid atau kosongkan waktunya.",
+        });
+        setSaveError(
+          invalidMaintenanceRange
+            ? "Rentang maintenance tidak valid. Periksa kartu bertanda merah."
+            : "Tanggal maintenance tidak valid. Periksa kartu bertanda merah."
+        );
+        return;
+      }
     }
+
+    if (changes.revenue_share) {
+      const revenueSharePercent = Number(revenueShareDraft ?? String(form.revenue_share.mitra_bps / 100));
+      if (!Number.isFinite(revenueSharePercent) || revenueSharePercent < 0) {
+        setFieldErrors({ revenue_share: "Isi porsi mitra dengan persentase valid." });
+        setSaveError("Ada angka kosong atau tidak valid. Periksa kartu bertanda merah.");
+        return;
+      }
+    }
+
+    const invalid = invalidNumberKeys(form).filter((k) => k in changes);
     if (invalid.length) {
       setFieldErrors(Object.fromEntries(invalid.map((k) => [k, "Isi semua angka dengan nilai yang valid."])));
       setSaveError("Ada angka kosong atau tidak valid. Periksa kartu bertanda merah.");
       return;
     }
-    const revenueSharePercent = Number(revenueShareDraft ?? String(form.revenue_share.mitra_bps / 100));
-    const payload: SystemSettings = {
-      ...form,
-      maintenance: {
-        ...form.maintenance,
-        scheduled_start: maintenanceDraft.scheduled_start ? fromLocalInput(maintenanceDraft.scheduled_start) : null,
-        estimated_end: maintenanceDraft.estimated_end ? fromLocalInput(maintenanceDraft.estimated_end) : null,
-      },
-      revenue_share: { mitra_bps: Math.round(revenueSharePercent * 100) },
-    };
-    if (!Number.isFinite(revenueSharePercent) || revenueSharePercent < 0) {
-      setFieldErrors({ revenue_share: "Isi porsi mitra dengan persentase valid." });
-      setSaveError("Ada angka kosong atau tidak valid. Periksa kartu bertanda merah.");
-      return;
-    }
+
     setIsSaving(true);
     setSaveSuccess(false);
     setRefreshWarning(null);
     setSaveError(null);
     setFieldErrors({});
-    // All 13 groups; server validates each key independently.
+
     try {
-      const res = await systemSettingsClient.updateAdminSettings(payload);
+      const res = await systemSettingsClient.updateAdminSettings(changes);
       if (res.success && res.settings) {
         setForm(res.settings);
-        setMaintenanceDraft({ scheduled_start: toLocalInput(res.settings.maintenance.scheduled_start), estimated_end: toLocalInput(res.settings.maintenance.estimated_end) });
-        setRevenueShareDraft(String(res.settings.revenue_share.mitra_bps / 100));
+        setOriginalSettings(res.settings);
+        setMaintenanceDraft({
+          scheduled_start: toLocalInput(res.settings.maintenance.scheduled_start),
+          estimated_end: toLocalInput(res.settings.maintenance.estimated_end),
+        });
+        setRevenueShareDraft(null);
         setSaveSuccess(true);
         // Refresh meta (updated_at); a failed refresh must not replace saved values with defaults.
         try {
@@ -170,21 +183,35 @@ export default function AdminSettingsPage() {
           if (!fresh.isFallback) {
             setRefreshWarning(null);
             setForm(fresh.settings);
+            setOriginalSettings(fresh.settings);
             setMeta(fresh.meta);
-            setMaintenanceDraft({ scheduled_start: toLocalInput(fresh.settings.maintenance.scheduled_start), estimated_end: toLocalInput(fresh.settings.maintenance.estimated_end) });
-            setRevenueShareDraft(String(fresh.settings.revenue_share.mitra_bps / 100));
+            setMaintenanceDraft({
+              scheduled_start: toLocalInput(fresh.settings.maintenance.scheduled_start),
+              estimated_end: toLocalInput(fresh.settings.maintenance.estimated_end),
+            });
+            setRevenueShareDraft(null);
           } else {
-            setRefreshWarning(`Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui${fresh.error ? `: ${fresh.error}` : "."}`);
+            setRefreshWarning(
+              `Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui${fresh.error ? `: ${fresh.error}` : "."}`
+            );
           }
         } catch (error) {
           // Unknown server state: keep saved form, block save until a manual reload succeeds.
           setIsFallback(true);
           setLoadError(error instanceof Error ? error.message : null);
-          setRefreshWarning(error instanceof Error ? `Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui: ${error.message}` : "Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui.");
+          setRefreshWarning(
+            error instanceof Error
+              ? `Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui: ${error.message}`
+              : "Pengaturan tersimpan, tetapi nilai terbaru dan metadata server tidak dapat diperbarui."
+          );
         }
       } else {
         setFieldErrors(res.details ?? {});
-        setSaveError(res.details ? "Beberapa parameter tidak valid. Periksa kartu bertanda merah." : res.error ?? "Gagal menyimpan konfigurasi");
+        setSaveError(
+          res.details
+            ? "Beberapa parameter tidak valid. Periksa kartu bertanda merah."
+            : res.error ?? "Gagal menyimpan konfigurasi"
+        );
       }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Gagal menyimpan konfigurasi");
@@ -199,6 +226,9 @@ export default function AdminSettingsPage() {
     const common = { meta: meta?.[key], error: fieldErrors[key], errorId };
 
     if (key === "revenue_share") {
+      const currentBps = revenueShareDraft !== null
+        ? (Number.isFinite(Number(revenueShareDraft)) ? Math.round(Number(revenueShareDraft) * 100) : form.revenue_share.mitra_bps)
+        : form.revenue_share.mitra_bps;
       return (
         <SettingSection key={key} title="Bagi Hasil Mitra" icon={Percent} {...common}>
           <div className="max-w-md">
@@ -221,7 +251,7 @@ export default function AdminSettingsPage() {
                 required
               />
             </div>
-            <span className="text-[11px] text-slate-400">Disimpan sebagai {form.revenue_share.mitra_bps} bps</span>
+            <span className="text-[11px] text-slate-400">Disimpan sebagai {currentBps} bps</span>
           </div>
         </SettingSection>
       );
@@ -283,7 +313,9 @@ export default function AdminSettingsPage() {
     );
   };
 
-  const saveDisabled = isLoading || isSaving || isFallback || !form;
+  const changes = getChangedSettings(form, originalSettings, maintenanceDraft, revenueShareDraft);
+  const hasChanges = Object.keys(changes).length > 0;
+  const saveDisabled = isLoading || isSaving || isFallback || !form || !hasChanges;
   const hasMeta = !!meta && Object.keys(meta).length > 0;
 
   return (
