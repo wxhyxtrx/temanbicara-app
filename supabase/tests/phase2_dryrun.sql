@@ -908,6 +908,17 @@ INSERT INTO public.psikolog_profiles (user_id, nama_lengkap_gelar, nomor_sipp_st
 VALUES ('a6000000-0000-0000-0000-000000000006', 'Dryrun Psikolog Suspended, M.Psi', 'STR-DRYRUN-002', 'https://example.com/str2.pdf')
 ON CONFLICT (user_id) DO UPDATE SET nama_lengkap_gelar = EXCLUDED.nama_lengkap_gelar;
 
+-- INITIAL WALLETS FOR TEST USERS
+INSERT INTO public.wallets (user_id, coin_balance, pending_rupiah, available_rupiah)
+VALUES
+    ('a1000000-0000-0000-0000-000000000001', 0, 0, 0),
+    ('a2000000-0000-0000-0000-000000000002', 0, 0, 0),
+    ('a3000000-0000-0000-0000-000000000003', 0, 0, 0),
+    ('a4000000-0000-0000-0000-000000000004', 0, 0, 0),
+    ('a5000000-0000-0000-0000-000000000005', 0, 0, 0),
+    ('a6000000-0000-0000-0000-000000000006', 0, 0, 0)
+ON CONFLICT (user_id) DO NOTHING;
+
 -- ========================================================
 -- TEST 1: SCHEMA CONSTRAINTS & IMMUTABILITY TRIGGER
 -- ========================================================
@@ -1314,6 +1325,7 @@ BEGIN
     -- Mitra = floor(10000 * 7555 / 10000) = 7555.
     -- Platform = 10000 - 7555 = 2445.
     UPDATE public.system_settings SET value = '{"mitra_bps": 7555}'::jsonb WHERE key = 'revenue_share';
+    IF NOT FOUND THEN RAISE EXCEPTION 'TEST 5.4 SETUP FAILED: revenue_share setting not found'; END IF;
     PERFORM public.tip_create(
         pg_catalog.gen_random_uuid(),
         'a1000000-0000-0000-0000-000000000001',
@@ -1324,6 +1336,7 @@ BEGIN
     );
     -- Restore revenue_share
     UPDATE public.system_settings SET value = '{"mitra_bps": 8000}'::jsonb WHERE key = 'revenue_share';
+    IF NOT FOUND THEN RAISE EXCEPTION 'TEST 5.4 RESTORE FAILED: revenue_share setting not found'; END IF;
 
     -- Verify total mitra pending is 120000 + 7555 = 127555
     SELECT pending_rupiah INTO v_mitra_pending FROM public.wallets WHERE user_id = 'a2000000-0000-0000-0000-000000000002';
@@ -1343,9 +1356,9 @@ DECLARE
     v_disb_amount BIGINT;
 BEGIN
     -- Prepare available balance for psikolog = 2.500.000
-    UPDATE public.wallets
-    SET available_rupiah = 2500000
-    WHERE user_id = 'a2000000-0000-0000-0000-000000000002';
+    INSERT INTO public.wallets (user_id, available_rupiah)
+    VALUES ('a2000000-0000-0000-0000-000000000002', 2500000)
+    ON CONFLICT (user_id) DO UPDATE SET available_rupiah = 2500000;
 
     -- 6.1 Insufficient balance: request 2.500.000 with fee 6.500 (total 2.506.500 > 2.500.000) must fail
     v_caught := FALSE;
@@ -1418,9 +1431,9 @@ BEGIN
     VALUES (v_earning_id, 'a3000000-0000-0000-0000-000000000003', 200000, 'session', pg_catalog.gen_random_uuid(), pg_catalog.now() - INTERVAL '1 hour');
 
     -- Set relawan pending balance to match
-    UPDATE public.wallets
-    SET pending_rupiah = 200000, available_rupiah = 0
-    WHERE user_id = 'a3000000-0000-0000-0000-000000000003';
+    INSERT INTO public.wallets (user_id, pending_rupiah, available_rupiah)
+    VALUES ('a3000000-0000-0000-0000-000000000003', 200000, 0)
+    ON CONFLICT (user_id) DO UPDATE SET pending_rupiah = 200000, available_rupiah = 0;
 
     -- Call release_holding
     v_released_count := public.release_holding(100);
@@ -1458,6 +1471,7 @@ DECLARE
 BEGIN
     -- Temporarily delete 'tip' setting
     DELETE FROM public.system_settings WHERE key = 'tip';
+    IF NOT FOUND THEN RAISE EXCEPTION 'TEST 8.1 SETUP FAILED: tip setting not found'; END IF;
 
     v_caught := FALSE;
     BEGIN
