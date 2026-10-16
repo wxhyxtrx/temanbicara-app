@@ -151,136 +151,43 @@ function AdminUsersContent() {
       }
 
       // 2. Ambil data pengguna dengan pagination server
+      let apiRole: string | undefined;
+      let apiStatus: string | undefined;
+
       if (activeTab === "verifications") {
+        apiRole = roleFilter === "all" ? "psikolog,relawan" : roleFilter;
+
         if (verificationSubFilter === "pending") {
-          if (roleFilter === "psikolog") {
-            const res = await userService.getAdminUsers({
-              role: "psikolog",
-              status: "pending_verification",
-              search: search.trim() || undefined,
-              page,
-              limit,
-            });
-            if (res.success && Array.isArray(res.data)) {
-              setUsers(res.data);
-              setTotal(res.meta.total);
-            } else {
-              setUsers([]);
-              setTotal(0);
-            }
-          } else if (roleFilter === "relawan") {
-            const res = await userService.getAdminUsers({
-              role: "relawan",
-              status: "pending_approval",
-              search: search.trim() || undefined,
-              page,
-              limit,
-            });
-            if (res.success && Array.isArray(res.data)) {
-              setUsers(res.data);
-              setTotal(res.meta.total);
-            } else {
-              setUsers([]);
-              setTotal(0);
-            }
-          } else {
-            // Semua Mitra: psikolog pending_verification + relawan pending_approval
-            // Catatan: Karena endpoint GET /api/users belum mendukung multi-status/multi-role dalam 1 request,
-            // FE sementara query paralel kedua role lalu menggabungkannya.
-            const [psiRes, relRes] = await Promise.all([
-              userService.getAdminUsers({
-                role: "psikolog",
-                status: "pending_verification",
-                search: search.trim() || undefined,
-                page,
-                limit,
-              }),
-              userService.getAdminUsers({
-                role: "relawan",
-                status: "pending_approval",
-                search: search.trim() || undefined,
-                page,
-                limit,
-              }),
-            ]);
-
-            const psiList = psiRes.success && Array.isArray(psiRes.data) ? psiRes.data : [];
-            const relList = relRes.success && Array.isArray(relRes.data) ? relRes.data : [];
-            const psiTotal = psiRes.success ? psiRes.meta.total : 0;
-            const relTotal = relRes.success ? relRes.meta.total : 0;
-
-            setUsers([...psiList, ...relList]);
-            setTotal(psiTotal + relTotal);
-          }
-        } else {
-          // approved, rejected, all
-          let apiStatus: ApiAccountStatus | undefined;
-          if (verificationSubFilter === "approved") apiStatus = "active";
-          else if (verificationSubFilter === "rejected") apiStatus = "rejected";
-
-          if (roleFilter === "psikolog" || roleFilter === "relawan") {
-            const res = await userService.getAdminUsers({
-              role: roleFilter as ApiRole,
-              status: apiStatus,
-              search: search.trim() || undefined,
-              page,
-              limit,
-            });
-            if (res.success && Array.isArray(res.data)) {
-              setUsers(res.data);
-              setTotal(res.meta.total);
-            } else {
-              setUsers([]);
-              setTotal(0);
-            }
-          } else {
-            // Semua Mitra: psikolog + relawan
-            const [psiRes, relRes] = await Promise.all([
-              userService.getAdminUsers({
-                role: "psikolog",
-                status: apiStatus,
-                search: search.trim() || undefined,
-                page,
-                limit,
-              }),
-              userService.getAdminUsers({
-                role: "relawan",
-                status: apiStatus,
-                search: search.trim() || undefined,
-                page,
-                limit,
-              }),
-            ]);
-
-            const psiList = psiRes.success && Array.isArray(psiRes.data) ? psiRes.data : [];
-            const relList = relRes.success && Array.isArray(relRes.data) ? relRes.data : [];
-            const psiTotal = psiRes.success ? psiRes.meta.total : 0;
-            const relTotal = relRes.success ? relRes.meta.total : 0;
-
-            setUsers([...psiList, ...relList]);
-            setTotal(psiTotal + relTotal);
-          }
+          apiStatus =
+            roleFilter === "psikolog"
+              ? "pending_verification"
+              : roleFilter === "relawan"
+                ? "pending_approval"
+                : "pending_verification,pending_approval";
+        } else if (verificationSubFilter === "approved") {
+          apiStatus = "active";
+        } else if (verificationSubFilter === "rejected") {
+          apiStatus = "rejected";
         }
       } else {
-        // Tab Semua Pengguna
-        const apiRole = roleFilter === "all" ? undefined : (roleFilter as ApiRole);
-        const apiStatus = statusFilter === "all" ? undefined : (statusFilter as ApiAccountStatus);
+        apiRole = roleFilter === "all" ? undefined : roleFilter;
+        apiStatus = statusFilter === "all" ? undefined : statusFilter;
+      }
 
-        const res = await userService.getAdminUsers({
-          role: apiRole,
-          status: apiStatus,
-          search: search.trim() || undefined,
-          page,
-          limit,
-        });
+      const res = await userService.getAdminUsers({
+        role: apiRole,
+        status: apiStatus,
+        search: search.trim() || undefined,
+        page,
+        limit,
+      });
 
-        if (res && res.success && Array.isArray(res.data)) {
-          setUsers(res.data);
-          setTotal(res.meta.total);
-        } else {
-          setUsers([]);
-          setTotal(0);
-        }
+      if (res && res.success && Array.isArray(res.data)) {
+        setUsers(res.data);
+        setTotal(res.meta.total);
+      } else {
+        setUsers([]);
+        setTotal(0);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
