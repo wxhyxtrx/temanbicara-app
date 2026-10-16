@@ -4,9 +4,10 @@
 -- 1. Penambahan kolom topup_orders.expires_at & snap_redirect_url
 -- 2. Partial index topup_orders_stale_pending_idx
 -- 3. RPC topup_order_create (expires_at 10 menit)
--- 4. RPC topup_expire_stale (pending -> expire jika now > expires_at + 15 menit)
+-- 4. Helper apply_wallet_ledger_internal (kredit boleh untuk user non-aktif, debit wajib aktif)
 -- 5. RPC topup_settle (PENTING: uang aman, status 'expire' & pasien suspended tetap dikreditkan koinnya)
--- 6. Verifikasi idempotensi dan proteksi deny/cancel
+-- 6. RPC topup_expire_stale (pending -> expire jika now > expires_at + 15 menit)
+-- 7. Verifikasi debit ditolak untuk user suspended, idempotensi, dan proteksi deny/cancel
 -- SELURUH UJI BERJALAN DALAM SATU TRANSAKSI DAN OTOMATIS DI-ROLLBACK
 -- ========================================================
 
@@ -151,7 +152,93 @@ $$;
 REVOKE ALL ON FUNCTION public.topup_order_create(TEXT, UUID, BIGINT, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.topup_order_create(TEXT, UUID, BIGINT, TIMESTAMPTZ) TO service_role;
 
--- 4. UPDATE RPC: topup_settle
+-- 4. UPDATE INTERNAL HELPER: apply_wallet_ledger_internal
+-- Aturan uang:
+-- - p_delta > 0 (kredit: top-up, refund) boleh untuk user yang ADA walau tidak active (role tetap harus cocok).
+-- - p_delta < 0 (debit) tetap WAJIB status active.
+CREATE OR REPLACE FUNCTION public.apply_wallet_ledger_internal(
+    p_user_id UUID,
+    p_account TEXT,
+    p_delta BIGINT,
+    p_unit TEXT,
+    p_reason TEXT,
+    p_ref_type TEXT,
+    p_ref_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_role public.user_role;
+    v_status public.account_status;
+    v_wallet public.wallets%ROWTYPE;
+BEGIN
+    v_role := NULL;
+    v_status := NULL;
+
+    SELECT u.role, u.status INTO v_role, v_status
+    FROM public.users AS u
+    WHERE u.id = p_user_id
+    FOR SHARE;
+
+    IF v_role IS NULL THEN
+        RAISE EXCEPTION 'USER_NOT_FOUND' USING ERRCODE='P0002';
+    END IF;
+
+    -- Debit (p_delta < 0) WAJIB akun berstatus active
+    IF p_delta < 0 AND v_status <> 'active'::public.account_status THEN
+        RAISE EXCEPTION 'USER_NOT_ACTIVE' USING ERRCODE='P0001';
+    END IF;
+
+    IF (p_account = 'patient_coins' AND (v_role <> 'pasien' OR p_unit <> 'coin')) OR
+       (p_account IN ('mitra_pending', 'mitra_available') AND (v_role NOT IN ('psikolog', 'relawan') OR p_unit <> 'rupiah')) THEN
+        RAISE EXCEPTION 'WALLET_ROLE_MISMATCH' USING ERRCODE='42501';
+    END IF;
+
+    INSERT INTO public.wallets(user_id) VALUES(p_user_id) ON CONFLICT(user_id) DO NOTHING;
+    SELECT * INTO v_wallet FROM public.wallets WHERE user_id = p_user_id FOR UPDATE;
+
+    IF p_account = 'patient_coins' THEN
+        IF v_wallet.coin_balance + p_delta < 0 THEN
+            RAISE EXCEPTION 'INSUFFICIENT_COINS' USING ERRCODE='P0001';
+        END IF;
+        UPDATE public.wallets
+        SET coin_balance = coin_balance + p_delta,
+            updated_at = pg_catalog.now()
+        WHERE user_id = p_user_id;
+
+    ELSIF p_account = 'mitra_pending' THEN
+        IF v_wallet.pending_rupiah + p_delta < 0 THEN
+            RAISE EXCEPTION 'INSUFFICIENT_BALANCE' USING ERRCODE='P0001';
+        END IF;
+        UPDATE public.wallets
+        SET pending_rupiah = pending_rupiah + p_delta,
+            updated_at = pg_catalog.now()
+        WHERE user_id = p_user_id;
+
+    ELSIF p_account = 'mitra_available' THEN
+        IF v_wallet.available_rupiah + p_delta < 0 THEN
+            RAISE EXCEPTION 'INSUFFICIENT_BALANCE' USING ERRCODE='P0001';
+        END IF;
+        UPDATE public.wallets
+        SET available_rupiah = available_rupiah + p_delta,
+            updated_at = pg_catalog.now()
+        WHERE user_id = p_user_id;
+
+    ELSE
+        RAISE EXCEPTION 'INVALID_LEDGER_ACCOUNT' USING ERRCODE='22023';
+    END IF;
+
+    INSERT INTO public.ledger_entries(user_id, account, amount, unit, reason, ref_type, ref_id)
+    VALUES(p_user_id, p_account, p_delta, p_unit, p_reason, p_ref_type, p_ref_id);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.apply_wallet_ledger_internal(UUID, TEXT, BIGINT, TEXT, TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated, service_role;
+
+-- 5. UPDATE RPC: topup_settle
 -- PENTING (UANG): Order berstatus 'expire' WAJIB tetap mengkreditkan koin bila Midtrans melaporkan settlement valid.
 CREATE OR REPLACE FUNCTION public.topup_settle(
     p_order_id TEXT,
@@ -225,7 +312,7 @@ $$;
 REVOKE ALL ON FUNCTION public.topup_settle(TEXT, TEXT, BIGINT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.topup_settle(TEXT, TEXT, BIGINT) TO service_role;
 
--- 5. RPC JOB KEDALUWARSA: topup_expire_stale
+-- 6. RPC JOB KEDALUWARSA: topup_expire_stale
 CREATE OR REPLACE FUNCTION public.topup_expire_stale(
     p_batch_limit INTEGER DEFAULT 100
 )
@@ -473,7 +560,35 @@ BEGIN
 END;
 $$;
 
--- TEST 5: Proteksi Order Berstatus 'deny' & 'cancel' TIDAK Boleh di-Settle
+-- TEST 5: Pasien Suspended TIDAK BISA Didebit (apply_wallet_ledger_internal memicu USER_NOT_ACTIVE)
+DO $$
+DECLARE
+    v_patient_id UUID := 'a5000000-0000-0000-0000-000000000005';
+    v_caught BOOLEAN := FALSE;
+BEGIN
+    BEGIN
+        PERFORM public.apply_wallet_ledger_internal(
+            v_patient_id,
+            'patient_coins',
+            -10, -- percobaan debit 10 koin
+            'coin',
+            'tip_debit',
+            'tip',
+            pg_catalog.gen_random_uuid()
+        );
+    EXCEPTION WHEN SQLSTATE 'P0001' THEN
+        IF SQLERRM LIKE '%USER_NOT_ACTIVE%' THEN
+            v_caught := TRUE;
+        END IF;
+    END;
+
+    IF NOT v_caught THEN
+        RAISE EXCEPTION 'TEST 5 FAILED: Debit pada pasien suspended harus ditolak dengan USER_NOT_ACTIVE';
+    END IF;
+END;
+$$;
+
+-- TEST 6: Proteksi Order Berstatus 'deny' & 'cancel' TIDAK Boleh di-Settle
 DO $$
 DECLARE
     v_order_deny TEXT := 'TOPUP-DENY-007';
@@ -490,7 +605,7 @@ BEGIN
         v_caught := TRUE;
     END;
     IF NOT v_caught THEN
-        RAISE EXCEPTION 'TEST 5 FAILED: topup_settle pada order deny harus memicu exception P0001';
+        RAISE EXCEPTION 'TEST 6 FAILED: topup_settle pada order deny harus memicu exception P0001';
     END IF;
 
     PERFORM public.topup_order_create(v_order_cancel, 'a1000000-0000-0000-0000-000000000001', 10);
@@ -503,7 +618,7 @@ BEGIN
         v_caught := TRUE;
     END;
     IF NOT v_caught THEN
-        RAISE EXCEPTION 'TEST 5 FAILED: topup_settle pada order cancel harus memicu exception P0001';
+        RAISE EXCEPTION 'TEST 6 FAILED: topup_settle pada order cancel harus memicu exception P0001';
     END IF;
 END;
 $$;
