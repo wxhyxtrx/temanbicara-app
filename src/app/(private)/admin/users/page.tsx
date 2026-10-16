@@ -105,8 +105,7 @@ function AdminUsersContent() {
   const searchParams = useSearchParams();
   const currentUser = useUserStore((state) => state.user);
 
-  const initialTab = searchParams.get("tab") === "verifications" ? "verifications" : "all";
-  const [activeTab, setActiveTab] = useState<"all" | "verifications">(initialTab);
+  const activeTab: "all" | "verifications" = searchParams.get("tab") === "verifications" ? "verifications" : "all";
 
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -122,18 +121,7 @@ function AdminUsersContent() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTargetUser, setDeleteTargetUser] = useState<AdminUserRow | null>(null);
 
-  // Sync tab with URL search parameter
-  useEffect(() => {
-    const tabParam = searchParams.get("tab");
-    if (tabParam === "verifications" && activeTab !== "verifications") {
-      setActiveTab("verifications");
-    } else if (!tabParam && activeTab === "verifications") {
-      // Keep or allow tab
-    }
-  }, [searchParams, activeTab]);
-
   const handleTabChange = (tab: "all" | "verifications") => {
-    setActiveTab(tab);
     if (tab === "verifications") {
       router.replace("/admin/users?tab=verifications");
     } else {
