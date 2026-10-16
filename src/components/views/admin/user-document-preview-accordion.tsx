@@ -194,7 +194,7 @@ export function UserDocumentPreviewAccordion({
                       href={resolvedUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 h-7 text-[11px] px-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold shadow-2xs transition-colors"
+                      className="inline-flex items-center gap-1 h-7 text-[11px] px-2.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-semibold shadow-2xs transition-colors"
                     >
                       <ExternalLink size={11} />
                       <span>Buka Tab Baru</span>
