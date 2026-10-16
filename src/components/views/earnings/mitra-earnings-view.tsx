@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tables, Column } from "@/components/shared/atoms/Table";
+import { Tables, TablePaginationFooter, Column } from "@/components/shared/atoms/Table";
 import { notify } from "@/lib/toast";
 import { walletClient, WalletApiError } from "@/services/wallet.client";
 import { systemSettingsClient } from "@/services/system-settings.client";
@@ -27,8 +27,6 @@ import {
   XCircle,
   AlertCircle,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   ShieldCheck,
   ArrowDownLeft,
   ArrowUpRight,
@@ -79,6 +77,7 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
   const [payouts, setPayouts] = useState<PayoutRequestEntity[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
   const [loadingPayouts, setLoadingPayouts] = useState<boolean>(true);
 
   // Dialog Confirmation
@@ -99,10 +98,10 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
   }, []);
 
   // Load Payout History
-  const fetchPayouts = useCallback(async (targetPage: number) => {
+  const fetchPayouts = useCallback(async (targetPage: number, targetLimit: number = limit) => {
     try {
       setLoadingPayouts(true);
-      const res = await walletClient.getMitraPayouts({ page: targetPage, limit: 10 });
+      const res = await walletClient.getMitraPayouts({ page: targetPage, limit: targetLimit });
       setPayouts(res.items);
       setMeta(res.meta);
     } catch (err) {
@@ -111,7 +110,12 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
     } finally {
       setLoadingPayouts(false);
     }
-  }, []);
+  }, [limit]);
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  };
 
   // Load Public Settings
   const fetchSettings = useCallback(async () => {
@@ -163,8 +167,8 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
   }, [fetchWallet, fetchSettings, fetchUserProfile]);
 
   useEffect(() => {
-    fetchPayouts(page);
-  }, [fetchPayouts, page]);
+    fetchPayouts(page, limit);
+  }, [fetchPayouts, page, limit]);
 
   const availableRupiah = wallet?.available_rupiah ?? 0;
   const pendingRupiah = wallet?.pending_rupiah ?? 0;
@@ -693,35 +697,13 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
               )}
 
               {/* Pagination */}
-              {meta.totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-                  <span>
-                    Halaman {meta.page} dari {meta.totalPages} (Total {meta.total} pengajuan)
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={page <= 1 || loadingPayouts}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="h-8 text-xs rounded-lg gap-1"
-                    >
-                      <ChevronLeft size={14} />
-                      <span>Sebelumnya</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={page >= meta.totalPages || loadingPayouts}
-                      onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-                      className="h-8 text-xs rounded-lg gap-1"
-                    >
-                      <span>Berikutnya</span>
-                      <ChevronRight size={14} />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <TablePaginationFooter
+                totalItems={meta.total}
+                page={page}
+                limit={limit}
+                onPageChange={setPage}
+                onChangeLimit={handleLimitChange}
+              />
             </CardContent>
           </Card>
         </div>
