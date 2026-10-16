@@ -9,7 +9,7 @@ interface FeatureCardProps {
 
 export default function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
-    <Card className=" text-center hover:shadow transition-shadow bg-secondary-background border-0 gap-2 px-2 sm:px-4">
+    <Card className="text-center hover:shadow transition-shadow bg-secondary-background border-0 gap-2 py-6 px-2 sm:px-4">
       <div className="flex justify-center">
         {icon}
       </div>

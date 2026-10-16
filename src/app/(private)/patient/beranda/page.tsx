@@ -568,7 +568,7 @@ export default function PatientBerandaPage() {
 
           {/* 6. Recent Conversation History Card */}
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-            <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <CardHeader className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                   <MessageCircle size={17} className="text-teal-600 dark:text-teal-400" />

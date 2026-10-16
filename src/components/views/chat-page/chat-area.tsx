@@ -82,7 +82,7 @@ export function ChatArea() {
   };
 
   return (
-    <Card className="h-full flex flex-col bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs rounded-2xl overflow-hidden gap-0 transition-colors duration-200">
+    <Card className="h-full flex flex-col bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs rounded-2xl overflow-hidden transition-colors duration-200">
       <ChatHeader
         onStartCall={handleStartCallClick}
         onEndSession={() => setIsReviewTipModalOpen(true)}

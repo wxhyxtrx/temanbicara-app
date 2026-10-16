@@ -5,7 +5,7 @@ import { Quote, Star } from "lucide-react";
 
 export function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
   return (
-    <Card className="w-72 sm:w-80 md:w-[360px] h-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow rounded-2xl flex-shrink-0 mx-2.5 sm:mx-3 p-0 overflow-hidden">
+    <Card className="w-72 sm:w-80 md:w-[360px] h-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow rounded-2xl flex-shrink-0 mx-2.5 sm:mx-3 overflow-hidden">
       <CardContent className="p-5 sm:p-6 h-full flex flex-col justify-between space-y-4">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
