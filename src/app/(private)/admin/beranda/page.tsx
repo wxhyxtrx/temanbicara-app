@@ -357,56 +357,56 @@ export default function AdminBerandaPage() {
 
           <CardContent className="p-5 sm:p-6 space-y-4">
             {loading ? (
-              <div className="space-y-4 py-1">
-                <Skeleton className="h-20 w-full rounded-xl bg-slate-200 dark:bg-slate-700" />
-                <Skeleton className="h-20 w-full rounded-xl bg-slate-200 dark:bg-slate-700" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Skeleton className="h-28 w-full rounded-xl bg-slate-200 dark:bg-slate-700" />
+                <Skeleton className="h-28 w-full rounded-xl bg-slate-200 dark:bg-slate-700" />
               </div>
             ) : (
-              <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Hari Ini */}
-                <div className="p-4 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-900/60 space-y-1.5">
+                <div className="p-4 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-900/60 flex flex-col justify-between space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
-                      <Clock size={14} className="text-teal-600" />
-                      <span>Top-Up Hari Ini</span>
-                    </span>
-                    <span className="font-semibold text-teal-700 dark:text-teal-300 font-mono">
-                      {stats?.topup.today.total_orders ?? 0} transaksi berhasil
+                      <Clock size={14} className="text-teal-600 dark:text-teal-400" />
+                      <span>Hari Ini</span>
                     </span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 pt-0.5">
-                    <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white">
+                  <div>
+                    <p className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white">
                       {(stats?.topup.today.total_coins ?? 0).toLocaleString("id-ID")}{" "}
-                      <span className="text-xs font-semibold text-teal-600">Koin</span>
+                      <span className="text-xs sm:text-sm font-semibold text-teal-600 dark:text-teal-400">Koin</span>
                     </p>
-                    <p className="text-sm font-semibold font-mono text-slate-700 dark:text-slate-300">
+                    <p className="text-xs sm:text-sm font-semibold font-mono text-slate-600 dark:text-slate-300 mt-0.5">
                       ≈ Rp {(stats?.topup.today.total_rupiah ?? 0).toLocaleString("id-ID")}
                     </p>
                   </div>
+                  <p className="text-[11px] text-teal-700 dark:text-teal-400 font-semibold font-mono pt-1.5 border-t border-teal-100 dark:border-teal-900/40">
+                    {stats?.topup.today.total_orders ?? 0} transaksi
+                  </p>
                 </div>
 
                 {/* All-time (Total) */}
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <TrendingUp size={14} className="text-teal-600" />
-                      <span>Total Keseluruhan (All-Time)</span>
-                    </span>
-                    <span className="font-semibold text-slate-600 dark:text-slate-400 font-mono">
-                      {stats?.topup.all_time.total_orders ?? 0} transaksi berhasil
+                      <TrendingUp size={14} className="text-teal-600 dark:text-teal-400" />
+                      <span>Total</span>
                     </span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 pt-0.5">
-                    <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white">
+                  <div>
+                    <p className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white">
                       {(stats?.topup.all_time.total_coins ?? 0).toLocaleString("id-ID")}{" "}
-                      <span className="text-xs font-semibold text-teal-600">Koin</span>
+                      <span className="text-xs sm:text-sm font-semibold text-teal-600 dark:text-teal-400">Koin</span>
                     </p>
-                    <p className="text-sm font-semibold font-mono text-slate-700 dark:text-slate-300">
+                    <p className="text-xs sm:text-sm font-semibold font-mono text-slate-600 dark:text-slate-300 mt-0.5">
                       ≈ Rp {(stats?.topup.all_time.total_rupiah ?? 0).toLocaleString("id-ID")}
                     </p>
                   </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold font-mono pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                    {stats?.topup.all_time.total_orders ?? 0} transaksi
+                  </p>
                 </div>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
