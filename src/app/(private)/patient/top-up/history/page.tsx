@@ -234,15 +234,25 @@ export default function PatientTransactionHistoryPage() {
       className: "w-[18%]",
       renderCell: (tx) => {
         const isPlus = tx.amount > 0;
+        const isMinus = tx.amount < 0;
         const isCoin = tx.unit === "coin";
+        const formattedAmount = isPlus
+          ? `+${tx.amount}`
+          : isMinus
+          ? `${tx.amount}`
+          : "0";
         return (
           <div className="text-right">
             <span
               className={`font-mono font-bold text-xs sm:text-sm ${
-                isPlus ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"
+                isPlus
+                  ? "text-emerald-700 dark:text-emerald-400"
+                  : isMinus
+                  ? "text-rose-700 dark:text-rose-400"
+                  : "text-slate-600 dark:text-slate-300"
               }`}
             >
-              {isPlus ? `+${tx.amount}` : tx.amount} {isCoin ? "Koin" : "Rp"}
+              {formattedAmount} {isCoin ? "Koin" : "Rp"}
             </span>
             {!isCoin && (
               <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
@@ -333,7 +343,7 @@ export default function PatientTransactionHistoryPage() {
                 Total Koin Masuk (Halaman Ini)
               </span>
               <span className="text-lg sm:text-xl font-bold font-heading text-emerald-600 dark:text-emerald-400 font-mono">
-                +{totalCoinsIn} Koin
+                {totalCoinsIn > 0 ? `+${totalCoinsIn}` : "0"} Koin
               </span>
               <span className="text-[10px] text-slate-400 block">Top-up yang telah diverifikasi</span>
             </div>
@@ -350,7 +360,7 @@ export default function PatientTransactionHistoryPage() {
                 Total Koin Terpakai (Halaman Ini)
               </span>
               <span className="text-lg sm:text-xl font-bold font-heading text-rose-600 dark:text-rose-400 font-mono">
-                -{totalCoinsOut} Koin
+                {totalCoinsOut > 0 ? `-${totalCoinsOut}` : "0"} Koin
               </span>
               <span className="text-[10px] text-slate-400 block">Penggunaan sesi & apresiasi tip</span>
             </div>
@@ -532,10 +542,18 @@ export default function PatientTransactionHistoryPage() {
                   <span className="text-slate-500">Nominal:</span>
                   <span
                     className={`font-bold font-mono text-sm ${
-                      selectedTx.amount > 0 ? "text-emerald-600" : "text-rose-600"
+                      selectedTx.amount > 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : selectedTx.amount < 0
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-slate-600 dark:text-slate-300"
                     }`}
                   >
-                    {selectedTx.amount > 0 ? `+${selectedTx.amount}` : selectedTx.amount}{" "}
+                    {selectedTx.amount > 0
+                      ? `+${selectedTx.amount}`
+                      : selectedTx.amount < 0
+                      ? `${selectedTx.amount}`
+                      : "0"}{" "}
                     {selectedTx.unit === "coin" ? "Koin" : "Rupiah"}
                   </span>
                 </div>

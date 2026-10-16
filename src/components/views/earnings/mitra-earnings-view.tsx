@@ -309,11 +309,18 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
       label: "Total Terpotong",
       align: "right",
       className: "w-[16%]",
-      renderCell: (p) => (
-        <span className="font-mono font-bold text-xs text-rose-600 dark:text-rose-400">
-          -Rp {(p.amount_rupiah + p.fee_rupiah).toLocaleString("id-ID")}
-        </span>
-      ),
+      renderCell: (p) => {
+        const total = p.amount_rupiah + p.fee_rupiah;
+        return (
+          <span
+            className={`font-mono font-bold text-xs ${
+              total > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-600 dark:text-slate-300"
+            }`}
+          >
+            {total > 0 ? `-Rp ${total.toLocaleString("id-ID")}` : "Rp 0"}
+          </span>
+        );
+      },
     },
     {
       label: "Status",

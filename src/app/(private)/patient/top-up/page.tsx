@@ -558,7 +558,7 @@ export default function PatientTopUpPage() {
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Jumlah Koin:</span>
                 <span className="font-bold text-teal-700 dark:text-teal-400 font-mono text-sm">
-                  +{orderDetail?.coins} Koin
+                  {(orderDetail?.coins ?? 0) > 0 ? `+${orderDetail?.coins}` : `${orderDetail?.coins ?? 0}`} Koin
                 </span>
               </div>
               <div className="flex justify-between items-center">
