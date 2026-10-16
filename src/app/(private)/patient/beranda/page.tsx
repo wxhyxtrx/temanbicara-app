@@ -120,12 +120,12 @@ export default function PatientBerandaPage() {
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-10 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Header Welcome Sanctuary Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-950 to-slate-950 text-white p-6 sm:p-8 md:p-10 shadow-lg border border-teal-800/60 dark:border-teal-900/40">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-950 to-slate-950 text-white p-6 sm:p-7 xl:p-8 2xl:p-10 shadow-lg border border-teal-800/60 dark:border-teal-900/40">
         {/* Calming ambient background glow */}
         <div className="absolute top-0 right-10 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-10 left-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5 xl:gap-6">
           <div className="space-y-3.5 flex-1 min-w-0 max-w-4xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/60 border border-teal-700/60 text-teal-200 text-xs font-semibold backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -145,24 +145,24 @@ export default function PatientBerandaPage() {
               Setiap emosi yang kamu rasakan adalah valid. Ambil jeda, tarik napas perlahan, dan ketahuilah bahwa kamu tidak sendirian. Psikolog klinis dan AI empatik kami siap mendampingimu.
             </p>
 
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-2">
+            <div className="flex flex-wrap xl:flex-nowrap items-center gap-2 xl:gap-2 2xl:gap-2.5 pt-2">
               <Link href="/patient/room" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-4 xl:px-5 h-11 text-xs sm:text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-2 whitespace-nowrap">
-                  <MessageCircle size={16} />
-                  <span>Mulai Curhat AI Instan (24/7)</span>
+                <Button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-3.5 xl:px-3 2xl:px-4 h-10 xl:h-10 text-xs sm:text-xs 2xl:text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-1.5 sm:gap-2 whitespace-nowrap">
+                  <MessageCircle size={15} />
+                  <span>Curhat AI Instan (24/7)</span>
                 </Button>
               </Link>
               <Button
                 type="button"
                 onClick={() => setVentingModalOpen(true)}
-                className="w-full sm:w-auto border border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 font-semibold rounded-xl px-4 xl:px-5 h-11 text-xs sm:text-sm cursor-pointer gap-2 backdrop-blur-md shadow-xs whitespace-nowrap"
+                className="w-full sm:w-auto border border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 font-semibold rounded-xl px-3.5 xl:px-3 2xl:px-4 h-10 xl:h-10 text-xs sm:text-xs 2xl:text-sm cursor-pointer gap-1.5 sm:gap-2 backdrop-blur-md shadow-xs whitespace-nowrap"
               >
-                <HeartHandshake size={16} className="text-pink-400" />
-                <span>Curhat Pendengar Sebaya (Anonim)</span>
+                <HeartHandshake size={15} className="text-pink-400" />
+                <span>Curhat Pendengar Sebaya</span>
               </Button>
               <Link href="/patient/schedule?booking=true" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-4 xl:px-5 h-11 text-xs sm:text-sm cursor-pointer gap-2 whitespace-nowrap">
-                  <Calendar size={16} />
+                <Button variant="outline" className="w-full sm:w-auto border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-3.5 xl:px-3 2xl:px-4 h-10 xl:h-10 text-xs sm:text-xs 2xl:text-sm cursor-pointer gap-1.5 sm:gap-2 whitespace-nowrap">
+                  <Calendar size={15} />
                   <span>Reservasi Sesi Psikolog</span>
                 </Button>
               </Link>
@@ -170,7 +170,7 @@ export default function PatientBerandaPage() {
           </div>
 
           {/* Clinical Assurance Mini-Card */}
-          <div className="rounded-2xl bg-teal-900/40 border border-teal-700/50 p-4 sm:p-5 backdrop-blur-md w-full lg:w-72 xl:w-80 shrink-0 space-y-3">
+          <div className="rounded-2xl bg-teal-900/40 border border-teal-700/50 p-4 sm:p-5 backdrop-blur-md w-full lg:w-60 xl:w-64 2xl:w-72 shrink-0 space-y-3">
             <div className="flex items-center gap-2.5 text-emerald-300 font-semibold text-xs">
               <ShieldCheck size={18} />
               <span>Standar Etika Medis HIMPSI</span>
