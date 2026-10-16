@@ -640,17 +640,17 @@ export default function PatientTransactionHistoryPage() {
 
         {/* Current Balance Pill & Top Up CTA */}
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 shadow-2xs">
-            <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0">
-              <Coins size={16} />
+          <div className="h-10 px-4 rounded-xl flex items-center gap-2.5 bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 shadow-2xs">
+            <div className="w-6 h-6 rounded-md bg-teal-600 text-white flex items-center justify-center shrink-0">
+              <Coins size={13} />
             </div>
-            <div>
-              <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold block leading-tight uppercase tracking-wider">
+            <div className="flex flex-col justify-center min-w-0">
+              <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold leading-none uppercase tracking-wider">
                 Saldo Pasien
               </span>
-              <span className="text-sm font-bold font-heading">
+              <span className="text-xs sm:text-sm font-bold font-heading leading-tight truncate">
                 {!mounted || isLoadingWallet || wallet === null ? (
-                  <Skeleton className="h-4 w-16 rounded mt-0.5" />
+                  <Skeleton className="h-3.5 w-14 rounded mt-0.5" />
                 ) : (
                   `${wallet.coin_balance} Koin`
                 )}
@@ -659,7 +659,7 @@ export default function PatientTransactionHistoryPage() {
           </div>
 
           <Link href="/patient/top-up">
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-4 py-2 h-10 text-xs sm:text-sm font-bold gap-1.5 shadow-sm shadow-teal-700/20 cursor-pointer">
+            <Button className="h-10 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold gap-1.5 shadow-sm shadow-teal-700/20 cursor-pointer">
               <PlusCircle size={15} />
               <span>Top Up Koin</span>
             </Button>
