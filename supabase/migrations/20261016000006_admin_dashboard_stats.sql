@@ -72,7 +72,7 @@ BEGIN
         v_payout_requested_count,
         v_payout_requested_rupiah
     FROM public.payout_requests
-    WHERE status = 'requested'::public.payout_status;
+    WHERE status = 'requested';
 
     -- 4. Total Platform Revenue dari ledger_entries (account = 'platform_revenue')
     SELECT
