@@ -188,8 +188,8 @@ export function CreateUserModal({
       if (!email.trim() || !email.includes("@")) {
         errs.email = "Format email tidak valid";
       }
-      if (!password || password.length < 6) {
-        errs.password = "Password minimal 6 karakter";
+      if (!password || password.length < 8) {
+        errs.password = "Password minimal 8 karakter";
       }
       if (noWa.trim() && !phoneRegex.test(noWa.trim())) {
         errs.no_wa = "Format nomor WhatsApp tidak valid (contoh: 08123456789)";
@@ -201,8 +201,8 @@ export function CreateUserModal({
       if (!email.trim() || !email.includes("@")) {
         errs.email = "Format email tidak valid";
       }
-      if (!password || password.length < 6) {
-        errs.password = "Password minimal 6 karakter";
+      if (!password || password.length < 8) {
+        errs.password = "Password minimal 8 karakter";
       }
       if (noWa.trim() && !phoneRegex.test(noWa.trim())) {
         errs.no_wa = "Format nomor WhatsApp tidak valid (contoh: 08123456789)";
@@ -358,10 +358,10 @@ export function CreateUserModal({
 
             <div className="space-y-1">
               <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
-                Password {role === "psikolog" || role === "relawan" ? "(Min. 8 char)" : "(Min. 6 char)"} <span className="text-rose-500">*</span>
+                Password (Min. 8 karakter) <span className="text-rose-500">*</span>
               </Label>
               <PasswordInput
-                placeholder={role === "psikolog" || role === "relawan" ? "Min. 8 karakter" : "Min. 6 karakter"}
+                placeholder="Min. 8 karakter"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onBlur={() => markTouched("password")}
