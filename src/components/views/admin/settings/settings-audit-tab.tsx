@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { History, RefreshCw, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { History, RefreshCw, AlertCircle } from "lucide-react";
+import { TablePaginationFooter } from "@/components/shared/atoms/Table";
 import { systemSettingsClient } from "@/services/system-settings.client";
 import type { SystemSettingsAuditItem } from "@/types/system-settings";
 
@@ -20,27 +21,30 @@ const LIMIT = 20;
 export function SettingsAuditTab() {
   const [items, setItems] = useState<SystemSettingsAuditItem[]>([]);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(LIMIT);
   const [meta, setMeta] = useState({ page: 1, limit: LIMIT, total: 0, totalPages: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAudit = useCallback(async (target: number) => {
+  const fetchAudit = useCallback(async (target: number, targetLimit: number = limit) => {
     setIsLoading(true);
     setError(null);
-    const res = await systemSettingsClient.getAdminSettingsAudit({ page: target, limit: LIMIT });
+    const res = await systemSettingsClient.getAdminSettingsAudit({ page: target, limit: targetLimit });
     setItems(res.items);
     // Error result carries placeholder totals; keep last known meta.
     if (res.error) setError(res.error);
     else setMeta({ page: res.page, limit: res.limit, total: res.total, totalPages: res.totalPages });
     setIsLoading(false);
-  }, []);
+  }, [limit]);
 
   useEffect(() => {
-    fetchAudit(page);
-  }, [fetchAudit, page]);
+    fetchAudit(page, limit);
+  }, [fetchAudit, page, limit]);
 
-  const isFirstPage = meta.page <= 1;
-  const isLastPage = meta.page >= meta.totalPages;
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  };
 
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -159,35 +163,14 @@ export function SettingsAuditTab() {
       </div>
 
       {!error && (
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-        <span>
-          Halaman {meta.page} dari {Math.max(meta.totalPages, 1)} · {meta.total} catatan
-        </span>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(meta.page - 1)}
-            disabled={isLoading || isFirstPage}
-            className="h-8 text-xs rounded-lg gap-1 cursor-pointer"
-          >
-            <ChevronLeft size={13} />
-            Sebelumnya
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(meta.page + 1)}
-            disabled={isLoading || isLastPage}
-            className="h-8 text-xs rounded-lg gap-1 cursor-pointer"
-          >
-            Berikutnya
-            <ChevronRight size={13} />
-          </Button>
-        </div>
-      </div>
+        <TablePaginationFooter
+          totalItems={meta.total}
+          page={page}
+          limit={limit}
+          onPageChange={setPage}
+          onChangeLimit={handleLimitChange}
+          className="border-t-0 px-0 py-1"
+        />
       )}
     </div>
   );
