@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tables, Column } from "@/components/shared/atoms/Table";
-import { walletClient } from "@/services/wallet.client";
+import { walletClient, WalletApiError } from "@/services/wallet.client";
 import type { LedgerEntryEntity, PaginationMeta, WalletInfoResponse } from "@/types/wallet";
 import {
   Coins,
@@ -118,6 +118,7 @@ export default function PatientTransactionHistoryPage() {
       setTransactions(res.items);
       setMeta(res.meta);
     } catch (err) {
+      if (err instanceof WalletApiError && err.handled) return;
       console.error("Gagal memuat mutasi transaksi:", err);
     } finally {
       setIsLoading(false);
@@ -129,6 +130,7 @@ export default function PatientTransactionHistoryPage() {
       const data = await walletClient.getWalletMe();
       setWallet(data);
     } catch (err) {
+      if (err instanceof WalletApiError && err.handled) return;
       console.error("Gagal memuat saldo dompet:", err);
     }
   }, []);

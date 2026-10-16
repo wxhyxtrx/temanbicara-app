@@ -119,6 +119,7 @@ export default function PatientTopUpPage() {
       const data = await walletClient.getWalletMe();
       setWallet(data);
     } catch (err) {
+      if (err instanceof WalletApiError && err.handled) return;
       console.error("Gagal memuat saldo dompet:", err);
     } finally {
       setLoadingWallet(false);
@@ -181,6 +182,7 @@ export default function PatientTopUpPage() {
         notify.error("Pembayaran Tidak Berhasil", `Status transaksi: ${detail.status}.`);
       }
     } catch (err) {
+      if (err instanceof WalletApiError && err.handled) return;
       console.error("Error cek status order:", err);
     } finally {
       setIsCheckingStatus(false);

@@ -91,6 +91,7 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
       const data = await walletClient.getWalletMe();
       setWallet(data);
     } catch (err) {
+      if (err instanceof WalletApiError && err.handled) return;
       console.error("Gagal memuat saldo dompet mitra:", err);
     } finally {
       setLoadingWallet(false);
@@ -105,6 +106,7 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
       setPayouts(res.items);
       setMeta(res.meta);
     } catch (err) {
+      if (err instanceof WalletApiError && err.handled) return;
       console.error("Gagal memuat riwayat penarikan dana:", err);
     } finally {
       setLoadingPayouts(false);

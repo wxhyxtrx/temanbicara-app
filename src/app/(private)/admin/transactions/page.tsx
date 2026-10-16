@@ -64,6 +64,7 @@ export default function AdminTransactionsPage() {
       setPayouts(res.items);
       setMeta(res.meta);
     } catch (err) {
+      if (err instanceof WalletApiError && err.handled) return;
       console.error("Gagal memuat antrean payout admin:", err);
       if (err instanceof WalletApiError) {
         notify.error("Gagal Memuat Antrean", err.message);

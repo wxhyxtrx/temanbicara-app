@@ -14,19 +14,27 @@ export class WalletApiError extends Error {
   status: number;
   code?: string;
   details?: unknown;
+  handled?: boolean;
 
-  constructor(status: number, message: string, code?: string, details?: unknown) {
+  constructor(status: number, message: string, code?: string, details?: unknown, handled?: boolean) {
     super(message);
     this.name = 'WalletApiError';
     this.status = status;
     this.code = code;
     this.details = details;
+    this.handled = handled;
   }
 }
 
 export function formatWalletErrorMessage(status: number, code?: string, serverMessage?: string): string {
-  if (status === 401 || code === 'UNAUTHENTICATED' || code === 'INVALID_TOKEN') {
-    return 'Sesi login telah berakhir. Silakan masuk kembali ke akun Anda.';
+  if (
+    status === 401 ||
+    code === 'UNAUTHENTICATED' ||
+    code === 'INVALID_TOKEN' ||
+    (status === 404 && code === 'USER_NOT_FOUND') ||
+    code === 'USER_NOT_FOUND'
+  ) {
+    return 'Sesi login telah berakhir atau pengguna tidak ditemukan. Silakan masuk kembali ke akun Anda.';
   }
   if (status === 402 || code === 'INSUFFICIENT_COINS' || code === 'INSUFFICIENT_BALANCE') {
     return serverMessage || 'Saldo koin atau dana tidak mencukupi untuk memproses transaksi atau penarikan ini.';
@@ -96,12 +104,19 @@ async function handleWalletResponse<T>(res: Response): Promise<{ data: T; meta?:
     const errorCode = body?.error;
     const rawMessage = body?.message;
 
-    if (status === 401 || errorCode === 'UNAUTHENTICATED' || errorCode === 'INVALID_TOKEN') {
-      handleUnauthorized(rawMessage || 'Sesi login tidak valid atau kedaluwarsa');
+    const isUnauthorized =
+      status === 401 ||
+      errorCode === 'UNAUTHENTICATED' ||
+      errorCode === 'INVALID_TOKEN' ||
+      (status === 404 && errorCode === 'USER_NOT_FOUND') ||
+      errorCode === 'USER_NOT_FOUND';
+
+    if (isUnauthorized) {
+      handleUnauthorized(rawMessage || 'Sesi login tidak valid atau pengguna tidak ditemukan');
     }
 
     const friendlyMessage = formatWalletErrorMessage(status, errorCode, rawMessage);
-    throw new WalletApiError(status, friendlyMessage, errorCode, body?.details);
+    throw new WalletApiError(status, friendlyMessage, errorCode, body?.details, isUnauthorized);
   }
 
   return {
