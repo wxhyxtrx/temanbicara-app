@@ -252,17 +252,14 @@ export class WalletService {
       throw new WalletHttpError(502, 'PAYMENT_GATEWAY_ERROR', 'Koneksi ke payment gateway bermasalah');
     }
 
-    // Catat snap_redirect_url dan pastikan expires_at tersimpan
-    const { error: updateErr } = await supabaseAdmin
-      .from('topup_orders')
-      .update({
-        snap_redirect_url: redirectUrl,
-        expires_at: expiresAt.toISOString(),
-      })
-      .eq('order_id', orderId);
+    // Catat snap_redirect_url via RPC SECURITY DEFINER (direct UPDATE topup_orders di-REVOKE dari service_role)
+    const { error: attachErr } = await supabaseAdmin.rpc('topup_attach_snap', {
+      p_order_id: orderId,
+      p_redirect_url: redirectUrl,
+    });
 
-    if (updateErr) {
-      console.error('Error updating topup order with redirect URL:', updateErr);
+    if (attachErr) {
+      console.error('Error attaching snap redirect URL via RPC:', attachErr);
     }
 
     return {
