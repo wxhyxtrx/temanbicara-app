@@ -259,12 +259,14 @@ export type AdminUserDetailResponse =
           last_sign_in_at?: string | null;
           verified_at?: string | null;
           updated_at?: string;
+          dokumen_signed_url?: string | null;
         };
         profile: Record<string, unknown> | null;
         fullName: string;
         wallet?: UserWalletSummary;
         topup_summary?: PatientTopupSummary | null;
         payout_summary?: MitraPayoutSummary | null;
+        dokumen_signed_url?: string | null;
       };
     }
   | ApiError;

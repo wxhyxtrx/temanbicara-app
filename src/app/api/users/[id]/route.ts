@@ -20,6 +20,31 @@ const PROFILE_TABLE = {
   admin: 'admin_profiles',
 } as const;
 
+function extractStoragePath(rawPath?: string | null): string | null {
+  if (!rawPath || typeof rawPath !== 'string') return null;
+  let p = rawPath.trim();
+  if (!p) return null;
+
+  p = p.split('?')[0];
+  if (p.startsWith('http://') || p.startsWith('https://')) {
+    const marker = '/dokumen-mitra/';
+    const idx = p.indexOf(marker);
+    if (idx !== -1) {
+      p = p.substring(idx + marker.length);
+    } else {
+      return null;
+    }
+  }
+
+  p = p.replace(/^\/+/, '');
+  if (p.startsWith('dokumen-mitra/')) {
+    p = p.substring('dokumen-mitra/'.length);
+  }
+  p = p.replace(/^\/+/, '');
+
+  return p || null;
+}
+
 /**
  * GET /api/users/[id]
  * Detail satu pengguna beserta profil lengkap (Khusus Admin)
@@ -65,9 +90,39 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
 
     // 2. Ambil verified_at jika ada di profil (psikolog_profiles.verified_at)
-    const verifiedAt = (profile?.verified_at as string | undefined) ?? null;
+    // Relawan tidak memiliki tabel/kolom verified_at -> wajib null (bukan string)
+    const verifiedAt =
+      user.role === 'psikolog'
+        ? ((profile?.verified_at as string | undefined) ?? null)
+        : null;
 
-    // 3. Saldo dompet lengkap dari tabel wallets
+    // 3. Signed URL dokumen mitra (600 detik) dari bucket private 'dokumen-mitra'
+    let dokumenSignedUrl: string | null = null;
+    if (user.role === 'psikolog' || user.role === 'relawan') {
+      const rawDoc =
+        user.role === 'psikolog'
+          ? (profile?.dokumen_sipp_str_url as string | undefined)
+          : (profile?.dokumen_cv_url as string | undefined);
+
+      const storagePath = extractStoragePath(rawDoc);
+      if (storagePath) {
+        try {
+          const { data: signedData, error: signedError } = await supabaseAdmin.storage
+            .from('dokumen-mitra')
+            .createSignedUrl(storagePath, 600);
+
+          if (!signedError && signedData?.signedUrl) {
+            dokumenSignedUrl = signedData.signedUrl;
+          } else if (signedError) {
+            console.warn('Gagal membuat signed URL dokumen mitra:', signedError.message);
+          }
+        } catch (storageErr) {
+          console.warn('Exception saat createSignedUrl:', storageErr);
+        }
+      }
+    }
+
+    // 4. Saldo dompet lengkap dari tabel wallets
     const { data: walletRow } = await supabaseAdmin
       .from('wallets')
       .select('coin_balance, pending_rupiah, available_rupiah')
@@ -80,7 +135,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       available_rupiah: Number(walletRow?.available_rupiah ?? 0),
     };
 
-    // 4. Khusus pasien: total top-up berhasil (koin & rupiah)
+    // 5. Khusus pasien: total top-up berhasil (koin & rupiah)
     let topupSummary: { total_coins: number; total_rupiah: number; successful_orders_count: number } | null = null;
     if (user.role === 'pasien') {
       const { data: topupRows } = await supabaseAdmin
@@ -97,7 +152,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       };
     }
 
-    // 5. Khusus mitra: total payout dibayar
+    // 6. Khusus mitra: total payout dibayar
     let payoutSummary: { total_paid_rupiah: number; paid_requests_count: number } | null = null;
     if (user.role === 'psikolog' || user.role === 'relawan') {
       const { data: payoutRows } = await supabaseAdmin
@@ -123,12 +178,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
           fullName,
           last_sign_in_at: lastSignInAt,
           verified_at: verifiedAt,
+          dokumen_signed_url: dokumenSignedUrl,
         },
-        profile,
+        profile: profile
+          ? {
+              ...profile,
+              dokumen_signed_url: dokumenSignedUrl,
+              ...(user.role === 'relawan' ? { verified_at: null } : {}),
+            }
+          : null,
         fullName,
         wallet,
         topup_summary: topupSummary,
         payout_summary: payoutSummary,
+        dokumen_signed_url: dokumenSignedUrl,
       },
     });
   } catch (err: unknown) {
