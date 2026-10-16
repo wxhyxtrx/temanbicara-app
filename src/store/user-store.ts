@@ -25,8 +25,6 @@ export interface UserState {
   isAuthenticated: boolean;
   isProfileLoaded: boolean;
   login: (email: string, name?: string) => UserProfile;
-  loginWithRole: (role: UserRole) => UserProfile;
-  switchRole: (role: UserRole) => void;
   register: (
     fullName: string,
     email: string,
@@ -129,41 +127,6 @@ export const useUserStore = create<UserState>()(
           document.cookie = `tb_user_status=active; path=/; max-age=604800; SameSite=Lax`;
         }
         return customUser;
-      },
-
-      loginWithRole: (role: UserRole) => {
-        const profiles = get().roleProfiles || { ...mockUsers };
-        const targetUser = profiles[role] || mockUsers[role] || mockUsers.patient;
-        set({
-          isAuthenticated: true,
-          isProfileLoaded: true,
-          user: targetUser,
-        });
-        if (typeof window !== "undefined") {
-          localStorage.setItem("tb_access_token", `demo-token-${role}`);
-          document.cookie = `tb_access_token=demo-token-${role}; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `tb_user_role=${role}; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `tb_user_status=active; path=/; max-age=604800; SameSite=Lax`;
-        }
-        return targetUser;
-      },
-
-      switchRole: (role: UserRole) => {
-        const currentUser = get().user;
-        const profiles = get().roleProfiles || { ...mockUsers };
-        const updatedProfiles = {
-          ...profiles,
-          [currentUser.role]: currentUser,
-        };
-        const targetUser = updatedProfiles[role] || mockUsers[role] || mockUsers.patient;
-        set({
-          isAuthenticated: true,
-          roleProfiles: updatedProfiles,
-          user: targetUser,
-        });
-        if (typeof window !== "undefined") {
-          document.cookie = `tb_user_role=${role}; path=/; max-age=604800; SameSite=Lax`;
-        }
       },
 
       register: (fullName, email, role = "patient", extraData?: Partial<UserProfile>) => {

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserRole } from "@/constant/mock-users";
 import { useUserStore } from "@/store/user-store";
-import { ShieldAlert, ArrowRight, RefreshCw, Loader2 } from "lucide-react";
+import { ShieldAlert, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface RoleGuardProps {
@@ -31,7 +31,6 @@ export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
   const user = useUserStore((state) => state.user);
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
-  const switchRole = useUserStore((state) => state.switchRole);
   const syncSession = useUserStore((state) => state.syncSession);
   const [mounted, setMounted] = useState(false);
 
@@ -102,7 +101,7 @@ export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
             </p>
           </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
+          <div className="pt-2 flex justify-center">
             <Button
               onClick={() => router.push(myPortalUrl)}
               className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-10 px-5 gap-1.5 cursor-pointer shadow-xs"
@@ -110,20 +109,6 @@ export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
               <span>Kembali ke Portal Saya</span>
               <ArrowRight size={14} />
             </Button>
-
-            {allowedRoles[0] && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  switchRole(allowedRoles[0]);
-                  router.push(roleHomes[allowedRoles[0]]);
-                }}
-                className="text-xs border-slate-200 dark:border-slate-700 rounded-xl h-10 px-4 font-semibold gap-1.5 cursor-pointer"
-              >
-                <RefreshCw size={13} />
-                <span>Ganti ke Akun {roleNames[allowedRoles[0]]}</span>
-              </Button>
-            )}
           </div>
         </div>
       </div>
