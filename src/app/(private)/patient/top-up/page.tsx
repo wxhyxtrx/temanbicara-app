@@ -16,7 +16,7 @@ import {
 import { notify } from "@/lib/toast";
 import { openSnapModal } from "@/lib/snap";
 import { walletClient, WalletApiError } from "@/services/wallet.client";
-import { systemSettingsClient } from "@/services/system-settings.client";
+import { usePublicSettings } from "@/hooks/use-public-settings";
 import { COIN_TO_RUPIAH } from "@/constant/system-settings";
 import type { TopupOrderEntity, WalletInfoResponse } from "@/types/wallet";
 import {
@@ -50,9 +50,10 @@ export default function PatientTopUpPage() {
   const [wallet, setWallet] = useState<WalletInfoResponse | null>(null);
   const [loadingWallet, setLoadingWallet] = useState<boolean>(true);
 
-  // Settings limits
-  const [minCoins, setMinCoins] = useState<number>(10);
-  const [maxCoins, setMaxCoins] = useState<number>(500);
+  // Settings limits via usePublicSettings hook
+  const { settings } = usePublicSettings();
+  const minCoins = settings?.topup?.min_coins ?? 10;
+  const maxCoins = settings?.topup?.max_coins ?? 500;
 
   // Selection
   const [selectedCoins, setSelectedCoins] = useState<number>(50);
@@ -126,23 +127,9 @@ export default function PatientTopUpPage() {
     }
   }, []);
 
-  // Fetch Public Settings untuk batas min/max koin
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await systemSettingsClient.getPublicSettings();
-      if (res.settings?.topup) {
-        setMinCoins(res.settings.topup.min_coins || 10);
-        setMaxCoins(res.settings.topup.max_coins || 500);
-      }
-    } catch (err) {
-      console.error("Gagal memuat batas topup:", err);
-    }
-  }, []);
-
   useEffect(() => {
     setMounted(true);
     fetchWallet();
-    fetchSettings();
 
     const handleRefresh = () => {
       fetchWallet();
@@ -154,7 +141,23 @@ export default function PatientTopUpPage() {
         window.removeEventListener("wallet:refresh", handleRefresh);
       };
     }
-  }, [fetchWallet, fetchSettings]);
+  }, [fetchWallet]);
+
+  // Sesuaikan pilihan paket jika berada di luar batas min/max koin yang aktif
+  useEffect(() => {
+    if (!isCustomMode) {
+      const currentPkg = therapyPackages.find((p) => p.coins === selectedCoins);
+      if (!currentPkg || currentPkg.coins < minCoins || currentPkg.coins > maxCoins) {
+        const firstValid = therapyPackages.find((p) => p.coins >= minCoins && p.coins <= maxCoins);
+        if (firstValid) {
+          setSelectedCoins(firstValid.coins);
+        } else {
+          setIsCustomMode(true);
+          setCustomCoinAmount(minCoins);
+        }
+      }
+    }
+  }, [minCoins, maxCoins, selectedCoins, isCustomMode]);
 
   // Cek Status Order Top-up dari GET /api/wallet/topup/[order_id]
   const lastRefreshAtRef = React.useRef<number>(0);
@@ -359,20 +362,25 @@ export default function PatientTopUpPage() {
             <CardContent className="p-4 sm:p-6 space-y-3.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {therapyPackages.map((pkg) => {
+                  const isOutOfRange = pkg.coins < minCoins || pkg.coins > maxCoins;
                   const isSelected = !isCustomMode && selectedCoins === pkg.coins;
                   const price = pkg.coins * COIN_TO_RUPIAH;
                   return (
                     <div
                       key={pkg.id}
                       onClick={() => {
+                        if (isOutOfRange) return;
                         setSelectedCoins(pkg.coins);
                         setIsCustomMode(false);
                       }}
-                      className={`relative p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
-                        isSelected
-                          ? "border-teal-600 bg-teal-50/50 dark:bg-teal-950/60 ring-2 ring-teal-600/20 shadow-xs"
-                          : "border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-teal-200 dark:hover:border-teal-700 hover:bg-slate-50/50 dark:hover:bg-slate-800"
+                      className={`relative p-4 rounded-xl border transition-all flex flex-col justify-between space-y-3 ${
+                        isOutOfRange
+                          ? "opacity-45 cursor-not-allowed bg-slate-100/70 dark:bg-slate-800/30 border-dashed border-slate-300 dark:border-slate-700 select-none"
+                          : isSelected
+                          ? "border-teal-600 bg-teal-50/50 dark:bg-teal-950/60 ring-2 ring-teal-600/20 shadow-xs cursor-pointer"
+                          : "border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-teal-200 dark:hover:border-teal-700 hover:bg-slate-50/50 dark:hover:bg-slate-800 cursor-pointer"
                       }`}
+                      aria-disabled={isOutOfRange}
                     >
                       {pkg.popular && (
                         <div className="absolute top-3 right-3">
@@ -391,6 +399,11 @@ export default function PatientTopUpPage() {
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito leading-tight">
                           {pkg.subtitle}
                         </p>
+                        {isOutOfRange && (
+                          <p className="text-[10px] font-semibold text-rose-500 dark:text-rose-400">
+                            Di luar batas ({minCoins}–{maxCoins} Koin)
+                          </p>
+                        )}
                       </div>
 
                       {/* Coin & Price */}
