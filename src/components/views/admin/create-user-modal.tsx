@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,7 +26,6 @@ import {
   UploadCloud,
   FileCheck2,
   X,
-  Sparkles,
   GraduationCap,
   Briefcase,
 } from "lucide-react";
@@ -34,6 +33,12 @@ import { userService } from "@/services/user.service";
 import { authService } from "@/services/auth.service";
 import { notify } from "@/lib/toast";
 import type { ApiRole, ApiAccountStatus } from "@/types/user-profile";
+import {
+  adminCreatePsikologSchema,
+  adminCreateRelawanSchema,
+  phoneRegex,
+} from "@/lib/validations/auth";
+import { cn } from "@/lib/utils";
 
 const SPECIALTY_OPTIONS = [
   "Konseling Umum",
@@ -79,6 +84,13 @@ export function CreateUserModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Field touched state untuk tracking error per isian
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const markTouched = (field: string) => {
+    setTouched((prev) => (prev[field] ? prev : { ...prev, [field]: true }));
+  };
+
   const resetForm = () => {
     setEmail("");
     setPassword("");
@@ -94,15 +106,24 @@ export function CreateUserModal({
     setLatarBelakang("");
     setAlasanBergabung("");
     setSelectedFile(null);
+    setTouched({});
+  };
+
+  const handleRoleChange = (newRole: ApiRole) => {
+    setRole(newRole);
+    setTouched({});
+    setSelectedFile(null);
   };
 
   const handleToggleSpecialty = (item: string) => {
+    markTouched("spesialisasi");
     setSelectedSpecialties((prev) =>
       prev.includes(item) ? prev.filter((s) => s !== item) : [...prev, item]
     );
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    markTouched("document");
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
@@ -113,10 +134,127 @@ export function CreateUserModal({
     }
   };
 
+  // Validasi Zod per isian sesuai role
+  const errors = useMemo(() => {
+    const errs: Record<string, string> = {};
+
+    if (role === "psikolog") {
+      const numTarif = tarifSesi.trim() === "" ? 0 : Number(tarifSesi);
+      const numPengalaman = tahunPengalaman.trim() === "" ? -1 : Number(tahunPengalaman);
+
+      const parsed = adminCreatePsikologSchema.safeParse({
+        nama_lengkap_gelar: fullName.trim(),
+        email: email.trim(),
+        no_wa: noWa.trim(),
+        password,
+        nomor_sipp_str: nomorSipp.trim(),
+        dokumen_sipp_str_url: selectedFile ? selectedFile.name : "",
+        spesialisasi: selectedSpecialties,
+        tahun_pengalaman: numPengalaman,
+        tarif_sesi: Number.isNaN(numTarif) ? -1 : numTarif,
+      });
+
+      if (!parsed.success) {
+        parsed.error.issues.forEach((issue) => {
+          const field = issue.path[0] as string;
+          if (!errs[field]) {
+            errs[field] = issue.message;
+          }
+        });
+      }
+    } else if (role === "relawan") {
+      const parsed = adminCreateRelawanSchema.safeParse({
+        nama_lengkap: fullName.trim(),
+        email: email.trim(),
+        no_wa: noWa.trim(),
+        password,
+        latar_belakang: latarBelakang.trim(),
+        dokumen_cv_url: selectedFile ? selectedFile.name : "",
+        alasan_bergabung: alasanBergabung.trim(),
+      });
+
+      if (!parsed.success) {
+        parsed.error.issues.forEach((issue) => {
+          const field = issue.path[0] as string;
+          if (!errs[field]) {
+            errs[field] = issue.message;
+          }
+        });
+      }
+    } else if (role === "pasien") {
+      if (!fullName.trim() || fullName.trim().length < 2) {
+        errs.fullName = "Nama lengkap minimal 2 karakter";
+      }
+      if (!email.trim() || !email.includes("@")) {
+        errs.email = "Format email tidak valid";
+      }
+      if (!password || password.length < 6) {
+        errs.password = "Password minimal 6 karakter";
+      }
+      if (noWa.trim() && !phoneRegex.test(noWa.trim())) {
+        errs.no_wa = "Format nomor WhatsApp tidak valid (contoh: 08123456789)";
+      }
+    } else if (role === "admin") {
+      if (!fullName.trim() || fullName.trim().length < 2) {
+        errs.fullName = "Nama lengkap minimal 2 karakter";
+      }
+      if (!email.trim() || !email.includes("@")) {
+        errs.email = "Format email tidak valid";
+      }
+      if (!password || password.length < 6) {
+        errs.password = "Password minimal 6 karakter";
+      }
+      if (noWa.trim() && !phoneRegex.test(noWa.trim())) {
+        errs.no_wa = "Format nomor WhatsApp tidak valid (contoh: 08123456789)";
+      }
+      if (!level) {
+        errs.level = "Level akses wajib dipilih";
+      }
+    }
+
+    return errs;
+  }, [
+    role,
+    fullName,
+    email,
+    password,
+    noWa,
+    nomorSipp,
+    selectedFile,
+    selectedSpecialties,
+    tahunPengalaman,
+    tarifSesi,
+    latarBelakang,
+    alasanBergabung,
+    level,
+  ]);
+
+  const isValid = Object.keys(errors).length === 0;
+
+  const getError = (key: string) => {
+    if (!touched[key]) return undefined;
+    return errors[key];
+  };
+
+  const isControlClass =
+    "w-full h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 rounded-xl transition-colors";
+
+  const getControlClass = (key: string) =>
+    cn(isControlClass, getError(key) && "border-rose-400 dark:border-rose-500 focus-visible:ring-rose-400/30");
+
+  const nameError =
+    role === "psikolog"
+      ? getError("nama_lengkap_gelar")
+      : role === "relawan"
+        ? getError("nama_lengkap")
+        : getError("fullName");
+
+  const docError = role === "psikolog" ? getError("dokumen_sipp_str_url") : getError("dokumen_cv_url");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !fullName) {
-      notify.warning("Form Belum Lengkap", "Email, password, dan nama lengkap wajib diisi.");
+    if (!isValid) {
+      notify.warning("Form Belum Lengkap", "Mohon lengkapi seluruh isian wajib dengan data valid.");
       return;
     }
 
@@ -149,7 +287,7 @@ export function CreateUserModal({
         status,
         level: role === "admin" ? level : undefined,
         nomor_sipp_str: role === "psikolog" ? nomorSipp.trim() || undefined : undefined,
-        tarif_sesi: role === "psikolog" && tarifSesi ? Number(tarifSesi) : undefined,
+        tarif_sesi: role === "psikolog" ? (tarifSesi.trim() ? Number(tarifSesi) : 0) : undefined,
         tahun_pengalaman: role === "psikolog" && tahunPengalaman ? Number(tahunPengalaman) : undefined,
         spesialisasi: role === "psikolog" && selectedSpecialties.length > 0 ? selectedSpecialties : undefined,
         dokumen_sipp_str_url: role === "psikolog" ? uploadedDocUrl : undefined,
@@ -170,9 +308,6 @@ export function CreateUserModal({
     }
   };
 
-  const isControlClass =
-    "w-full h-9 text-xs bg-slate-50/50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 rounded-xl";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-nunito p-6 max-h-[90vh] overflow-y-auto">
@@ -190,15 +325,17 @@ export function CreateUserModal({
           {/* 1. Nama Lengkap */}
           <div className="space-y-1">
             <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
-              Nama Lengkap <span className="text-rose-500">*</span>
+              {role === "psikolog" ? "Nama Lengkap & Gelar" : "Nama Lengkap"} <span className="text-rose-500">*</span>
             </Label>
             <Input
-              placeholder="Contoh: Budi Santoso / Dr. Maya, M.Psi"
+              placeholder={role === "psikolog" ? "Contoh: Dr. Maya Indah, M.Psi., Psikolog" : "Contoh: Budi Santoso"}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
+              onBlur={() => markTouched(role === "psikolog" ? "nama_lengkap_gelar" : role === "relawan" ? "nama_lengkap" : "fullName")}
               required
-              className={isControlClass}
+              className={getControlClass(role === "psikolog" ? "nama_lengkap_gelar" : role === "relawan" ? "nama_lengkap" : "fullName")}
             />
+            {nameError && <p className="text-[10px] text-rose-500 font-medium">{nameError}</p>}
           </div>
 
           {/* 2. Email & Password */}
@@ -212,32 +349,36 @@ export function CreateUserModal({
                 placeholder="nama@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => markTouched("email")}
                 required
-                className={isControlClass}
+                className={getControlClass("email")}
               />
+              {getError("email") && <p className="text-[10px] text-rose-500 font-medium">{getError("email")}</p>}
             </div>
 
             <div className="space-y-1">
               <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
-                Password <span className="text-rose-500">*</span>
+                Password {role === "psikolog" || role === "relawan" ? "(Min. 8 char)" : "(Min. 6 char)"} <span className="text-rose-500">*</span>
               </Label>
               <PasswordInput
-                placeholder="Min. 6 karakter"
+                placeholder={role === "psikolog" || role === "relawan" ? "Min. 8 karakter" : "Min. 6 karakter"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onBlur={() => markTouched("password")}
                 required
-                className={isControlClass}
+                className={getControlClass("password")}
               />
+              {getError("password") && <p className="text-[10px] text-rose-500 font-medium">{getError("password")}</p>}
             </div>
           </div>
 
-          {/* 3. Peran Akun & Status Awal (Ukuran Select seragam h-9) */}
+          {/* 3. Peran Akun & Status Awal */}
           <div className="grid grid-cols-2 gap-2.5">
             <div className="space-y-1">
               <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
                 Peran Akun <span className="text-rose-500">*</span>
               </Label>
-              <Select value={role} onValueChange={(val) => setRole(val as ApiRole)}>
+              <Select value={role} onValueChange={(val) => handleRoleChange(val as ApiRole)}>
                 <SelectTrigger className={isControlClass}>
                   <SelectValue placeholder="Pilih Peran" />
                 </SelectTrigger>
@@ -271,24 +412,26 @@ export function CreateUserModal({
           {/* 4. WhatsApp */}
           <div className="space-y-1">
             <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
-              Nomor WhatsApp (Opsional)
+              Nomor WhatsApp {role === "psikolog" || role === "relawan" ? <span className="text-rose-500">*</span> : "(Opsional)"}
             </Label>
             <PhoneInput
               placeholder="812 3456 7890"
               value={noWa}
               onChange={(e) => setNoWa(e.target.value)}
-              className={isControlClass}
+              onBlur={() => markTouched("no_wa")}
+              className={getControlClass("no_wa")}
             />
+            {getError("no_wa") && <p className="text-[10px] text-rose-500 font-medium">{getError("no_wa")}</p>}
           </div>
 
           {/* 5. Conditional: Khusus Admin */}
           {role === "admin" && (
             <div className="space-y-1 animate-in fade-in">
               <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
-                Tingkat Akses Admin
+                Tingkat Akses Admin <span className="text-rose-500">*</span>
               </Label>
               <Select value={level} onValueChange={setLevel}>
-                <SelectTrigger className={isControlClass}>
+                <SelectTrigger className={getControlClass("level")}>
                   <SelectValue placeholder="Pilih Level" />
                 </SelectTrigger>
                 <SelectContent className="text-xs">
@@ -296,10 +439,11 @@ export function CreateUserModal({
                   <SelectItem value="superadmin">Superadministrator (Akses Penuh Sistem)</SelectItem>
                 </SelectContent>
               </Select>
+              {getError("level") && <p className="text-[10px] text-rose-500 font-medium">{getError("level")}</p>}
             </div>
           )}
 
-          {/* 6. Conditional: Khusus Psikolog (Sesuai Form Registrasi Konselor) */}
+          {/* 6. Conditional: Khusus Psikolog */}
           {role === "psikolog" && (
             <div className="space-y-3 p-3.5 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-900/60 animate-in fade-in">
               <div className="flex items-center gap-1.5 text-xs font-bold text-teal-900 dark:text-teal-200">
@@ -310,19 +454,23 @@ export function CreateUserModal({
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1">
                   <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
-                    Nomor SIPP / STR
+                    Nomor SIPP / STR <span className="text-rose-500">*</span>
                   </Label>
                   <Input
                     placeholder="Contoh: SIPP-2024-9988"
                     value={nomorSipp}
                     onChange={(e) => setNomorSipp(e.target.value)}
-                    className={isControlClass}
+                    onBlur={() => markTouched("nomor_sipp_str")}
+                    className={getControlClass("nomor_sipp_str")}
                   />
+                  {getError("nomor_sipp_str") && (
+                    <p className="text-[10px] text-rose-500 font-medium">{getError("nomor_sipp_str")}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
-                    Pengalaman Praktik (Tahun)
+                    Pengalaman Praktik (Tahun) <span className="text-rose-500">*</span>
                   </Label>
                   <Input
                     type="number"
@@ -330,32 +478,41 @@ export function CreateUserModal({
                     placeholder="Contoh: 3"
                     value={tahunPengalaman}
                     onChange={(e) => setTahunPengalaman(e.target.value)}
-                    className={isControlClass}
+                    onBlur={() => markTouched("tahun_pengalaman")}
+                    className={getControlClass("tahun_pengalaman")}
                   />
+                  {getError("tahun_pengalaman") && (
+                    <p className="text-[10px] text-rose-500 font-medium">{getError("tahun_pengalaman")}</p>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-1">
                 <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
-                  Tarif Sesi Telekonsultasi Rp (Opsional)
+                  Tarif Sesi Telekonsultasi Rp (Kelipatan Rp 10.000)
                 </Label>
                 <Input
                   type="number"
                   min="0"
+                  step="10000"
                   placeholder="Contoh: 150000"
                   value={tarifSesi}
                   onChange={(e) => setTarifSesi(e.target.value)}
-                  className={isControlClass}
+                  onBlur={() => markTouched("tarif_sesi")}
+                  className={getControlClass("tarif_sesi")}
                 />
+                {getError("tarif_sesi") && (
+                  <p className="text-[10px] text-rose-500 font-medium">{getError("tarif_sesi")}</p>
+                )}
               </div>
 
               {/* Bidang Spesialisasi Toggle */}
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
-                    Bidang Spesialisasi Klinis
+                    Bidang Spesialisasi Klinis <span className="text-rose-500">*</span>
                   </Label>
-                  <span className="text-[10px] text-slate-400">Pilih yang relevan</span>
+                  <span className="text-[10px] text-slate-400">Minimal pilih 1</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {SPECIALTY_OPTIONS.map((item) => {
@@ -376,14 +533,24 @@ export function CreateUserModal({
                     );
                   })}
                 </div>
+                {getError("spesialisasi") && (
+                  <p className="text-[10px] text-rose-500 font-medium">{getError("spesialisasi")}</p>
+                )}
               </div>
 
               {/* Upload Dokumen SIPP/STR */}
               <div className="space-y-1.5 pt-1">
                 <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
-                  Unggah Dokumen Lisensi SIPP / STR (PDF / JPG / PNG)
+                  Unggah Dokumen Lisensi SIPP / STR (PDF / JPG / PNG) <span className="text-rose-500">*</span>
                 </Label>
-                <label className="p-3 rounded-xl border border-dashed border-teal-300 dark:border-teal-800 bg-white/70 dark:bg-slate-900/60 text-center space-y-1.5 block cursor-pointer hover:bg-teal-50/40 dark:hover:bg-slate-900/80 transition-colors">
+                <label
+                  className={cn(
+                    "p-3 rounded-xl border border-dashed bg-white/70 dark:bg-slate-900/60 text-center space-y-1.5 block cursor-pointer hover:bg-teal-50/40 dark:hover:bg-slate-900/80 transition-colors",
+                    docError
+                      ? "border-rose-400 dark:border-rose-500 bg-rose-50/30"
+                      : "border-teal-300 dark:border-teal-800"
+                  )}
+                >
                   <input
                     type="file"
                     accept=".pdf,image/png,image/jpeg"
@@ -397,12 +564,15 @@ export function CreateUserModal({
                   <div className="text-[11px] text-slate-600 dark:text-slate-400">
                     {selectedFile ? (
                       <div className="flex items-center justify-center gap-1.5 font-semibold text-teal-700 dark:text-teal-300 font-mono">
-                        <span>{selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)</span>
+                        <span>
+                          {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
+                        </span>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedFile(null);
+                            markTouched("document");
                           }}
                           className="p-0.5 rounded hover:bg-rose-100 text-rose-500"
                           title="Hapus file"
@@ -415,11 +585,12 @@ export function CreateUserModal({
                     )}
                   </div>
                 </label>
+                {docError && <p className="text-[10px] text-rose-500 font-medium">{docError}</p>}
               </div>
             </div>
           )}
 
-          {/* 7. Conditional: Khusus Relawan (Sesuai Form Registrasi Pendengar Sebaya) */}
+          {/* 7. Conditional: Khusus Relawan */}
           {role === "relawan" && (
             <div className="space-y-3 p-3.5 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-900/60 animate-in fade-in">
               <div className="flex items-center gap-1.5 text-xs font-bold text-teal-900 dark:text-teal-200">
@@ -429,34 +600,49 @@ export function CreateUserModal({
 
               <div className="space-y-1">
                 <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
-                  Latar Belakang Pendidikan / Pengalaman
+                  Latar Belakang Pendidikan / Pengalaman <span className="text-rose-500">*</span>
                 </Label>
                 <Input
                   placeholder="Misal: Mahasiswa Psikologi S1 semester 6 / Pelatihan PFA"
                   value={latarBelakang}
                   onChange={(e) => setLatarBelakang(e.target.value)}
-                  className={isControlClass}
+                  onBlur={() => markTouched("latar_belakang")}
+                  className={getControlClass("latar_belakang")}
                 />
+                {getError("latar_belakang") && (
+                  <p className="text-[10px] text-rose-500 font-medium">{getError("latar_belakang")}</p>
+                )}
               </div>
 
               <div className="space-y-1">
                 <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
-                  Alasan Bergabung sebagai Relawan
+                  Alasan Bergabung sebagai Relawan <span className="text-rose-500">*</span>
                 </Label>
                 <Input
-                  placeholder="Misal: Ingin mengasah empati aktif dan membantu sesama"
+                  placeholder="Misal: Ingin mengasah empati aktif dan membantu sesama (min. 10 karakter)"
                   value={alasanBergabung}
                   onChange={(e) => setAlasanBergabung(e.target.value)}
-                  className={isControlClass}
+                  onBlur={() => markTouched("alasan_bergabung")}
+                  className={getControlClass("alasan_bergabung")}
                 />
+                {getError("alasan_bergabung") && (
+                  <p className="text-[10px] text-rose-500 font-medium">{getError("alasan_bergabung")}</p>
+                )}
               </div>
 
               {/* Upload Dokumen CV/Portofolio */}
               <div className="space-y-1.5 pt-1">
                 <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
-                  Unggah Dokumen CV / Portofolio Relawan (PDF / JPG / PNG)
+                  Unggah Dokumen CV / Portofolio Relawan (PDF / JPG / PNG) <span className="text-rose-500">*</span>
                 </Label>
-                <label className="p-3 rounded-xl border border-dashed border-teal-300 dark:border-teal-800 bg-white/70 dark:bg-slate-900/60 text-center space-y-1.5 block cursor-pointer hover:bg-teal-50/40 dark:hover:bg-slate-900/80 transition-colors">
+                <label
+                  className={cn(
+                    "p-3 rounded-xl border border-dashed bg-white/70 dark:bg-slate-900/60 text-center space-y-1.5 block cursor-pointer hover:bg-teal-50/40 dark:hover:bg-slate-900/80 transition-colors",
+                    docError
+                      ? "border-rose-400 dark:border-rose-500 bg-rose-50/30"
+                      : "border-teal-300 dark:border-teal-800"
+                  )}
+                >
                   <input
                     type="file"
                     accept=".pdf,image/png,image/jpeg"
@@ -470,12 +656,15 @@ export function CreateUserModal({
                   <div className="text-[11px] text-slate-600 dark:text-slate-400">
                     {selectedFile ? (
                       <div className="flex items-center justify-center gap-1.5 font-semibold text-teal-700 dark:text-teal-300 font-mono">
-                        <span>{selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)</span>
+                        <span>
+                          {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
+                        </span>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedFile(null);
+                            markTouched("document");
                           }}
                           className="p-0.5 rounded hover:bg-rose-100 text-rose-500"
                           title="Hapus file"
@@ -488,17 +677,18 @@ export function CreateUserModal({
                     )}
                   </div>
                 </label>
+                {docError && <p className="text-[10px] text-rose-500 font-medium">{docError}</p>}
               </div>
             </div>
           )}
 
-          {/* 8. Footer: Button Daftarkan Pengguna memanjang & Batal di ujung */}
+          {/* 8. Footer: Button Daftarkan Pengguna & Batal */}
           <div className="pt-3 flex items-center gap-2 border-t border-slate-100 dark:border-slate-800">
             <Button
               type="submit"
-              disabled={submitting}
+              disabled={!isValid || submitting}
               size="sm"
-              className="flex-1 h-9 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs gap-1.5 cursor-pointer shadow-xs"
+              className="flex-1 h-9 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
