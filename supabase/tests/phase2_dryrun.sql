@@ -350,7 +350,8 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    IF v_order.status <> 'pending'::public.payment_status THEN
+    -- Proteksi uang: order pending maupun expire tetap boleh diselesaikan jika uang masuk
+    IF v_order.status NOT IN ('pending'::public.payment_status, 'expire'::public.payment_status) THEN
         RAISE EXCEPTION 'TOPUP_NOT_SETTLEABLE' USING ERRCODE='P0001';
     END IF;
 
@@ -1237,13 +1238,22 @@ BEGIN
     v_settle_res := public.topup_fail('TOPUP-DRYRUN-TEST-002', 'expire'::public.payment_status, 'PROV-EXP-001');
     IF NOT v_settle_res THEN RAISE EXCEPTION 'TEST 4.5 FAILED: topup_fail should return true'; END IF;
 
-    -- Trying to settle expired order must fail
+    -- Uji PENTING: Order berstatus 'expire' tetap wajib dikreditkan koinnya bila webhook Midtrans settlement masuk
+    v_settle_res := public.topup_settle('TOPUP-DRYRUN-TEST-002', 'PROV-EXP-001', 200000);
+    IF NOT v_settle_res THEN RAISE EXCEPTION 'TEST 4.5 FAILED: settle expired order must return true and credit coins'; END IF;
+
+    SELECT coin_balance INTO v_balance FROM public.wallets WHERE user_id = 'a1000000-0000-0000-0000-000000000001';
+    IF v_balance <> 70 THEN RAISE EXCEPTION 'TEST 4.5 FAILED: expected wallet 70 coins after settling expired order, got %', v_balance; END IF;
+
+    -- Order berstatus deny tetap tidak boleh di-settle
+    PERFORM public.topup_order_create('TOPUP-DRYRUN-TEST-003', 'a1000000-0000-0000-0000-000000000001', 10);
+    PERFORM public.topup_fail('TOPUP-DRYRUN-TEST-003', 'deny'::public.payment_status, 'PROV-DENY-001');
     v_caught := FALSE;
     BEGIN
-        PERFORM public.topup_settle('TOPUP-DRYRUN-TEST-002', 'PROV-EXP-001', 200000);
+        PERFORM public.topup_settle('TOPUP-DRYRUN-TEST-003', 'PROV-DENY-001', 100000);
     EXCEPTION WHEN SQLSTATE 'P0001' THEN v_caught := TRUE;
     END;
-    IF NOT v_caught THEN RAISE EXCEPTION 'TEST 4.5 FAILED: settle expired order must raise P0001'; END IF;
+    IF NOT v_caught THEN RAISE EXCEPTION 'TEST 4.5 FAILED: settle deny order must raise P0001'; END IF;
 END;
 $$;
 

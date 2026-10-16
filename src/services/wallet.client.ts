@@ -173,6 +173,29 @@ export const walletClient = {
   },
 
   /**
+   * Mengambil riwayat pesanan top-up pasien
+   */
+  async getTopups(params?: { page?: number; limit?: number }): Promise<{
+    items: TopupOrderEntity[];
+    meta: PaginationMeta;
+  }> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+
+    const url = `${ENDPOINTS.WALLET.TOPUPS}${query.toString() ? `?${query.toString()}` : ''}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const result = await handleWalletResponse<TopupOrderEntity[]>(res);
+    return {
+      items: result.data,
+      meta: result.meta || { page: params?.page || 1, limit: params?.limit || 20, total: result.data.length, totalPages: 1 },
+    };
+  },
+
+  /**
    * Mengambil riwayat mutasi buku besar pengguna aktif
    */
   async getTransactions(params?: { page?: number; limit?: number }): Promise<{
