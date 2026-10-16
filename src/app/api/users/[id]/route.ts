@@ -55,14 +55,80 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       profile = profData ?? null;
     }
 
+    // 1. Ambil last_sign_in_at dari Supabase Auth
+    let lastSignInAt: string | null = null;
+    try {
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(id);
+      lastSignInAt = authUser?.user?.last_sign_in_at ?? null;
+    } catch (authErr) {
+      console.warn('Could not fetch auth user for last_sign_in_at:', authErr);
+    }
+
+    // 2. Ambil verified_at jika ada di profil (psikolog_profiles.verified_at)
+    const verifiedAt = (profile?.verified_at as string | undefined) ?? null;
+
+    // 3. Saldo dompet lengkap dari tabel wallets
+    const { data: walletRow } = await supabaseAdmin
+      .from('wallets')
+      .select('coin_balance, pending_rupiah, available_rupiah')
+      .eq('user_id', id)
+      .maybeSingle();
+
+    const wallet = {
+      coin_balance: Number(walletRow?.coin_balance ?? 0),
+      pending_rupiah: Number(walletRow?.pending_rupiah ?? 0),
+      available_rupiah: Number(walletRow?.available_rupiah ?? 0),
+    };
+
+    // 4. Khusus pasien: total top-up berhasil (koin & rupiah)
+    let topupSummary: { total_coins: number; total_rupiah: number; successful_orders_count: number } | null = null;
+    if (user.role === 'pasien') {
+      const { data: topupRows } = await supabaseAdmin
+        .from('topup_orders')
+        .select('coins, amount_rupiah')
+        .eq('patient_id', id)
+        .eq('status', 'settlement');
+
+      const orders = topupRows ?? [];
+      topupSummary = {
+        total_coins: orders.reduce((acc, row) => acc + Number(row.coins), 0),
+        total_rupiah: orders.reduce((acc, row) => acc + Number(row.amount_rupiah), 0),
+        successful_orders_count: orders.length,
+      };
+    }
+
+    // 5. Khusus mitra: total payout dibayar
+    let payoutSummary: { total_paid_rupiah: number; paid_requests_count: number } | null = null;
+    if (user.role === 'psikolog' || user.role === 'relawan') {
+      const { data: payoutRows } = await supabaseAdmin
+        .from('payout_requests')
+        .select('amount_rupiah')
+        .eq('mitra_id', id)
+        .eq('status', 'paid');
+
+      const payouts = payoutRows ?? [];
+      payoutSummary = {
+        total_paid_rupiah: payouts.reduce((acc, row) => acc + Number(row.amount_rupiah), 0),
+        paid_requests_count: payouts.length,
+      };
+    }
+
     const fullName = displayName(user, profile);
 
     return NextResponse.json({
       success: true,
       data: {
-        user: { ...user, fullName },
+        user: {
+          ...user,
+          fullName,
+          last_sign_in_at: lastSignInAt,
+          verified_at: verifiedAt,
+        },
         profile,
         fullName,
+        wallet,
+        topup_summary: topupSummary,
+        payout_summary: payoutSummary,
       },
     });
   } catch (err: unknown) {

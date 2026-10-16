@@ -86,16 +86,39 @@ export async function GET(req: Request) {
     if (error) return fail(500, 'QUERY_FAILED', error.message);
 
     const rows = (data ?? []) as unknown as AdminUserQueryResult[];
+    const userIds = rows.map((u) => u.id);
+
+    // 1 Batch query wallets untuk seluruh baris halaman (0 N+1 query)
+    const { data: walletsData } = userIds.length > 0
+      ? await supabaseAdmin
+          .from('wallets')
+          .select('user_id, coin_balance, pending_rupiah, available_rupiah')
+          .in('user_id', userIds)
+      : { data: [] };
+
+    const walletMap = new Map((walletsData ?? []).map((w) => [w.user_id, w]));
+
     return NextResponse.json({
       success: true,
       data: rows.map(({ pasien_profiles, relawan_profiles, psikolog_profiles, admin_profiles, ...u }) => {
         const profile = pasien_profiles ?? relawan_profiles ?? psikolog_profiles ?? admin_profiles ?? null;
         const profileWithName = profile as { nama_lengkap?: string; nama_lengkap_gelar?: string } | null;
-        return {
+        const wallet = walletMap.get(u.id);
+
+        const item: Record<string, unknown> = {
           ...u,
           fullName: profileWithName?.nama_lengkap_gelar ?? profileWithName?.nama_lengkap ?? u.email.split('@')[0],
           profile,
         };
+
+        if (u.role === 'pasien') {
+          item.coin_balance = Number(wallet?.coin_balance ?? 0);
+        } else if (u.role === 'psikolog' || u.role === 'relawan') {
+          item.pending_rupiah = Number(wallet?.pending_rupiah ?? 0);
+          item.available_rupiah = Number(wallet?.available_rupiah ?? 0);
+        }
+
+        return item;
       }),
       meta: { page, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit) },
     });

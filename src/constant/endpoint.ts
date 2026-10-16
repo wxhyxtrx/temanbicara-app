@@ -10,6 +10,7 @@ export const ENDPOINTS = {
     PAYOUTS: '/api/wallet/payouts',
   },
   ADMIN: {
+    STATS: '/api/admin/stats',
     PAYOUTS: '/api/admin/payouts',
     PAYOUT_REJECT: (id: string) => `/api/admin/payouts/${encodeURIComponent(id)}/reject`,
     PAYOUT_PAID: (id: string) => `/api/admin/payouts/${encodeURIComponent(id)}/paid`,

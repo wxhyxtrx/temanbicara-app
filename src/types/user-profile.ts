@@ -148,7 +148,65 @@ export interface AdminUserRow {
     | { nama_lengkap_gelar: string; verified_at: string | null }
     | { nama_lengkap: string; level: string }
     | null;
+  coin_balance?: number;
+  pending_rupiah?: number;
+  available_rupiah?: number;
 }
+
+export interface UserWalletSummary {
+  coin_balance: number;
+  pending_rupiah: number;
+  available_rupiah: number;
+}
+
+export interface PatientTopupSummary {
+  total_coins: number;
+  total_rupiah: number;
+  successful_orders_count: number;
+}
+
+export interface MitraPayoutSummary {
+  total_paid_rupiah: number;
+  paid_requests_count: number;
+}
+
+export interface AdminDashboardStatsData {
+  users: {
+    total: number;
+    by_role: Record<string, number>;
+    by_status: Record<string, number>;
+  };
+  mitra_verification: {
+    pending_count: number;
+  };
+  payout: {
+    requested_count: number;
+    total_requested_rupiah: number;
+  };
+  topup: {
+    all_time: {
+      total_orders: number;
+      total_coins: number;
+      total_rupiah: number;
+    };
+    today: {
+      total_orders: number;
+      total_coins: number;
+      total_rupiah: number;
+    };
+  };
+  revenue: {
+    total_platform_revenue_rupiah: number;
+    breakdown_by_reason: Record<string, number>;
+  };
+}
+
+export type AdminDashboardStatsResponse =
+  | {
+      success: true;
+      data: AdminDashboardStatsData;
+    }
+  | ApiError;
 
 export interface AdminUserQuery {
   role?: ApiRole;
@@ -197,9 +255,16 @@ export type AdminUserDetailResponse =
   | {
       success: true;
       data: {
-        user: AdminUserRow;
+        user: AdminUserRow & {
+          last_sign_in_at?: string | null;
+          verified_at?: string | null;
+          updated_at?: string;
+        };
         profile: Record<string, unknown> | null;
         fullName: string;
+        wallet?: UserWalletSummary;
+        topup_summary?: PatientTopupSummary | null;
+        payout_summary?: MitraPayoutSummary | null;
       };
     }
   | ApiError;
