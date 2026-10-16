@@ -55,6 +55,19 @@ export interface UserState {
   logout: () => void;
 }
 
+export const PERSISTENT_STORES_TO_CLEAR = [
+  "tb_access_token",
+  "tb_user_store_v4",
+  "tb_peer_vent_store_v1",
+  "tb_chat_store_v3",
+  "tb_schedule_store",
+  "tb_notification_store",
+  "tb_transaction_store",
+  "temanbicara_clinical_records",
+  "temanbicara_session_reviews",
+  "tb_crisis_store_v1",
+] as const;
+
 const createInitialUserState = () => ({
   user: { ...mockUsers.patient },
   roleProfiles: { ...mockUsers },
@@ -477,8 +490,9 @@ export const useUserStore = create<UserState>()(
 
       logout: () => {
         if (typeof window !== "undefined") {
-          localStorage.removeItem("tb_access_token");
-          localStorage.removeItem("tb_user_store_v4");
+          PERSISTENT_STORES_TO_CLEAR.forEach((key) => {
+            localStorage.removeItem(key);
+          });
           document.cookie = "tb_access_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
           document.cookie = "tb_user_role=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
           document.cookie = "tb_user_status=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";

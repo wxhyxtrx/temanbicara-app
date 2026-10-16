@@ -1,4 +1,4 @@
-import { useUserStore } from "@/store/user-store";
+import { useUserStore, PERSISTENT_STORES_TO_CLEAR } from "@/store/user-store";
 
 let isHandlingUnauthorized = false;
 
@@ -19,9 +19,10 @@ export function handleUnauthorized(message?: string) {
     document.cookie = "tb_user_role=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     document.cookie = "tb_user_status=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 
-    // 2. Bersihkan local storage
-    localStorage.removeItem("tb_access_token");
-    localStorage.removeItem("tb_user_store_v4");
+    // 2. Bersihkan local storage data pengguna & persist stores
+    PERSISTENT_STORES_TO_CLEAR.forEach((key) => {
+      localStorage.removeItem(key);
+    });
 
     // 3. Reset Zustand store autentikasi
     const store = useUserStore.getState();
