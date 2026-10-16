@@ -27,6 +27,7 @@ export async function POST(req: Request) {
       latar_belakang,
       dokumen_cv_url,
       alasan_bergabung,
+      topik_keahlian,
     } = parsed.data;
 
     // 1. Cek duplikasi email
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
       total_sesi: 0,
       alias_name: nama_lengkap.split(' ')[0] || 'Relawan',
       is_available: false,
-      topik_keahlian: ['Dukungan Teman Curhat'],
+      topik_keahlian: topik_keahlian ?? [],
     });
 
     if (profileError) {

@@ -29,6 +29,7 @@ export const registerRelawanSchema = z
     latar_belakang: z.string().min(3, 'Latar belakang wajib diisi'),
     dokumen_cv_url: z.string().min(1, 'Dokumen CV wajib diunggah'),
     alasan_bergabung: z.string().min(10, 'Alasan bergabung minimal 10 karakter'),
+    topik_keahlian: z.array(z.string()).optional(),
   })
   .refine((data) => data.password === data.password_confirmation, {
     message: 'Konfirmasi password tidak cocok dengan password',
@@ -96,6 +97,7 @@ export const adminCreateRelawanSchema = z.object({
   latar_belakang: z.string().min(3, 'Latar belakang wajib diisi (min. 3 karakter)'),
   dokumen_cv_url: z.string().min(1, 'Dokumen CV wajib diunggah'),
   alasan_bergabung: z.string().min(10, 'Alasan bergabung minimal 10 karakter'),
+  topik_keahlian: z.array(z.string()).optional(),
 });
 
 export type AdminCreateRelawanDTO = z.infer<typeof adminCreateRelawanSchema>;

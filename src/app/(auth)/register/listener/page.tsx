@@ -153,6 +153,7 @@ export default function ListenerRegistrationPage() {
         latar_belakang: pfaBackground.trim(),
         dokumen_cv_url: presigned.data.file_path,
         alasan_bergabung: reasonToJoin.trim(),
+        topik_keahlian: selectedTopics,
       });
 
       if (res.success) {

@@ -204,6 +204,7 @@ export async function POST(req: Request) {
       latar_belakang: string;
       dokumen_cv_url: string;
       alasan_bergabung: string;
+      topik_keahlian?: string[];
     } | null = null;
     let psikologData: {
       nama_lengkap_gelar: string;
@@ -247,6 +248,7 @@ export async function POST(req: Request) {
         latar_belakang: body.latar_belakang ? String(body.latar_belakang).trim() : '',
         dokumen_cv_url: body.dokumen_cv_url ? String(body.dokumen_cv_url).trim() : '',
         alasan_bergabung: body.alasan_bergabung ? String(body.alasan_bergabung).trim() : '',
+        topik_keahlian: body.topik_keahlian,
       });
 
       if (!parsed.success) {
@@ -358,7 +360,7 @@ export async function POST(req: Request) {
         alasan_bergabung: relawanData.alasan_bergabung,
         total_sesi: 0,
         is_available: false,
-        topik_keahlian: ['Dukungan Umum'],
+        topik_keahlian: relawanData.topik_keahlian ?? [],
       });
       profileError = err;
     } else if (role === 'psikolog' && psikologData) {
