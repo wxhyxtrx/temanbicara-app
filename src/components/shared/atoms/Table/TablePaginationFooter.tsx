@@ -21,8 +21,7 @@ export function TablePaginationFooter({
   const handleLimitChange = (newLimit: number) => {
     if (onChangeLimit) {
       onChangeLimit(newLimit);
-      const nextTotalPages = Math.max(1, Math.ceil(totalItems / newLimit));
-      if (page > nextTotalPages) {
+      if (onPageChange && page !== 1) {
         onPageChange(1);
       }
     }

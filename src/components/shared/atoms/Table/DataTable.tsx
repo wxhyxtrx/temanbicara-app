@@ -1,8 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { Tables } from "./Tables";
-import { TableInfo } from "./TableInfo";
-import { TablePagination } from "./TablePagination";
+import { TablePaginationFooter } from "./TablePaginationFooter";
 import type { DataTableProps } from "./types";
 
 export const DataTable = <T,>({
@@ -22,7 +21,7 @@ export const DataTable = <T,>({
   autoPaginate = false,
   onPageChange,
   onChangeDisplayed,
-  pageSizeList = [10, 15, 20, 25],
+  pageSizeList = [10, 20, 50],
   showPagination = true,
   showInfo = true,
   footerClassName,
@@ -48,31 +47,16 @@ export const DataTable = <T,>({
       />
 
       {/* 2. Pagination & Footer Info */}
-      {(showPagination || showInfo) && actualTotal > 0 && (
-        <div
-          className={cn(
-            "flex flex-col sm:flex-row justify-between items-center gap-4 pt-1",
-            footerClassName
-          )}
-        >
-          {showInfo && (
-            <TableInfo
-              total={actualTotal}
-              displayed={itemsPerPage}
-              onChangeDisplayed={onChangeDisplayed}
-              list={pageSizeList}
-            />
-          )}
-
-          {showPagination && onPageChange && (
-            <TablePagination
-              totalItems={actualTotal}
-              page={currentPage}
-              limit={itemsPerPage}
-              onPageChange={onPageChange}
-            />
-          )}
-        </div>
+      {(showPagination || showInfo) && actualTotal > 0 && onPageChange && (
+        <TablePaginationFooter
+          totalItems={actualTotal}
+          page={currentPage}
+          limit={itemsPerPage}
+          onPageChange={onPageChange}
+          onChangeLimit={onChangeDisplayed}
+          limitList={pageSizeList}
+          className={cn("pt-1 px-0 border-t-0", footerClassName)}
+        />
       )}
     </div>
   );
