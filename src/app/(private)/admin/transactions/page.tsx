@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,610 +12,615 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tables, Column } from "@/components/shared/atoms/Table";
+import { notify } from "@/lib/toast";
+import { walletClient, WalletApiError } from "@/services/wallet.client";
+import type { AdminPayoutItem, PaginationMeta, PayoutStatus } from "@/types/wallet";
 import {
   Coins,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Search,
-  Download,
   Building2,
   Calendar,
   CheckCircle2,
   XCircle,
-  CreditCard,
-  History,
-  AlertTriangle,
   Clock,
   ShieldCheck,
   Check,
   X,
   FileText,
+  Search,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  AlertCircle,
+  RefreshCw,
+  Wallet,
 } from "lucide-react";
-import { usePayoutStore, PayoutRecord } from "@/store/payout-store";
-import { useTransactionStore, TransactionRecord } from "@/store/transaction-store";
-import { notify } from "@/lib/toast";
-import { Tables, Column } from "@/components/shared/atoms/Table";
 
 export default function AdminTransactionsPage() {
-  const [mounted, setMounted] = useState(false);
-  const payouts = usePayoutStore((state) => state.payouts);
-  const approvePayout = usePayoutStore((state) => state.approvePayout);
-  const rejectPayout = usePayoutStore((state) => state.rejectPayout);
-  const transactions = useTransactionStore((state) => state.transactions);
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [payouts, setPayouts] = useState<AdminPayoutItem[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>({ page: 1, limit: 20, total: 0, totalPages: 1 });
+  const [page, setPage] = useState<number>(1);
+  const [statusFilter, setStatusFilter] = useState<PayoutStatus | "all">("requested");
+  const [search, setSearch] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  const [activeTab, setActiveTab] = useState<"all" | "payout" | "topup" | "session">("payout");
-  const [search, setSearch] = useState("");
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  // Modal dialog state
+  const [selectedPayout, setSelectedPayout] = useState<AdminPayoutItem | null>(null);
+  const [actionType, setActionType] = useState<"paid" | "reject" | null>(null);
 
-  // Modal approval/rejection state
-  const [selectedPayout, setSelectedPayout] = useState<PayoutRecord | null>(null);
-  const [modalMode, setModalMode] = useState<"approve" | "reject" | null>(null);
-  const [rejectReason, setRejectReason] = useState("Nomor rekening bank atau nama pemilik tidak sesuai SIPPK.");
+  const fetchPayouts = useCallback(async (targetPage: number, status: PayoutStatus | "all") => {
+    try {
+      setIsLoading(true);
+      const queryStatus = status === "all" ? undefined : status;
+      const res = await walletClient.getAdminPayouts({
+        status: queryStatus,
+        page: targetPage,
+        limit: 20,
+      });
+      setPayouts(res.items);
+      setMeta(res.meta);
+    } catch (err) {
+      console.error("Gagal memuat antrean payout admin:", err);
+      if (err instanceof WalletApiError) {
+        notify.error("Gagal Memuat Antrean", err.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    fetchPayouts(page, statusFilter);
+  }, [fetchPayouts, page, statusFilter]);
 
-  const pendingPayouts = payouts.filter((p) => p.status === "Diproses");
-  const approvedPayouts = payouts.filter((p) => p.status === "Berhasil");
-
-  const totalWithdrawnRupiah = approvedPayouts.reduce((acc, curr) => acc + curr.amountRupiah, 0);
-  const pendingWithdrawnRupiah = pendingPayouts.reduce((acc, curr) => acc + curr.amountRupiah, 0);
-
-  const handleOpenApprove = (payout: PayoutRecord) => {
-    setSelectedPayout(payout);
-    setModalMode("approve");
+  const handleFilterChange = (newStatus: PayoutStatus | "all") => {
+    setStatusFilter(newStatus);
+    setPage(1);
   };
 
-  const handleOpenReject = (payout: PayoutRecord) => {
-    setSelectedPayout(payout);
-    setModalMode("reject");
-    setRejectReason("Data nomor rekening tidak sesuai dokumen verifikasi SIPPK.");
-  };
-
-  const handleConfirmApprove = () => {
-    if (!selectedPayout) return;
-    const ok = approvePayout(selectedPayout.id);
-    if (ok) {
-      notify.success(
-        "Penarikan Honor Disetujui!",
-        `Transfer ${selectedPayout.invoiceNo} sebesar Rp ${selectedPayout.amountRupiah.toLocaleString("id-ID")} ke ${selectedPayout.counselorName} telah diproses.`
+  // Filtered search list
+  const filteredPayouts = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return payouts;
+    return payouts.filter((p) => {
+      return (
+        p.id.toLowerCase().includes(q) ||
+        (p.mitra_name && p.mitra_name.toLowerCase().includes(q)) ||
+        p.bank_name.toLowerCase().includes(q) ||
+        p.account_number.toLowerCase().includes(q) ||
+        p.bank_account_name.toLowerCase().includes(q) ||
+        (p.mitra_role && p.mitra_role.toLowerCase().includes(q))
       );
-      setFeedback({
-        type: "success",
-        message: `Transfer honor ${selectedPayout.invoiceNo} sebesar Rp ${selectedPayout.amountRupiah.toLocaleString("id-ID")} berhasil disetujui & dicatat.`,
-      });
-      setTimeout(() => setFeedback(null), 4000);
-    }
-    setModalMode(null);
-    setSelectedPayout(null);
+    });
+  }, [payouts, search]);
+
+  // Aggregate metrics
+  const pendingCount = useMemo(() => {
+    return payouts.filter((p) => p.status === "requested").length;
+  }, [payouts]);
+
+  const totalPendingNominal = useMemo(() => {
+    return payouts
+      .filter((p) => p.status === "requested")
+      .reduce((acc, curr) => acc + curr.amount_rupiah, 0);
+  }, [payouts]);
+
+  // Actions
+  const handleOpenPaidModal = (item: AdminPayoutItem) => {
+    setSelectedPayout(item);
+    setActionType("paid");
   };
 
-  const handleConfirmReject = () => {
-    if (!selectedPayout) return;
-    const ok = rejectPayout(selectedPayout.id, rejectReason);
-    if (ok) {
-      notify.warning(
-        "Pengajuan Payout Ditolak",
-        `Pengajuan ${selectedPayout.invoiceNo} ditolak. ${selectedPayout.coinsDeducted} Koin dikembalikan ke dompet psikolog.`
-      );
-      setFeedback({
-        type: "error",
-        message: `Pengajuan ${selectedPayout.invoiceNo} ditolak. ${selectedPayout.coinsDeducted} Koin telah dikembalikan ke dompet psikolog.`,
-      });
-      setTimeout(() => setFeedback(null), 4000);
-    }
-    setModalMode(null);
-    setSelectedPayout(null);
+  const handleOpenRejectModal = (item: AdminPayoutItem) => {
+    setSelectedPayout(item);
+    setActionType("reject");
   };
 
-  // Filter payouts
-  const filteredPayouts = payouts.filter((p) => {
-    const matchSearch =
-      p.invoiceNo.toLowerCase().includes(search.toLowerCase()) ||
-      p.counselorName.toLowerCase().includes(search.toLowerCase()) ||
-      p.bankName.toLowerCase().includes(search.toLowerCase()) ||
-      p.accountNo.includes(search);
-    return matchSearch;
-  });
+  const handleConfirmAction = async () => {
+    if (!selectedPayout || !actionType) return;
 
-  // Filter transactions
-  const filteredTransactions = transactions.filter((tx) => {
-    const matchSearch =
-      tx.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
-      tx.title.toLowerCase().includes(search.toLowerCase()) ||
-      tx.targetParty.toLowerCase().includes(search.toLowerCase());
+    try {
+      setIsProcessing(true);
+      if (actionType === "paid") {
+        await walletClient.markAdminPayoutPaid(selectedPayout.id);
+        notify.success(
+          "Payout Ditandai Lunas!",
+          `Pencairan dana Rp ${selectedPayout.amount_rupiah.toLocaleString("id-ID")} ke ${selectedPayout.bank_account_name} (${selectedPayout.bank_name}) telah dicatat lunas.`
+        );
+      } else if (actionType === "reject") {
+        await walletClient.rejectAdminPayout(selectedPayout.id);
+        notify.warning(
+          "Pengajuan Payout Ditolak",
+          `Pengajuan payout telah ditolak. Saldo sebesar Rp ${(selectedPayout.amount_rupiah + selectedPayout.fee_rupiah).toLocaleString("id-ID")} telah dikembalikan ke dompet mitra.`
+        );
+      }
 
-    if (activeTab === "topup") return matchSearch && tx.type === "topup";
-    if (activeTab === "session") return matchSearch && tx.type === "usage";
-    return matchSearch;
-  });
+      setActionType(null);
+      setSelectedPayout(null);
+      fetchPayouts(page, statusFilter);
+    } catch (err) {
+      if (err instanceof WalletApiError) {
+        notify.error("Gagal Memproses Aksi", err.message);
+      } else {
+        notify.error("Kesalahan Sistem", "Gagal memperbarui status payout.");
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-  const payoutColumns: Column<PayoutRecord>[] = [
+  const columns: Column<AdminPayoutItem>[] = [
     {
-      label: "No Invoice & Waktu",
-      className: "w-[20%]",
+      label: "Waktu Pengajuan",
+      className: "w-[18%]",
+      renderCell: (p) => {
+        const dateStr = new Date(p.requested_at).toLocaleString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        return (
+          <div className="space-y-0.5">
+            <p className="font-semibold text-slate-900 dark:text-white text-xs">{dateStr} WIB</p>
+            <span className="text-[10px] font-mono text-slate-400 block truncate max-w-[120px]" title={p.id}>
+              ID: {p.id.slice(0, 8)}...
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      label: "Mitra Pemohon",
+      className: "w-[22%]",
       renderCell: (p) => (
-        <div>
-          <p className="font-mono font-semibold text-slate-900 dark:text-white">{p.invoiceNo}</p>
-          <span className="text-[10px] text-slate-400 font-nunito">{p.date}</span>
+        <div className="space-y-0.5">
+          <p className="font-bold text-slate-900 dark:text-white text-xs">
+            {p.mitra_name || "Mitra TemanBicara"}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <Badge
+              variant="outline"
+              className={`text-[9px] uppercase font-bold px-1.5 py-0 ${
+                p.mitra_role === "psikolog"
+                  ? "border-teal-300 text-teal-700 dark:text-teal-400"
+                  : "border-indigo-300 text-indigo-700 dark:text-indigo-400"
+              }`}
+            >
+              {p.mitra_role || "Mitra"}
+            </Badge>
+          </div>
         </div>
       ),
     },
     {
-      label: "Psikolog",
+      label: "Rekening Bank & Pemilik",
+      className: "w-[24%]",
+      renderCell: (p) => (
+        <div>
+          <p className="font-bold text-slate-800 dark:text-slate-200 text-xs">{p.bank_name}</p>
+          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400 font-semibold">
+            {p.account_number}
+          </p>
+          <span className="text-[11px] text-slate-500 block">a.n. {p.bank_account_name}</span>
+        </div>
+      ),
+    },
+    {
+      label: "Nominal & Fee",
       className: "w-[18%]",
       renderCell: (p) => (
         <div>
-          <p className="font-bold text-slate-800 dark:text-slate-200">{p.counselorName}</p>
-          <span className="text-[10px] text-teal-700 dark:text-teal-400 font-medium">Praktisi SIPPK</span>
-        </div>
-      ),
-    },
-    {
-      label: "Rekening Tujuan",
-      className: "w-[20%]",
-      renderCell: (p) => (
-        <div>
-          <p className="font-semibold text-slate-900 dark:text-white">{p.bankName}</p>
-          <p className="font-mono text-[11px] text-slate-500">
-            {p.accountNo} <span className="text-[10px]">({p.accountHolder})</span>
+          <p className="font-mono font-bold text-xs text-slate-900 dark:text-white">
+            Rp {p.amount_rupiah.toLocaleString("id-ID")}
           </p>
+          <span className="text-[10px] text-slate-400 font-mono block">
+            +Fee: Rp {p.fee_rupiah.toLocaleString("id-ID")}
+          </span>
+          <span className="text-[10px] font-mono font-semibold text-rose-600 dark:text-rose-400 block">
+            Total: Rp {(p.amount_rupiah + p.fee_rupiah).toLocaleString("id-ID")}
+          </span>
         </div>
       ),
     },
     {
-      label: "Koin Ditukar",
-      className: "w-[12%]",
-      renderCell: (p) => (
-        <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
-          -{p.coinsDeducted} Koin
-        </span>
-      ),
-    },
-    {
-      label: "Nominal Transfer",
-      className: "w-[14%]",
-      renderCell: (p) => (
-        <span className="font-mono font-bold text-slate-900 dark:text-white">
-          Rp {p.amountRupiah.toLocaleString("id-ID")}
-        </span>
-      ),
-    },
-    {
-      label: "Status",
-      className: "w-[10%]",
-      renderCell: (p) => (
-        <Badge
-          className={`text-[10px] ${
-            p.status === "Berhasil"
-              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200"
-              : p.status === "Diproses"
-              ? "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200"
-              : "bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200"
-          }`}
-        >
-          {p.status}
-        </Badge>
-      ),
-    },
-    {
-      label: "Otorisasi & Aksi",
-      align: "right",
-      className: "w-[16%]",
+      label: "Status & Aksi",
+      align: "center",
+      className: "w-[18%]",
       renderCell: (p) => {
-        const isPending = p.status === "Diproses";
-        return isPending ? (
-          <div className="flex items-center justify-end gap-1.5">
-            <Button
-              size="sm"
-              onClick={() => handleOpenApprove(p)}
-              className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg px-2.5 shadow-2xs gap-1 cursor-pointer"
-            >
-              <Check size={12} />
-              <span>Setujui Transfer</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleOpenReject(p)}
-              className="h-7 text-[11px] border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/40 rounded-lg px-2.5 cursor-pointer gap-1"
-            >
-              <X size={12} />
-              <span>Tolak</span>
-            </Button>
-          </div>
-        ) : (
-          <span className="text-[10px] text-slate-400 italic">
-            {p.status === "Berhasil" ? "Transfer Selesai" : "Pengajuan Dibatalkan"}
-          </span>
+        if (p.status === "requested") {
+          return (
+            <div className="flex items-center justify-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleOpenRejectModal(p)}
+                className="h-7 text-[11px] px-2 text-rose-700 border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-950 font-bold rounded-lg cursor-pointer"
+                title="Tolak pengajuan dan kembalikan saldo ke mitra"
+              >
+                <X size={12} className="mr-0.5" />
+                <span>Tolak</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleOpenPaidModal(p)}
+                className="h-7 text-[11px] px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg cursor-pointer shadow-2xs"
+                title="Tandai pembayaran telah ditransfer ke rekening mitra"
+              >
+                <Check size={12} className="mr-0.5" />
+                <span>Tandai Lunas</span>
+              </Button>
+            </div>
+          );
+        }
+
+        if (p.status === "paid") {
+          return (
+            <Badge className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 text-[10px] font-bold">
+              Lunas Ditransfer
+            </Badge>
+          );
+        }
+
+        return (
+          <Badge className="bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-200 text-[10px] font-bold">
+            Ditolak & Saldo Pulih
+          </Badge>
         );
       },
     },
   ];
 
-  const transactionColumns: Column<TransactionRecord>[] = [
-    {
-      label: "No Transaksi & Waktu",
-      className: "w-[20%]",
-      renderCell: (tx) => (
-        <div>
-          <p className="font-mono font-semibold text-slate-900 dark:text-white">{tx.invoiceNumber}</p>
-          <span className="text-[10px] text-slate-400 font-nunito">{tx.date}</span>
-        </div>
-      ),
-    },
-    {
-      label: "Kategori & Judul",
-      className: "w-[22%]",
-      renderCell: (tx) => (
-        <div>
-          <p className="font-bold text-slate-800 dark:text-slate-200">{tx.title}</p>
-          <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold">
-            {tx.category}
-          </span>
-        </div>
-      ),
-    },
-    {
-      label: "Pihak Terkait",
-      className: "w-[16%]",
-      renderCell: (tx) => (
-        <span className="font-medium text-slate-700 dark:text-slate-300">{tx.targetParty}</span>
-      ),
-    },
-    {
-      label: "Mutasi Koin",
-      className: "w-[14%]",
-      renderCell: (tx) => (
-        <span
-          className={`font-mono font-bold ${
-            tx.coinChange >= 0
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-rose-600 dark:text-rose-400"
-          }`}
-        >
-          {tx.coinChange >= 0 ? `+${tx.coinChange}` : tx.coinChange} Koin
-        </span>
-      ),
-    },
-    {
-      label: "Metode Bayar",
-      className: "w-[14%]",
-      renderCell: (tx) => (
-        <span className="text-slate-600 dark:text-slate-400 font-medium">{tx.paymentMethod}</span>
-      ),
-    },
-    {
-      label: "Catatan Audit",
-      className: "w-[16%]",
-      renderCell: (tx) => (
-        <span className="text-slate-500 text-[11px] max-w-xs truncate block" title={tx.notes}>
-          {tx.notes || "-"}
-        </span>
-      ),
-    },
-    {
-      label: "Status",
-      align: "right",
-      className: "w-[10%]",
-      renderCell: (tx) => (
-        <Badge className="bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 text-[10px]">
-          {tx.status}
-        </Badge>
-      ),
-    },
-  ];
-
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      {/* 1. Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* 1. Header Halaman */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-            Audit Finansial & Persetujuan Payout
+            Antrean Payout & Audit Transaksi
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Log audit terpadu arus kas masuk platform, verifikasi transfer honor psikolog, dan komisi sistem (10%)
+            Verifikasi pengajuan penarikan dana honor psikolog klinis & relawan pendengar TemanBicara
           </p>
         </div>
 
-        <Button
-          onClick={() => notify.info("Ekspor Dimulai", "Mengunduh file laporan audit finansial format CSV...")}
-          className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-4 py-2 h-9 font-semibold shadow-xs gap-1.5 cursor-pointer self-start sm:self-auto"
-        >
-          <Download size={15} />
-          <span>Ekspor Laporan CSV</span>
-        </Button>
-      </div>
-
-      {/* Alert Banner Feedback */}
-      {feedback && (
-        <div
-          className={`flex items-center gap-2.5 p-3.5 rounded-xl border text-xs font-semibold animate-in fade-in ${
-            feedback.type === "success"
-              ? "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
-              : "bg-rose-50 dark:bg-rose-950/70 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-          }`}
-        >
-          {feedback.type === "success" ? (
-            <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-          ) : (
-            <AlertTriangle size={16} className="text-rose-600 dark:text-rose-400 shrink-0" />
-          )}
-          <span>{feedback.message}</span>
-        </div>
-      )}
-
-      {/* 2. Stat Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>Total Volume Pembelian Koin</span>
-            <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600">
-              <Coins size={14} />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-emerald-700 dark:text-emerald-400">
-            Rp 485.000.000
-          </p>
-          <span className="text-[11px] text-slate-400 font-nunito">Arus kas masuk bruto (Pasien)</span>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>Total Pencairan Honor Psikolog</span>
-            <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950 text-teal-600">
-              <Building2 size={14} />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white">
-            Rp {(totalWithdrawnRupiah || 17000000).toLocaleString("id-ID")}
-          </p>
-          <span className="text-[11px] text-slate-400 font-nunito">
-            {approvedPayouts.length} transfer telah terverifikasi sukses
-          </span>
-        </div>
-
-        <div
-          className={`p-5 rounded-2xl border shadow-2xs space-y-1.5 transition-all ${
-            pendingPayouts.length > 0
-              ? "bg-amber-50/70 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/80"
-              : "bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800"
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs font-medium">
-            <span className={pendingPayouts.length > 0 ? "text-amber-800 dark:text-amber-300 font-bold" : "text-slate-500"}>
-              Pengajuan Payout Tertunda
-            </span>
-            <Badge
-              className={`text-[10px] ${
-                pendingPayouts.length > 0
-                  ? "bg-amber-600 text-white animate-pulse"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-              }`}
-            >
-              {pendingPayouts.length} Menunggu
-            </Badge>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-amber-700 dark:text-amber-400">
-            Rp {pendingWithdrawnRupiah.toLocaleString("id-ID")}
-          </p>
-          <span className="text-[11px] text-amber-700/80 dark:text-amber-400/80 font-nunito font-semibold">
-            {pendingPayouts.length > 0 ? "Memerlukan otorisasi transfer admin" : "Semua pengajuan telah diproses"}
-          </span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchPayouts(page, statusFilter)}
+            disabled={isLoading}
+            className="text-xs rounded-xl h-9 gap-1.5 border-slate-200 dark:border-slate-800"
+          >
+            <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+            <span>Segarkan Antrean</span>
+          </Button>
         </div>
       </div>
 
-      {/* 3. Filter Bar & Table */}
+      {/* 2. Kartu Ringkasan Antrean */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 shadow-2xs">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider block">
+                Menunggu Konfirmasi
+              </span>
+              <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono">
+                {pendingCount} Permintaan
+              </p>
+              <p className="text-[11px] text-amber-700/80 dark:text-amber-400 font-mono">
+                Total: Rp {totalPendingNominal.toLocaleString("id-ID")}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+              <Clock size={20} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Total Pengajuan
+              </span>
+              <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono">
+                {meta.total} Pengajuan
+              </p>
+              <p className="text-[11px] text-slate-400">Seluruh status di sistem</p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <FileText size={20} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-teal-200 dark:border-teal-800/80 bg-teal-50/40 dark:bg-teal-950/20 shadow-2xs">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
+            <div className="space-y-1">
+              <span className="text-[11px] font-bold text-teal-800 dark:text-teal-300 uppercase tracking-wider block">
+                Integritas Buku Besar
+              </span>
+              <p className="text-sm font-bold text-teal-900 dark:text-teal-200 pt-1">
+                Double-Entry Ledger Aktif
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Pencatatan kas keluar dibukukan otomatis
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0">
+              <ShieldCheck size={20} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 3. Antrean Payout Table */}
       <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
         <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {[
-                {
-                  key: "payout" as const,
-                  label: "Pencairan Honor (Payout)",
-                  badge: pendingPayouts.length > 0 ? pendingPayouts.length : undefined,
-                },
-                { key: "all" as const, label: "Semua Transaksi Koin" },
-                { key: "topup" as const, label: "Top Up Koin" },
-                { key: "session" as const, label: "Sesi Konseling" },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeTab === tab.key
-                      ? "bg-teal-600 text-white shadow-2xs"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  {tab.badge !== undefined && (
-                    <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] flex items-center justify-center font-bold">
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              ))}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <CardTitle className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Daftar Pengajuan Penarikan Dana Mitra
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+                Gunakan tombol aksi untuk menyetujui transfer atau menolak pengajuan
+              </CardDescription>
             </div>
 
-            <div className="w-full sm:w-64">
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Cari invoice / nama / bank..."
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              {/* Status Filter Buttons */}
+              <div className="inline-flex rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => handleFilterChange("requested")}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    statusFilter === "requested"
+                      ? "bg-amber-500 text-white shadow-2xs font-bold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Menunggu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFilterChange("paid")}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    statusFilter === "paid"
+                      ? "bg-emerald-600 text-white shadow-2xs font-bold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Lunas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFilterChange("rejected")}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    statusFilter === "rejected"
+                      ? "bg-rose-600 text-white shadow-2xs font-bold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Ditolak
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFilterChange("all")}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    statusFilter === "all"
+                      ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  }`}
+                >
+                  Semua
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative flex-1 sm:w-60">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Cari mitra, bank, nama..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full h-9 pl-8 pr-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                  className="pl-8 h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
                 />
               </div>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="p-0 sm:p-2">
-          {activeTab === "payout" ? (
-            /* TAB 1: PAYOUT HONOR APPROVAL TABLE */
-            <Tables
-              columns={payoutColumns}
-              data={filteredPayouts}
-              rowClassName={(p) => (p.status === "Diproses" ? "bg-amber-50/30 dark:bg-amber-950/20" : "")}
-              emptyTitle="Tidak ada riwayat pengajuan payout"
-              emptyDescription="Tidak ada data pengajuan payout yang sesuai dengan filter pencarian."
-            />
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
+              <Loader2 size={24} className="animate-spin text-teal-600" />
+              <span className="text-xs">Memuat antrean payout...</span>
+            </div>
+          ) : filteredPayouts.length === 0 ? (
+            <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-center px-4">
+              <AlertCircle size={28} className="text-slate-300 dark:text-slate-600" />
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                Tidak ada pengajuan payout pada filter ini
+              </p>
+              <p className="text-[11px] text-slate-400 max-w-sm">
+                Permintaan penarikan dana dari mitra yang berstatus {statusFilter === "all" ? "apa pun" : statusFilter} akan muncul di sini.
+              </p>
+            </div>
           ) : (
-            /* TAB 2: AUDIT MUTASI KOIN & TRANSAKSI PASIEN */
-            <Tables
-              columns={transactionColumns}
-              data={filteredTransactions}
-              emptyTitle="Tidak ada log transaksi koin"
-              emptyDescription="Tidak ada data transaksi koin yang sesuai dengan filter pencarian."
+            <Tables<AdminPayoutItem>
+              columns={columns}
+              data={filteredPayouts}
+              rowKey={(p) => p.id}
             />
+          )}
+
+          {/* Pagination Footer */}
+          {meta.totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+              <span>
+                Halaman {meta.page} dari {meta.totalPages} (Total {meta.total} pengajuan)
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page <= 1 || isLoading}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="h-8 text-xs rounded-lg gap-1"
+                >
+                  <ChevronLeft size={14} />
+                  <span>Sebelumnya</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page >= meta.totalPages || isLoading}
+                  onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+                  className="h-8 text-xs rounded-lg gap-1"
+                >
+                  <span>Berikutnya</span>
+                  <ChevronRight size={14} />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* 4. DIALOG: KONFIRMASI APPROVE PAYOUT */}
-      <Dialog open={modalMode === "approve"} onOpenChange={() => setModalMode(null)}>
-        <DialogContent className="max-w-md font-nunito p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
-          <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <ShieldCheck size={18} />
-              </div>
-              <div>
-                <DialogTitle className="text-base font-bold font-heading text-slate-900 dark:text-white">
-                  Otorisasi Pencairan Honor
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500">
-                  Konfirmasi pengiriman dana transfer bank ke psikolog
-                </DialogDescription>
-              </div>
-            </div>
+      {/* Dialog Konfirmasi: Tandai Lunas atau Tolak */}
+      <Dialog open={!!selectedPayout && !!actionType} onOpenChange={(open) => !open && setActionType(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-base font-bold flex items-center gap-2">
+              {actionType === "paid" ? (
+                <>
+                  <CheckCircle2 size={20} className="text-emerald-600" />
+                  <span>Konfirmasi Pembayaran Payout</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle size={20} className="text-rose-600" />
+                  <span>Konfirmasi Penolakan Payout</span>
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              {actionType === "paid"
+                ? "Pastikan dana telah berhasil ditransfer melalui sistem kliring perbankan."
+                : "Dana penarikan beserta biaya admin akan dikembalikan ke saldo mitra."}
+            </DialogDescription>
           </DialogHeader>
 
           {selectedPayout && (
-            <div className="space-y-4 pt-2 text-xs">
+            <div className="space-y-3 py-2 text-xs">
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">No Invoice:</span>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white">{selectedPayout.invoiceNo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Nama Psikolog:</span>
-                  <span className="font-bold text-slate-900 dark:text-white">{selectedPayout.counselorName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Rekening Tujuan:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    {selectedPayout.bankName} - {selectedPayout.accountNo}
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Nama Pemohon:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {selectedPayout.mitra_name || "Mitra"} ({selectedPayout.mitra_role || "Mitra"})
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Atas Nama:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">{selectedPayout.accountHolder}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Bank & No Rekening:</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">
+                    {selectedPayout.bank_name} - {selectedPayout.account_number}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Nama Pemilik Rekening:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {selectedPayout.bank_account_name}
+                  </span>
                 </div>
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                  <span className="font-bold text-slate-700 dark:text-slate-300">Nominal Transfer Riil:</span>
-                  <span className="text-base font-bold font-mono text-emerald-700 dark:text-emerald-400">
-                    Rp {selectedPayout.amountRupiah.toLocaleString("id-ID")}
+                  <span className="text-slate-500">Nominal Penarikan:</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">
+                    Rp {selectedPayout.amount_rupiah.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Biaya Transfer Bank:</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">
+                    Rp {selectedPayout.fee_rupiah.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                  <span className="font-bold text-slate-900 dark:text-white">Total Terpotong:</span>
+                  <span className="font-mono font-bold text-rose-600 text-sm">
+                    Rp {(selectedPayout.amount_rupiah + selectedPayout.fee_rupiah).toLocaleString("id-ID")}
                   </span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 leading-relaxed font-nunito">
-                Dengan menyetujui, Anda memastikan transfer antarbank telah berhasil dilakukan. Status payout akan diperbarui menjadi <strong>Berhasil</strong> dan psikolog akan menerima notifikasi konfirmasi.
-              </p>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setModalMode(null)}
-                  className="text-xs h-9 rounded-xl px-4 cursor-pointer"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleConfirmApprove}
-                  className="text-xs h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl px-4 cursor-pointer gap-1.5"
-                >
-                  <CheckCircle2 size={14} />
-                  <span>Setujui & Konfirmasi Transfer</span>
-                </Button>
-              </div>
+              {actionType === "paid" ? (
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 leading-snug">
+                  Dengan mengklik &quot;Tandai Lunas&quot;, buku besar akan mendebit kas keluar platform dan menandai pengajuan telah selesai.
+                </p>
+              ) : (
+                <p className="text-[11px] text-rose-700 dark:text-rose-400 leading-snug">
+                  Dengan mengklik &quot;Tolak Pengajuan&quot;, saldo sebesar Rp {(selectedPayout.amount_rupiah + selectedPayout.fee_rupiah).toLocaleString("id-ID")} akan dikembalikan secara atomik ke saldo siap cair mitra.
+                </p>
+              )}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
 
-      {/* 5. DIALOG: REJECT PAYOUT */}
-      <Dialog open={modalMode === "reject"} onOpenChange={() => setModalMode(null)}>
-        <DialogContent className="max-w-md font-nunito p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100">
-          <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <AlertTriangle size={18} />
-              </div>
-              <div>
-                <DialogTitle className="text-base font-bold font-heading text-slate-900 dark:text-white">
-                  Tolak Pengajuan Payout
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500">
-                  Koin yang ditarik akan secara otomatis dikembalikan ke dompet psikolog
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          {selectedPayout && (
-            <div className="space-y-4 pt-2 text-xs">
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/60 space-y-1 text-rose-900 dark:text-rose-300">
-                <p className="font-semibold">
-                  {selectedPayout.counselorName} • {selectedPayout.invoiceNo}
-                </p>
-                <p className="font-mono">
-                  {selectedPayout.coinsDeducted} Koin (Rp {selectedPayout.amountRupiah.toLocaleString("id-ID")})
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Alasan Penolakan:
-                </label>
-                <Input
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="Contoh: Nomor rekening tidak cocok dengan nama SIPPK"
-                  className="h-9 text-xs bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setModalMode(null)}
-                  className="text-xs h-9 rounded-xl px-4 cursor-pointer"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleConfirmReject}
-                  className="text-xs h-9 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl px-4 cursor-pointer gap-1.5"
-                >
-                  <XCircle size={14} />
-                  <span>Tolak & Kembalikan Koin</span>
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setActionType(null);
+                setSelectedPayout(null);
+              }}
+              disabled={isProcessing}
+              className="text-xs rounded-xl"
+            >
+              Batal
+            </Button>
+            {actionType === "paid" ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleConfirmAction}
+                disabled={isProcessing}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-xl gap-1.5"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    <span>Memproses...</span>
+                  </>
+                ) : (
+                  <span>Tandai Lunas & Bukukan</span>
+                )}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleConfirmAction}
+                disabled={isProcessing}
+                className="bg-rose-600 hover:bg-rose-700 text-white text-xs rounded-xl gap-1.5"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    <span>Memproses...</span>
+                  </>
+                ) : (
+                  <span>Tolak & Kembalikan Saldo</span>
+                )}
+              </Button>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
