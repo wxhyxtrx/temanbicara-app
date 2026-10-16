@@ -30,6 +30,8 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Wallet,
+  Clock,
 } from "lucide-react";
 import { userService } from "@/services/user.service";
 import { notify } from "@/lib/toast";
@@ -42,6 +44,9 @@ import type {
   ApiRole,
   PsikologProfile,
   RelawanProfile,
+  UserWalletSummary,
+  PatientTopupSummary,
+  MitraPayoutSummary,
 } from "@/types/user-profile";
 
 interface UserDetailModalProps {
@@ -73,8 +78,15 @@ export function UserDetailModal({
   const [updating, setUpdating] = useState(false);
 
   // Profile & detailed user fetch from API
-  const [detailedUser, setDetailedUser] = useState<AdminUserRow | null>(null);
+  const [detailedUser, setDetailedUser] = useState<(AdminUserRow & {
+    last_sign_in_at?: string | null;
+    verified_at?: string | null;
+    updated_at?: string;
+  }) | null>(null);
   const [detailedProfile, setDetailedProfile] = useState<Record<string, unknown> | null>(null);
+  const [wallet, setWallet] = useState<UserWalletSummary | null>(null);
+  const [topupSummary, setTopupSummary] = useState<PatientTopupSummary | null>(null);
+  const [payoutSummary, setPayoutSummary] = useState<MitraPayoutSummary | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   useEffect(() => {
@@ -89,6 +101,9 @@ export function UserDetailModal({
       setLoadingProfile(true);
       setDetailedUser(null);
       setDetailedProfile(null);
+      setWallet(null);
+      setTopupSummary(null);
+      setPayoutSummary(null);
       userService
         .getUserById(user.id)
         .then((res) => {
@@ -97,12 +112,24 @@ export function UserDetailModal({
             if (res.data.user) {
               setDetailedUser(res.data.user);
             }
+            if (res.data.wallet) {
+              setWallet(res.data.wallet);
+            }
+            if (res.data.topup_summary) {
+              setTopupSummary(res.data.topup_summary);
+            }
+            if (res.data.payout_summary) {
+              setPayoutSummary(res.data.payout_summary);
+            }
           }
         })
         .catch(() => {
           // Fallback gracefully to list row profile
           setDetailedProfile(null);
           setDetailedUser(null);
+          setWallet(null);
+          setTopupSummary(null);
+          setPayoutSummary(null);
         })
         .finally(() => {
           setLoadingProfile(false);
@@ -110,6 +137,9 @@ export function UserDetailModal({
     } else {
       setDetailedProfile(null);
       setDetailedUser(null);
+      setWallet(null);
+      setTopupSummary(null);
+      setPayoutSummary(null);
     }
   }, [open, user?.id]);
 
@@ -205,6 +235,66 @@ export function UserDetailModal({
   const psikologProf = activeUser.role === "psikolog" ? (detailedProfile as unknown as PsikologProfile | null) : null;
   const relawanProf = activeUser.role === "relawan" ? (detailedProfile as unknown as RelawanProfile | null) : null;
 
+  const formatWIB = (isoString?: string | null) => {
+    if (!isoString) return "-";
+    try {
+      const d = new Date(isoString);
+      if (Number.isNaN(d.getTime())) return isoString;
+      return (
+        d.toLocaleString("id-ID", {
+          timeZone: "Asia/Jakarta",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }) + " WIB"
+      );
+    } catch {
+      return isoString;
+    }
+  };
+
+  const verifiedAt =
+    detailedUser?.verified_at ||
+    (detailedProfile?.verified_at as string | null | undefined) ||
+    (user.profile && typeof user.profile === "object" && "verified_at" in user.profile
+      ? (user.profile as { verified_at?: string | null }).verified_at
+      : null);
+
+  const currentWallet: UserWalletSummary = wallet || {
+    coin_balance: activeUser.coin_balance ?? 0,
+    available_rupiah: activeUser.available_rupiah ?? 0,
+    pending_rupiah: activeUser.pending_rupiah ?? 0,
+  };
+
+  const renderWalletBalance = () => {
+    if (activeUser.role === "pasien") {
+      return (
+        <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-xs">
+          {currentWallet.coin_balance.toLocaleString("id-ID")} Koin
+        </span>
+      );
+    }
+    if (activeUser.role === "psikolog" || activeUser.role === "relawan") {
+      const avail = currentWallet.available_rupiah;
+      const pending = currentWallet.pending_rupiah;
+      return (
+        <div className="text-right space-y-0.5">
+          <p className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-xs">
+            Rp {avail.toLocaleString("id-ID")}
+          </p>
+          {pending > 0 && (
+            <p className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">
+              tertahan Rp {pending.toLocaleString("id-ID")}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return <span className="text-slate-400 dark:text-slate-500 font-mono text-xs">—</span>;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -228,16 +318,6 @@ export function UserDetailModal({
         </DialogHeader>
 
         <div className="space-y-4 pt-2 text-xs">
-          {/* Progress Banner saat memuat data profil & berkas */}
-          {loadingProfile && (
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-900/60 animate-in fade-in">
-              <div className="flex items-center gap-2 text-teal-800 dark:text-teal-300">
-                <Loader2 size={13} className="animate-spin text-teal-600 shrink-0" />
-                <span className="text-[11px] font-semibold">Mengambil kelengkapan profil & berkas...</span>
-              </div>
-              <span className="text-[10px] text-teal-600 dark:text-teal-400 font-mono">Sinkronisasi</span>
-            </div>
-          )}
           {/* Quick Verification Banner for Pending Mitra */}
           {isMitra && isPendingVerification && (
             <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 space-y-2.5 animate-in fade-in">
@@ -336,6 +416,135 @@ export function UserDetailModal({
               >
                 {statusBadgeConfig[activeUser.status]?.label || activeUser.status}
               </Badge>
+            </div>
+          </div>
+
+          {/* 3. Saldo & Ringkasan Finansial */}
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white text-xs">
+                <Wallet size={14} className="text-teal-600 dark:text-teal-400" />
+                <span>Saldo & Ringkasan Finansial</span>
+              </div>
+              {loadingProfile && (
+                <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium flex items-center gap-1">
+                  <Loader2 size={10} className="animate-spin" /> Memuat...
+                </span>
+              )}
+            </div>
+
+            {/* Saldo Lengkap */}
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Saldo Dompet</span>
+              {loadingProfile ? (
+                <Skeleton className="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700" />
+              ) : (
+                renderWalletBalance()
+              )}
+            </div>
+
+            {/* Pasien: Top-up Summary */}
+            {activeUser.role === "pasien" && (
+              <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Total Top-up Berhasil</span>
+                  {loadingProfile ? (
+                    <Skeleton className="h-4 w-36 rounded bg-slate-200 dark:bg-slate-700" />
+                  ) : (
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-xs">
+                      {topupSummary
+                        ? `${topupSummary.total_coins.toLocaleString("id-ID")} Koin (Rp ${topupSummary.total_rupiah.toLocaleString("id-ID")})`
+                        : "0 Koin (Rp 0)"}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Pesanan Berhasil</span>
+                  {loadingProfile ? (
+                    <Skeleton className="h-4 w-20 rounded bg-slate-200 dark:bg-slate-700" />
+                  ) : (
+                    <span className="font-medium text-slate-700 dark:text-slate-300 font-mono">
+                      {topupSummary ? `${topupSummary.successful_orders_count} transaksi` : "0 transaksi"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Mitra: Payout Summary */}
+            {(activeUser.role === "psikolog" || activeUser.role === "relawan") && (
+              <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Total Payout Dibayar</span>
+                  {loadingProfile ? (
+                    <Skeleton className="h-4 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+                  ) : (
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-xs">
+                      {payoutSummary
+                        ? `Rp ${payoutSummary.total_paid_rupiah.toLocaleString("id-ID")}`
+                        : "Rp 0"}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Penarikan Berhasil</span>
+                  {loadingProfile ? (
+                    <Skeleton className="h-4 w-20 rounded bg-slate-200 dark:bg-slate-700" />
+                  ) : (
+                    <span className="font-medium text-slate-700 dark:text-slate-300 font-mono">
+                      {payoutSummary ? `${payoutSummary.paid_requests_count} kali` : "0 kali"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Admin Info */}
+            {activeUser.role === "admin" && (
+              <p className="text-[11px] text-slate-400 italic">
+                Akun administrator tidak terhubung dengan wallet pembayaran.
+              </p>
+            )}
+          </div>
+
+          {/* 4. Aktivitas & Verifikasi Akun */}
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2">
+            <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white text-xs">
+              <Clock size={14} className="text-teal-600 dark:text-teal-400" />
+              <span>Aktivitas & Verifikasi Akun</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Waktu Registrasi</span>
+              <span className="text-slate-700 dark:text-slate-300 font-medium font-mono text-[11px]">
+                {formatWIB(user.created_at)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Login Terakhir</span>
+              {loadingProfile ? (
+                <Skeleton className="h-4 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+              ) : (
+                <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-[11px]">
+                  {detailedUser?.last_sign_in_at ? formatWIB(detailedUser.last_sign_in_at) : "Belum pernah login"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Tanggal Verifikasi</span>
+              {loadingProfile ? (
+                <Skeleton className="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700" />
+              ) : (
+                <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-[11px]">
+                  {verifiedAt
+                    ? formatWIB(verifiedAt)
+                    : isMitra
+                      ? (activeUser.status === "active" ? "Terverifikasi" : "Belum diverifikasi")
+                      : "—"}
+                </span>
+              )}
             </div>
           </div>
 
@@ -450,15 +659,7 @@ export function UserDetailModal({
             </div>
           )}
 
-          {/* 4. Waktu Registrasi */}
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-            <span className="text-[11px] text-slate-400 block font-medium">Waktu Registrasi</span>
-            <p className="text-slate-700 dark:text-slate-300 font-medium">
-              {formatDate(user.created_at)}
-            </p>
-          </div>
-
-          {/* 5. Form Ubah Status Akun */}
+          {/* 6. Form Ubah Status Akun */}
           <form onSubmit={handleUpdateStatus} className="p-3.5 rounded-xl border border-teal-200/80 dark:border-teal-900/60 bg-teal-50/40 dark:bg-teal-950/20 space-y-3">
             <div className="flex items-center gap-1.5 font-bold text-teal-900 dark:text-teal-200 text-xs">
               <ShieldAlert size={14} className="text-teal-600 dark:text-teal-400" />
