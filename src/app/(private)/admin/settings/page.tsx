@@ -18,7 +18,6 @@ import {
   invalidNumberKeys,
   labelClass,
   NumberField,
-  ORDER,
   SettingSection,
   type SettingKey,
   toLocalInput,
@@ -29,6 +28,7 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  Clock,
   History,
   Percent,
   RefreshCw,
@@ -36,10 +36,43 @@ import {
   Server,
   SlidersHorizontal,
   Undo2,
+  Users,
+  Wallet,
 } from "lucide-react";
 
 
+type SettingsSubTab = "keuangan" | "sesi" | "relawan" | "sistem";
+
+const SUB_TAB_GROUPS: Record<
+  SettingsSubTab,
+  { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; keys: SettingKey[] }
+> = {
+  keuangan: {
+    label: "Keuangan",
+    icon: Wallet,
+    keys: ["topup", "revenue_share", "tip", "holding", "payout"],
+  },
+  sesi: {
+    label: "Sesi",
+    icon: Clock,
+    keys: ["refund_policy", "psikolog_late", "patient_noshow", "extension_price"],
+  },
+  relawan: {
+    label: "Relawan",
+    icon: Users,
+    keys: ["relawan"],
+  },
+  sistem: {
+    label: "Sistem",
+    icon: Server,
+    keys: ["maintenance", "upload", "media_retention"],
+  },
+};
+
+const SUB_TAB_ORDER: SettingsSubTab[] = ["keuangan", "sesi", "relawan", "sistem"];
+
 export default function AdminSettingsPage() {
+  const [activeSubTab, setActiveSubTab] = useState<SettingsSubTab>("keuangan");
   const [form, setForm] = useState<SystemSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<SystemSettings | null>(null);
   const [meta, setMeta] = useState<AdminSettingsResult["meta"]>();
@@ -115,6 +148,19 @@ export default function AdminSettingsPage() {
   const maintenanceErrorId = errorIdFor("maintenance");
   const maintenanceAria = { "aria-invalid": !!maintenanceErrorId || undefined, "aria-describedby": maintenanceErrorId };
 
+  const findFirstErrorSubTab = (errors: Record<string, string>): SettingsSubTab | null => {
+    for (const tab of SUB_TAB_ORDER) {
+      if (SUB_TAB_GROUPS[tab].keys.some((k) => Boolean(errors[k]))) {
+        return tab;
+      }
+    }
+    return null;
+  };
+
+  const subTabHasError = (tab: SettingsSubTab): boolean => {
+    return SUB_TAB_GROUPS[tab].keys.some((k) => Boolean(fieldErrors[k]));
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form || isFallback || isSaving) return;
@@ -128,16 +174,18 @@ export default function AdminSettingsPage() {
       const invalidMaintenanceDate = Object.values(maintenanceDraft).some((value) => !isValidLocalInput(value));
       const invalidMaintenanceRange = !isMaintenanceRangeValid(maintenanceDraft.scheduled_start, maintenanceDraft.estimated_end);
       if (invalidMaintenanceDate || invalidMaintenanceRange) {
-        setFieldErrors({
+        const errs = {
           maintenance: invalidMaintenanceRange
             ? "Estimasi selesai harus lebih akhir dari mulai terjadwal."
             : "Isi tanggal maintenance yang valid atau kosongkan waktunya.",
-        });
+        };
+        setFieldErrors(errs);
         setSaveError(
           invalidMaintenanceRange
             ? "Rentang maintenance tidak valid. Periksa kartu bertanda merah."
             : "Tanggal maintenance tidak valid. Periksa kartu bertanda merah."
         );
+        setActiveSubTab("sistem");
         return;
       }
     }
@@ -147,14 +195,18 @@ export default function AdminSettingsPage() {
       if (!Number.isFinite(revenueSharePercent) || revenueSharePercent < 0) {
         setFieldErrors({ revenue_share: "Isi porsi mitra dengan persentase valid." });
         setSaveError("Ada angka kosong atau tidak valid. Periksa kartu bertanda merah.");
+        setActiveSubTab("keuangan");
         return;
       }
     }
 
     const invalid = invalidNumberKeys(form).filter((k) => k in changes);
     if (invalid.length) {
-      setFieldErrors(Object.fromEntries(invalid.map((k) => [k, "Isi semua angka dengan nilai yang valid."])));
+      const errs = Object.fromEntries(invalid.map((k) => [k, "Isi semua angka dengan nilai yang valid."]));
+      setFieldErrors(errs);
       setSaveError("Ada angka kosong atau tidak valid. Periksa kartu bertanda merah.");
+      const firstTab = findFirstErrorSubTab(errs);
+      if (firstTab) setActiveSubTab(firstTab);
       return;
     }
 
@@ -206,12 +258,15 @@ export default function AdminSettingsPage() {
           );
         }
       } else {
-        setFieldErrors(res.details ?? {});
+        const details = res.details ?? {};
+        setFieldErrors(details);
         setSaveError(
           res.details
             ? "Beberapa parameter tidak valid. Periksa kartu bertanda merah."
             : res.error ?? "Gagal menyimpan konfigurasi"
         );
+        const firstTab = findFirstErrorSubTab(details);
+        if (firstTab) setActiveSubTab(firstTab);
       }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Gagal menyimpan konfigurasi");
@@ -417,93 +472,135 @@ export default function AdminSettingsPage() {
               <form onSubmit={handleSave}>
                 {/* Native fieldset disable blocks edits while saving so the response cannot overwrite them. */}
                 <fieldset disabled={isSaving} className="space-y-6 min-w-0">
-                <SettingSection
-                  title="Jadwal Pemeliharaan Server (Maintenance)"
-                  icon={Server}
-                  meta={meta?.maintenance}
-                  error={fieldErrors.maintenance}
-                  errorId={maintenanceErrorId}
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5 min-w-0">
-                      <Label htmlFor="maintenance-start" className={labelClass}>
-                        Mulai terjadwal (waktu lokal)
-                      </Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="maintenance-start"
-                          {...maintenanceAria}
-                          type="datetime-local"
-                          value={maintenanceDraft.scheduled_start}
-                          onChange={(e) => {
-                            setMaintenanceDraft((draft) => ({ ...draft, scheduled_start: e.target.value }));
-                            updateGroup("maintenance", { ...form.maintenance, scheduled_start: fromLocalInput(e.target.value) });
-                          }}
-                          className={`${inputClass} min-w-0`}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            const now = new Date();
-                            const localValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-                            setMaintenanceDraft((draft) => ({ ...draft, scheduled_start: localValue }));
-                            updateGroup("maintenance", { ...form.maintenance, scheduled_start: now.toISOString() });
-                          }}
-                          className="h-9 text-xs rounded-xl cursor-pointer shrink-0"
-                        >
-                          Aktifkan sekarang
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5 min-w-0">
-                      <Label htmlFor="maintenance-end" className={labelClass}>
-                        Estimasi selesai (waktu lokal)
-                      </Label>
-                      <Input
-                        id="maintenance-end"
-                        {...maintenanceAria}
-                        type="datetime-local"
-                        value={maintenanceDraft.estimated_end}
-                        onChange={(e) => {
-                          setMaintenanceDraft((draft) => ({ ...draft, estimated_end: e.target.value }));
-                          updateGroup("maintenance", { ...form.maintenance, estimated_end: fromLocalInput(e.target.value) });
-                        }}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="maintenance-message" className={labelClass}>
-                      Pesan maintenance
-                    </Label>
-                    <textarea
-                      id="maintenance-message"
-                      {...maintenanceAria}
-                      rows={3}
-                      maxLength={500}
-                      value={form.maintenance.message}
-                      onChange={(e) => updateGroup("maintenance", { ...form.maintenance, message: e.target.value })}
-                      className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50"
-                    />
-                    <span className="text-[11px] text-slate-400">
-                      Kosongkan waktu mulai untuk membatalkan jadwal maintenance.
-                    </span>
-                  </div>
-                </SettingSection>
+                  <Tabs value={activeSubTab} onValueChange={(val) => setActiveSubTab(val as SettingsSubTab)} className="w-full">
+                    <TabsList className="flex flex-wrap sm:inline-flex w-full sm:w-auto h-auto p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl gap-1">
+                      {SUB_TAB_ORDER.map((tab) => {
+                        const config = SUB_TAB_GROUPS[tab];
+                        const Icon = config.icon;
+                        const hasErr = subTabHasError(tab);
+                        return (
+                          <TabsTrigger
+                            key={tab}
+                            value={tab}
+                            className={`cursor-pointer text-xs font-semibold py-2 px-3.5 gap-1.5 rounded-lg transition-all ${
+                              hasErr
+                                ? "text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/30"
+                                : ""
+                            }`}
+                          >
+                            <Icon size={14} className={hasErr ? "text-rose-600 dark:text-rose-400" : "text-slate-500 dark:text-slate-400"} />
+                            <span>{config.label}</span>
+                            {hasErr && (
+                              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse ml-0.5" />
+                            )}
+                          </TabsTrigger>
+                        );
+                      })}
+                    </TabsList>
 
-                {ORDER.map(renderGroup)}
+                    <TabsContent value="keuangan" className="space-y-6 mt-4">
+                      {SUB_TAB_GROUPS.keuangan.keys.map(renderGroup)}
+                    </TabsContent>
 
-                <div className="flex justify-end pt-2">
-                  <Button
-                    type="submit"
-                    disabled={saveDisabled}
-                    className="text-xs sm:text-sm bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-6 py-2.5 h-10 shadow-xs gap-1.5 cursor-pointer"
-                  >
-                    {isSaving ? <RefreshCw size={15} className="animate-spin" /> : <Save size={15} />}
-                    {isSaving ? "Menyimpan..." : "Simpan Konfigurasi Sistem"}
-                  </Button>
-                </div>
+                    <TabsContent value="sesi" className="space-y-6 mt-4">
+                      {SUB_TAB_GROUPS.sesi.keys.map(renderGroup)}
+                    </TabsContent>
+
+                    <TabsContent value="relawan" className="space-y-6 mt-4">
+                      {SUB_TAB_GROUPS.relawan.keys.map(renderGroup)}
+                    </TabsContent>
+
+                    <TabsContent value="sistem" className="space-y-6 mt-4">
+                      <SettingSection
+                        title="Jadwal Pemeliharaan Server (Maintenance)"
+                        icon={Server}
+                        meta={meta?.maintenance}
+                        error={fieldErrors.maintenance}
+                        errorId={maintenanceErrorId}
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5 min-w-0">
+                            <Label htmlFor="maintenance-start" className={labelClass}>
+                              Mulai terjadwal (waktu lokal)
+                            </Label>
+                            <div className="flex gap-2">
+                              <Input
+                                id="maintenance-start"
+                                {...maintenanceAria}
+                                type="datetime-local"
+                                value={maintenanceDraft.scheduled_start}
+                                onChange={(e) => {
+                                  setMaintenanceDraft((draft) => ({ ...draft, scheduled_start: e.target.value }));
+                                  updateGroup("maintenance", { ...form.maintenance, scheduled_start: fromLocalInput(e.target.value) });
+                                }}
+                                className={`${inputClass} min-w-0`}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  const now = new Date();
+                                  const localValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+                                  setMaintenanceDraft((draft) => ({ ...draft, scheduled_start: localValue }));
+                                  updateGroup("maintenance", { ...form.maintenance, scheduled_start: now.toISOString() });
+                                }}
+                                className="h-9 text-xs rounded-xl cursor-pointer shrink-0"
+                              >
+                                Aktifkan sekarang
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="space-y-1.5 min-w-0">
+                            <Label htmlFor="maintenance-end" className={labelClass}>
+                              Estimasi selesai (waktu lokal)
+                            </Label>
+                            <Input
+                              id="maintenance-end"
+                              {...maintenanceAria}
+                              type="datetime-local"
+                              value={maintenanceDraft.estimated_end}
+                              onChange={(e) => {
+                                setMaintenanceDraft((draft) => ({ ...draft, estimated_end: e.target.value }));
+                                updateGroup("maintenance", { ...form.maintenance, estimated_end: fromLocalInput(e.target.value) });
+                              }}
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="maintenance-message" className={labelClass}>
+                            Pesan maintenance
+                          </Label>
+                          <textarea
+                            id="maintenance-message"
+                            {...maintenanceAria}
+                            rows={3}
+                            maxLength={500}
+                            value={form.maintenance.message}
+                            onChange={(e) => updateGroup("maintenance", { ...form.maintenance, message: e.target.value })}
+                            className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50"
+                          />
+                          <span className="text-[11px] text-slate-400">
+                            Kosongkan waktu mulai untuk membatalkan jadwal maintenance.
+                          </span>
+                        </div>
+                      </SettingSection>
+
+                      {renderGroup("upload")}
+                      {renderGroup("media_retention")}
+                    </TabsContent>
+                  </Tabs>
+
+                  <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <Button
+                      type="submit"
+                      disabled={saveDisabled}
+                      className="text-xs sm:text-sm bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-6 py-2.5 h-10 shadow-xs gap-1.5 cursor-pointer"
+                    >
+                      {isSaving ? <RefreshCw size={15} className="animate-spin" /> : <Save size={15} />}
+                      {isSaving ? "Menyimpan..." : "Simpan Konfigurasi Sistem"}
+                    </Button>
+                  </div>
                 </fieldset>
               </form>
             </>
