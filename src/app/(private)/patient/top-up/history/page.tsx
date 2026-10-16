@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tables, Column } from "@/components/shared/atoms/Table";
 import { walletClient, WalletApiError } from "@/services/wallet.client";
 import { openSnapModal } from "@/lib/snap";
@@ -178,6 +179,7 @@ function renderTopupStatusBadge(status: PaymentStatus) {
 export default function PatientTransactionHistoryPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [wallet, setWallet] = useState<WalletInfoResponse | null>(null);
+  const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(true);
 
   // Top-Up History State
   const [topups, setTopups] = useState<TopupOrderEntity[]>([]);
@@ -237,11 +239,14 @@ export default function PatientTransactionHistoryPage() {
 
   const fetchWallet = useCallback(async () => {
     try {
+      setIsLoadingWallet(true);
       const data = await walletClient.getWalletMe();
       setWallet(data);
     } catch (err) {
       if (err instanceof WalletApiError && err.handled) return;
       console.error("Gagal memuat saldo dompet:", err);
+    } finally {
+      setIsLoadingWallet(false);
     }
   }, []);
 
@@ -644,7 +649,11 @@ export default function PatientTransactionHistoryPage() {
                 Saldo Pasien
               </span>
               <span className="text-sm font-bold font-heading">
-                {mounted ? `${wallet?.coin_balance ?? 0} Koin` : "0 Koin"}
+                {!mounted || isLoadingWallet || wallet === null ? (
+                  <Skeleton className="h-4 w-16 rounded mt-0.5" />
+                ) : (
+                  `${wallet.coin_balance} Koin`
+                )}
               </span>
             </div>
           </div>
@@ -699,9 +708,13 @@ export default function PatientTransactionHistoryPage() {
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">
                     Koin dari Top-Up Berhasil
                   </span>
-                  <span className="text-lg sm:text-xl font-bold font-heading text-emerald-600 dark:text-emerald-400 font-mono">
-                    {topupSettledCoins > 0 ? `+${topupSettledCoins}` : "0"} Koin
-                  </span>
+                  {!mounted || isLoadingTopups ? (
+                    <Skeleton className="h-7 w-24 rounded my-0.5" />
+                  ) : (
+                    <span className="text-lg sm:text-xl font-bold font-heading text-emerald-600 dark:text-emerald-400 font-mono">
+                      {topupSettledCoins > 0 ? `+${topupSettledCoins}` : "0"} Koin
+                    </span>
+                  )}
                   <span className="text-[10px] text-slate-400 block">Akumulasi halaman ini</span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-600 flex items-center justify-center shrink-0">
@@ -716,9 +729,13 @@ export default function PatientTransactionHistoryPage() {
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">
                     Menunggu Pembayaran
                   </span>
-                  <span className="text-lg sm:text-xl font-bold font-heading text-amber-600 dark:text-amber-400 font-mono">
-                    {topupPendingCount} Pesanan
-                  </span>
+                  {!mounted || isLoadingTopups ? (
+                    <Skeleton className="h-7 w-28 rounded my-0.5" />
+                  ) : (
+                    <span className="text-lg sm:text-xl font-bold font-heading text-amber-600 dark:text-amber-400 font-mono">
+                      {topupPendingCount} Pesanan
+                    </span>
+                  )}
                   <span className="text-[10px] text-slate-400 block">Selesaikan sebelum batas waktu</span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800 text-amber-600 flex items-center justify-center shrink-0">
@@ -733,9 +750,13 @@ export default function PatientTransactionHistoryPage() {
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">
                     Total Pesanan Top-Up
                   </span>
-                  <span className="text-lg sm:text-xl font-bold font-heading text-teal-800 dark:text-teal-300 font-mono">
-                    {topupMeta.total} Pesanan
-                  </span>
+                  {!mounted || isLoadingTopups ? (
+                    <Skeleton className="h-7 w-28 rounded my-0.5" />
+                  ) : (
+                    <span className="text-lg sm:text-xl font-bold font-heading text-teal-800 dark:text-teal-300 font-mono">
+                      {topupMeta.total} Pesanan
+                    </span>
+                  )}
                   <span className="text-[10px] text-slate-400 block">Buku transaksi Midtrans</span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0">
@@ -900,9 +921,13 @@ export default function PatientTransactionHistoryPage() {
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">
                     Total Koin Masuk (Halaman Ini)
                   </span>
-                  <span className="text-lg sm:text-xl font-bold font-heading text-emerald-600 dark:text-emerald-400 font-mono">
-                    {totalCoinsIn > 0 ? `+${totalCoinsIn}` : "0"} Koin
-                  </span>
+                  {!mounted || isLoading ? (
+                    <Skeleton className="h-7 w-24 rounded my-0.5" />
+                  ) : (
+                    <span className="text-lg sm:text-xl font-bold font-heading text-emerald-600 dark:text-emerald-400 font-mono">
+                      {totalCoinsIn > 0 ? `+${totalCoinsIn}` : "0"} Koin
+                    </span>
+                  )}
                   <span className="text-[10px] text-slate-400 block">Top-up yang telah diverifikasi</span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-600 flex items-center justify-center shrink-0">
@@ -917,9 +942,13 @@ export default function PatientTransactionHistoryPage() {
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">
                     Total Koin Terpakai (Halaman Ini)
                   </span>
-                  <span className="text-lg sm:text-xl font-bold font-heading text-rose-600 dark:text-rose-400 font-mono">
-                    {totalCoinsOut > 0 ? `-${totalCoinsOut}` : "0"} Koin
-                  </span>
+                  {!mounted || isLoading ? (
+                    <Skeleton className="h-7 w-24 rounded my-0.5" />
+                  ) : (
+                    <span className="text-lg sm:text-xl font-bold font-heading text-rose-600 dark:text-rose-400 font-mono">
+                      {totalCoinsOut > 0 ? `-${totalCoinsOut}` : "0"} Koin
+                    </span>
+                  )}
                   <span className="text-[10px] text-slate-400 block">Penggunaan sesi & apresiasi tip</span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 text-rose-600 flex items-center justify-center shrink-0">
@@ -934,9 +963,13 @@ export default function PatientTransactionHistoryPage() {
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">
                     Total Transaksi Tercatat
                   </span>
-                  <span className="text-lg sm:text-xl font-bold font-heading text-teal-800 dark:text-teal-300 font-mono">
-                    {meta.total} Entri
-                  </span>
+                  {!mounted || isLoading ? (
+                    <Skeleton className="h-7 w-28 rounded my-0.5" />
+                  ) : (
+                    <span className="text-lg sm:text-xl font-bold font-heading text-teal-800 dark:text-teal-300 font-mono">
+                      {meta.total} Entri
+                    </span>
+                  )}
                   <span className="text-[10px] text-slate-400 block">Buku besar append-only</span>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0">
