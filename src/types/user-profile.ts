@@ -209,8 +209,8 @@ export type AdminDashboardStatsResponse =
   | ApiError;
 
 export interface AdminUserQuery {
-  role?: ApiRole;
-  status?: ApiAccountStatus;
+  role?: ApiRole | ApiRole[] | string;
+  status?: ApiAccountStatus | ApiAccountStatus[] | string;
   search?: string;
   page?: number;
   limit?: number;

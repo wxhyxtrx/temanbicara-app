@@ -97,8 +97,14 @@ export const userService = {
    */
   async getAdminUsers(params?: AdminUserQuery): Promise<AdminUserListResponse> {
     const query = new URLSearchParams();
-    if (params?.role) query.set('role', params.role);
-    if (params?.status) query.set('status', params.status);
+    if (params?.role) {
+      const roleVal = Array.isArray(params.role) ? params.role.join(',') : params.role;
+      query.set('role', roleVal);
+    }
+    if (params?.status) {
+      const statusVal = Array.isArray(params.status) ? params.status.join(',') : params.status;
+      query.set('status', statusVal);
+    }
     if (params?.search) query.set('search', params.search);
     if (params?.page) query.set('page', String(params.page));
     if (params?.limit) query.set('limit', String(params.limit));

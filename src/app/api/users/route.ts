@@ -50,15 +50,42 @@ export async function GET(req: Request) {
     }
 
     const url = new URL(req.url);
-    const role = url.searchParams.get('role');
-    const status = url.searchParams.get('status');
+    const roleParam = url.searchParams.get('role');
+    const statusParam = url.searchParams.get('status');
     const search = sanitizeSearch(url.searchParams.get('search'));
-    if (role && !ROLES.includes(role as (typeof ROLES)[number])) {
-      return fail(400, 'VALIDATION_ERROR', 'Parameter role tidak valid');
+
+    let roles: (typeof ROLES)[number][] | null = null;
+    if (roleParam !== null && roleParam.trim() !== '') {
+      const parsed = Array.from(
+        new Set(
+          roleParam
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        )
+      );
+      if (parsed.length === 0 || parsed.some((r) => !ROLES.includes(r as (typeof ROLES)[number]))) {
+        return fail(400, 'VALIDATION_ERROR', 'Parameter role tidak valid');
+      }
+      roles = parsed as (typeof ROLES)[number][];
     }
-    if (status && !STATUSES.includes(status as (typeof STATUSES)[number])) {
-      return fail(400, 'VALIDATION_ERROR', 'Parameter status tidak valid');
+
+    let statuses: (typeof STATUSES)[number][] | null = null;
+    if (statusParam !== null && statusParam.trim() !== '') {
+      const parsed = Array.from(
+        new Set(
+          statusParam
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        )
+      );
+      if (parsed.length === 0 || parsed.some((s) => !STATUSES.includes(s as (typeof STATUSES)[number]))) {
+        return fail(400, 'VALIDATION_ERROR', 'Parameter status tidak valid');
+      }
+      statuses = parsed as (typeof STATUSES)[number][];
     }
+
     const { page, limit, from, to } = pageParams(url, 20);
 
     let query = supabaseAdmin
@@ -72,8 +99,13 @@ export async function GET(req: Request) {
       .neq('id', session.user.id)
       .order('created_at', { ascending: false })
       .range(from, to);
-    if (role) query = query.eq('role', role);
-    if (status) query = query.eq('status', status);
+
+    if (roles) {
+      query = roles.length === 1 ? query.eq('role', roles[0]) : query.in('role', roles);
+    }
+    if (statuses) {
+      query = statuses.length === 1 ? query.eq('status', statuses[0]) : query.in('status', statuses);
+    }
 
     if (search) {
       // Nama ada di 4 tabel profil berbeda: kumpulkan user_id yang cocok, lalu OR dengan email/no_wa
