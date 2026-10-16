@@ -378,7 +378,6 @@ export const useUserStore = create<UserState>()(
             localStorage.setItem("tb_access_token", token);
           }
           document.cookie = `tb_access_token=${token || "session-token"}; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `tb_user_role=${mappedRole}; path=/; max-age=604800; SameSite=Lax`;
           document.cookie = `tb_user_status=${sessionUser.status || "active"}; path=/; max-age=604800; SameSite=Lax`;
         }
       },
@@ -388,7 +387,7 @@ export const useUserStore = create<UserState>()(
         const matchToken = document.cookie.match(/tb_access_token=([^;]+)/);
         const matchRole = document.cookie.match(/tb_user_role=([^;]+)/);
         const token = matchToken ? matchToken[1] : null;
-        const cookieRoleRaw = matchRole ? matchRole[1] : null;
+        const cookieRoleRaw = matchRole ? matchRole[1].split('.')[0] : null;
 
         if (!token) {
           if (get().isAuthenticated) {

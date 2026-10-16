@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin, supabasePublic } from '@/lib/supabase/client';
 import { loginSchema } from '@/lib/validations/auth';
+import { signRole } from '@/lib/auth/role-cookie';
 
 export async function POST(req: Request) {
   try {
@@ -134,10 +135,12 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',
     });
-    response.cookies.set('tb_user_role', userProfile.role, {
+    response.cookies.set('tb_user_role', await signRole(userProfile.role), {
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
     });
     response.cookies.set('tb_user_status', userProfile.status, {
       path: '/',

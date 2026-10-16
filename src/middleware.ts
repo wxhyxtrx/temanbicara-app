@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { verifyRole } from '@/lib/auth/role-cookie';
 
 const AUTH_PAGES = ['/login', '/register', '/register/counselor', '/register/listener'];
 
@@ -12,11 +13,16 @@ const ROLE_DASHBOARDS: Record<string, string> = {
   admin: '/admin/beranda',
 };
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get('tb_access_token')?.value;
-  const userRole = req.cookies.get('tb_user_role')?.value || 'patient';
+  const rawRoleCookie = req.cookies.get('tb_user_role')?.value;
   const userStatus = req.cookies.get('tb_user_status')?.value || 'active';
+
+  // Verifikasi tanda tangan HMAC pada tb_user_role
+  // Jika tanda tangan tidak cocok atau cookie dimanipulasi di DevTools,
+  // anggap pengguna tidak login (redirect /login).
+  const verifiedRole = await verifyRole(rawRoleCookie);
 
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
   const isStatusPage =
@@ -35,15 +41,26 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/status', req.url));
   }
 
-  // 1. Pengunjung tanpa token dilarang mengakses modul dashboard privat & halaman status
-  if (!token && (isPrivatePortal || isStatusPage)) {
+  // Sesi valid HANYA jika ada access_token DAN tb_user_role memiliki tanda tangan HMAC yang sah
+  const hasValidAuth = Boolean(token && verifiedRole);
+
+  // 1. Pengunjung tanpa auth sah dilarang mengakses modul dashboard privat & halaman status
+  if (!hasValidAuth && (isPrivatePortal || isStatusPage)) {
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(loginUrl);
+    const res = NextResponse.redirect(loginUrl);
+
+    // Jika ada token/cookie tidak valid (mis. role dimanipulasi), bersihkan cookie
+    if (token || rawRoleCookie) {
+      res.cookies.delete('tb_access_token');
+      res.cookies.delete('tb_user_role');
+      res.cookies.delete('tb_user_status');
+    }
+    return res;
   }
 
   // 2. User terautentikasi tetapi status akun BELUM AKTIF
-  if (token && userStatus !== 'active') {
+  if (hasValidAuth && userStatus !== 'active') {
     // Izinkan akses ke /status, landing page (/), dan pusat bantuan
     if (isStatusPage || pathname === '/' || pathname.startsWith('/help-center')) {
       return NextResponse.next();
@@ -56,7 +73,8 @@ export function middleware(req: NextRequest) {
   }
 
   // 3. User terautentikasi dengan status AKTIF
-  if (token && userStatus === 'active') {
+  if (hasValidAuth && userStatus === 'active') {
+    const userRole = verifiedRole!;
     const defaultDashboard = ROLE_DASHBOARDS[userRole] || '/patient/beranda';
 
     // Akun aktif tidak memerlukan halaman status lagi
@@ -69,7 +87,7 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL(defaultDashboard, req.url));
     }
 
-    // Isolasi modul privat antar-role
+    // Isolasi modul privat antar-role (berbasis verified role yang telah ditandatangani secara kriptografis)
     if (isPrivatePortal) {
       const normalizedRole = userRole.toLowerCase();
       const isPatientPortal = pathname.startsWith('/patient');

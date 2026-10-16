@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import { signRole } from '@/lib/auth/role-cookie';
 
 export async function GET(req: Request) {
   const requestUrl = new URL(req.url);
@@ -64,10 +65,14 @@ export async function GET(req: Request) {
 
     const authUser = sessionData.user;
     const accessToken = sessionData.session.access_token;
-    const withSessionCookies = (res: NextResponse, role: string, status: string) => {
+    const withSessionCookies = async (res: NextResponse, role: string, status: string) => {
       const opts = { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' as const };
       res.cookies.set('tb_access_token', accessToken, opts);
-      res.cookies.set('tb_user_role', role, opts);
+      res.cookies.set('tb_user_role', await signRole(role), {
+        ...opts,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+      });
       res.cookies.set('tb_user_status', status, opts);
       return res;
     };
@@ -91,7 +96,7 @@ export async function GET(req: Request) {
     if (existingUser) {
       // Akun ditangguhkan / ditolak: tetap pasang session, middleware membatasi ke /status
       if (existingUser.status === 'suspended' || existingUser.status === 'rejected') {
-        return withSessionCookies(
+        return await withSessionCookies(
           NextResponse.redirect(`${origin}/status`),
           existingUser.role,
           existingUser.status
@@ -129,7 +134,7 @@ export async function GET(req: Request) {
           ? '/listener/beranda'
           : '/patient/beranda';
 
-      return withSessionCookies(
+      return await withSessionCookies(
         NextResponse.redirect(`${origin}${redirectPath}`),
         existingUser.role,
         existingUser.status
@@ -181,7 +186,7 @@ export async function GET(req: Request) {
     });
     if (profileError) return failNewUser(profileError);
 
-    return withSessionCookies(NextResponse.redirect(`${origin}/patient/beranda`), 'pasien', 'active');
+    return await withSessionCookies(NextResponse.redirect(`${origin}/patient/beranda`), 'pasien', 'active');
   } catch (err: unknown) {
     console.error('[OAUTH INTERNAL ERROR]:', err);
     return NextResponse.redirect(`${origin}/login?error=OAUTH_INTERNAL_ERROR`);

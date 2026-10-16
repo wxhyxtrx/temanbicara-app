@@ -17,6 +17,7 @@ export async function POST() {
     maxAge: 0,
     expires: new Date(0),
     sameSite: 'lax',
+    httpOnly: true,
   });
   response.cookies.set('tb_user_status', '', {
     path: '/',

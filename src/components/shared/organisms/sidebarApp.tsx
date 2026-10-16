@@ -84,6 +84,7 @@ export function AppSidebar() {
     if (mounted && typeof document !== "undefined") {
       const match = document.cookie.match(/tb_user_role=([^;]+)/);
       if (match && match[1]) {
+        const rawRole = match[1].split('.')[0];
         const roleMap: Record<string, UserRole> = {
           pasien: "patient",
           patient: "patient",
@@ -93,8 +94,8 @@ export function AppSidebar() {
           counselor: "counselor",
           admin: "admin",
         };
-        if (roleMap[match[1]]) {
-          return roleMap[match[1]];
+        if (roleMap[rawRole]) {
+          return roleMap[rawRole];
         }
       }
     }
