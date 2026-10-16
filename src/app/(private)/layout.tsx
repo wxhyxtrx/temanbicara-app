@@ -12,6 +12,7 @@ import { NotificationDropdown } from "@/components/shared/organisms/notification
 import { ThemeToggle } from "@/components/shared/atoms/theme-toggle";
 import { GlobalToastListener } from "@/components/shared/global-toast-listener";
 import { Skeleton } from "@/components/ui/skeleton";
+import { mockUsers } from "@/constant/mock-users";
 
 export default function PrivateLayouts({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -28,9 +29,28 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
   const currentRole: UserRole = mounted && user?.role ? user.role : "patient";
   const menuConfig = getMenuItemsByRole(currentRole);
 
+  const defaultFallbackUser = mockUsers[currentRole] || mockUsers.patient;
+
   const displayName = mounted
-    ? user.fullName || "Pengguna TemanBicara"
-    : "Wahyu Tricahyo";
+    ? user.fullName || defaultFallbackUser.fullName
+    : defaultFallbackUser.fullName;
+  const displayInitials = mounted
+    ? user.avatarInitials || defaultFallbackUser.avatarInitials
+    : defaultFallbackUser.avatarInitials;
+
+  const getAvatarBgClass = () => {
+    switch (currentRole) {
+      case "counselor":
+        return "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800";
+      case "peer_listener":
+        return "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800";
+      case "admin":
+        return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800";
+      case "patient":
+      default:
+        return "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:border-teal-800";
+    }
+  };
 
   const getPageTitle = () => {
     const allMenuItems = [...menuConfig.mainItems, ...menuConfig.utilityItems];
@@ -109,18 +129,28 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
             {/* Theme Toggle Button */}
             <ThemeToggle />
 
-            <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+            <div className="hidden sm:flex items-center pl-2 border-l border-slate-200 dark:border-slate-800">
               {!mounted || !isProfileLoaded ? (
-                <div className="flex flex-col items-end gap-1.5 py-0.5">
-                  <Skeleton className="h-3.5 w-24 rounded" />
-                  <Skeleton className="h-3 w-16 rounded" />
+                <div className="flex items-center gap-2.5 h-8">
+                  <div className="flex flex-col items-end gap-1.5 py-0.5">
+                    <Skeleton className="h-3.5 w-24 rounded" />
+                    <Skeleton className="h-3 w-16 rounded" />
+                  </div>
+                  <Skeleton className="w-8 h-8 rounded-full shrink-0" />
                 </div>
               ) : (
-                <div className="flex flex-col text-right">
-                  <span className="text-xs font-semibold text-slate-800 dark:text-white leading-tight">
-                    {displayName}
-                  </span>
-                  {renderRoleBadge()}
+                <div className="flex items-center gap-2.5 h-8">
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs font-semibold text-slate-800 dark:text-white leading-tight">
+                      {displayName}
+                    </span>
+                    {renderRoleBadge()}
+                  </div>
+                  <div
+                    className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center border shrink-0 font-heading shadow-2xs ${getAvatarBgClass()}`}
+                  >
+                    {displayInitials}
+                  </div>
                 </div>
               )}
             </div>

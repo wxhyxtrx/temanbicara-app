@@ -239,7 +239,7 @@ export function AppSidebar() {
         {/* 2. User Profile Card with Dynamic Role */}
         <SidebarGroup className="p-0">
           {!mounted || !isProfileLoaded ? (
-            <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60">
+            <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 h-[66px]">
               <div className="flex items-center gap-3 min-w-0">
                 <Skeleton className="w-10 h-10 rounded-full shrink-0" />
                 <div className="min-w-0 space-y-1.5">
@@ -247,12 +247,13 @@ export function AppSidebar() {
                   <Skeleton className="h-3 w-20 rounded" />
                 </div>
               </div>
+              <ChevronRight size={14} className="text-slate-300 dark:text-slate-700 shrink-0 opacity-40" />
             </div>
           ) : (
             <Link
               href={getSettingsUrl()}
               onClick={handleNavClick}
-              className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 hover:bg-teal-50/50 dark:hover:bg-slate-800 hover:border-teal-200 dark:hover:border-teal-700 transition-all duration-150 group"
+              className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 hover:bg-teal-50/50 dark:hover:bg-slate-800 hover:border-teal-200 dark:hover:border-teal-700 transition-all duration-150 group h-[66px]"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div

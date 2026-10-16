@@ -33,6 +33,7 @@ import { useScheduleStore } from "@/store/schedule-store";
 import { usePeerVentStore } from "@/store/peer-vent-store";
 import { VentingModalForm } from "@/components/views/patient/venting-modal-form";
 import { PsychologistProfileModal } from "@/components/views/patient/psychologist-profile-modal";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
 
 export default function PatientBerandaPage() {
@@ -134,7 +135,7 @@ export default function PatientBerandaPage() {
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white tracking-tight leading-snug">
               Selamat Datang,{" "}
               {!isProfileLoaded ? (
-                <span className="inline-block w-36 h-7 align-middle bg-teal-800/80 rounded animate-pulse" />
+                <Skeleton className="inline-block w-40 sm:w-48 h-8 sm:h-9 md:h-10 align-middle bg-teal-800/70 rounded-xl" />
               ) : (
                 displayName
               )}
