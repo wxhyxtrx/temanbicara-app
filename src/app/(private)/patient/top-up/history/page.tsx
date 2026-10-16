@@ -808,27 +808,21 @@ export default function PatientTransactionHistoryPage() {
       {/* 2. Main Tabs View */}
       <Tabs defaultValue="topup" className="w-full space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
-          <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl h-auto">
-            <TabsTrigger
-              value="topup"
-              className="rounded-lg px-4 py-2 text-xs sm:text-sm font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-teal-800 dark:data-[state=active]:text-teal-300 gap-2 cursor-pointer"
-            >
+          <TabsList>
+            <TabsTrigger value="topup" className="cursor-pointer">
               <CreditCard size={15} />
               <span>Riwayat Top-Up</span>
               {topupMeta.total > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-mono">
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-black/10 dark:bg-white/20 font-mono">
                   {topupMeta.total}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger
-              value="mutasi"
-              className="rounded-lg px-4 py-2 text-xs sm:text-sm font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-teal-800 dark:data-[state=active]:text-teal-300 gap-2 cursor-pointer"
-            >
+            <TabsTrigger value="mutasi" className="cursor-pointer">
               <FileText size={15} />
               <span>Mutasi Koin</span>
               {meta.total > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-mono">
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-black/10 dark:bg-white/20 font-mono">
                   {meta.total}
                 </span>
               )}
