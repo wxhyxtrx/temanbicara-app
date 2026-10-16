@@ -31,7 +31,7 @@ import { CreateUserModal } from "@/components/views/admin/create-user-modal";
 import { DeleteUserDialog } from "@/components/views/admin/delete-user-dialog";
 import { useUserStore } from "@/store/user-store";
 import type { AdminUserRow, ApiAccountStatus, ApiRole } from "@/types/user-profile";
-import { Tables, Column } from "@/components/shared/atoms/Table";
+import { DataTable, Column } from "@/components/shared/atoms/Table";
 
 const statusBadgeConfig: Record<
   ApiAccountStatus,
@@ -109,6 +109,8 @@ function AdminUsersContent() {
 
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [verificationSubFilter, setVerificationSubFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
@@ -122,11 +124,17 @@ function AdminUsersContent() {
   const [deleteTargetUser, setDeleteTargetUser] = useState<AdminUserRow | null>(null);
 
   const handleTabChange = (tab: "all" | "verifications") => {
+    setPage(1);
     if (tab === "verifications") {
       router.replace("/admin/users?tab=verifications");
     } else {
       router.replace("/admin/users");
     }
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
   };
 
   const fetchUsers = useCallback(async () => {
@@ -411,7 +419,10 @@ function AdminUsersContent() {
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setVerificationSubFilter(tab.key as any)}
+                onClick={() => {
+                  setVerificationSubFilter(tab.key as any);
+                  setPage(1);
+                }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   verificationSubFilter === tab.key
                     ? "bg-teal-600 text-white shadow-xs"
@@ -434,7 +445,10 @@ function AdminUsersContent() {
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setRoleFilter(tab.key)}
+                onClick={() => {
+                  setRoleFilter(tab.key);
+                  setPage(1);
+                }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   roleFilter === tab.key
                     ? "bg-teal-600 text-white shadow-xs"
@@ -452,7 +466,13 @@ function AdminUsersContent() {
           {activeTab === "all" && (
             <div className="w-full sm:w-44 flex items-center gap-1.5">
               <Filter size={14} className="text-slate-400 shrink-0" />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select
+                value={statusFilter}
+                onValueChange={(val) => {
+                  setStatusFilter(val);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger className="h-9 text-xs bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl">
                   <SelectValue placeholder="Filter Status" />
                 </SelectTrigger>
@@ -473,7 +493,13 @@ function AdminUsersContent() {
           {activeTab === "verifications" && (
             <div className="w-full sm:w-44 flex items-center gap-1.5">
               <Filter size={14} className="text-slate-400 shrink-0" />
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <Select
+                value={roleFilter}
+                onValueChange={(val) => {
+                  setRoleFilter(val);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger className="h-9 text-xs bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl">
                   <SelectValue placeholder="Filter Jenis Mitra" />
                 </SelectTrigger>
@@ -491,7 +517,10 @@ function AdminUsersContent() {
             <Input
               placeholder={activeTab === "verifications" ? "Cari nama / SIPPK..." : "Cari nama, email, WA..."}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="h-9 pl-8 text-xs bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl"
             />
           </div>
@@ -499,10 +528,17 @@ function AdminUsersContent() {
       </div>
 
       {/* 4. Table */}
-      <Tables
+      <DataTable
         columns={columns}
         data={users}
         isLoading={loading}
+        currentPage={page}
+        itemsPerPage={limit}
+        totalItems={users.length}
+        autoPaginate={true}
+        onPageChange={setPage}
+        onChangeDisplayed={handleLimitChange}
+        pageSizeList={[10, 20, 50]}
         emptyTitle={activeTab === "verifications" ? "Tidak ada permohonan verifikasi" : "Tidak ada pengguna yang sesuai"}
         emptyDescription={
           activeTab === "verifications"
