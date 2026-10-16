@@ -15,8 +15,12 @@ export const fail = (status: number, error: string, message: string) =>
 
 // Token dari cookie tb_access_token atau header Authorization: Bearer <token>
 async function readToken(): Promise<string | null> {
-  const bearer = (await headers()).get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1];
-  return bearer || (await cookies()).get('tb_access_token')?.value || null;
+  try {
+    const bearer = (await headers()).get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1];
+    return bearer || (await cookies()).get('tb_access_token')?.value || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
