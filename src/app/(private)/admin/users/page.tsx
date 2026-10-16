@@ -140,61 +140,107 @@ function AdminUsersContent() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      let apiRole: ApiRole | undefined;
-      let apiStatus: ApiAccountStatus | undefined;
-
-      if (activeTab === "verifications") {
-        // Verification tab focuses on partners (psikolog & relawan)
-        if (roleFilter !== "all" && (roleFilter === "psikolog" || roleFilter === "relawan")) {
-          apiRole = roleFilter as ApiRole;
+      // 1. Ambil badge jumlah pending dari GET /api/admin/stats (mitra_verification.pending_count)
+      try {
+        const statsRes = await userService.getAdminStats();
+        if (statsRes.success && statsRes.data) {
+          setPendingMitraCount(statsRes.data.mitra_verification.pending_count);
         }
-
-        if (verificationSubFilter === "pending") {
-          apiStatus = "pending_verification";
-        } else if (verificationSubFilter === "approved") {
-          apiStatus = "active";
-        } else if (verificationSubFilter === "rejected") {
-          apiStatus = "rejected";
-        }
-      } else {
-        apiRole = roleFilter === "all" ? undefined : (roleFilter as ApiRole);
-        apiStatus = statusFilter === "all" ? undefined : (statusFilter as ApiAccountStatus);
+      } catch {
+        // Abaikan error background stats
       }
 
-      const res = await userService.getAdminUsers({
-        role: apiRole,
-        status: apiStatus,
-        search: search.trim() || undefined,
-        limit: 100,
-      });
+      // 2. Ambil data pengguna sesuai tab dan filter
+      if (activeTab === "verifications" && verificationSubFilter === "pending") {
+        if (roleFilter === "psikolog") {
+          const res = await userService.getAdminUsers({
+            role: "psikolog",
+            status: "pending_verification",
+            search: search.trim() || undefined,
+            limit: 100,
+          });
+          const list = (res.success && Array.isArray(res.data) ? res.data : []).filter(
+            (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
+          );
+          setUsers(list);
+          setTotal(list.length);
+        } else if (roleFilter === "relawan") {
+          const res = await userService.getAdminUsers({
+            role: "relawan",
+            status: "pending_approval",
+            search: search.trim() || undefined,
+            limit: 100,
+          });
+          const list = (res.success && Array.isArray(res.data) ? res.data : []).filter(
+            (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
+          );
+          setUsers(list);
+          setTotal(list.length);
+        } else {
+          // Semua Mitra: psikolog pending_verification + relawan pending_approval
+          const [psiRes, relRes] = await Promise.all([
+            userService.getAdminUsers({
+              role: "psikolog",
+              status: "pending_verification",
+              search: search.trim() || undefined,
+              limit: 100,
+            }),
+            userService.getAdminUsers({
+              role: "relawan",
+              status: "pending_approval",
+              search: search.trim() || undefined,
+              limit: 100,
+            }),
+          ]);
 
-      if (res && res.success && Array.isArray(res.data)) {
-        let filtered = res.data.filter(
-          (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
-        );
+          const psiList = psiRes.success && Array.isArray(psiRes.data) ? psiRes.data : [];
+          const relList = relRes.success && Array.isArray(relRes.data) ? relRes.data : [];
+          const merged = [...psiList, ...relList].filter(
+            (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
+          );
+          setUsers(merged);
+          setTotal(merged.length);
+        }
+      } else {
+        let apiRole: ApiRole | undefined;
+        let apiStatus: ApiAccountStatus | undefined;
 
         if (activeTab === "verifications") {
-          // Keep only psikolog & relawan
-          filtered = filtered.filter((u) => u.role === "psikolog" || u.role === "relawan");
+          if (roleFilter === "psikolog" || roleFilter === "relawan") {
+            apiRole = roleFilter as ApiRole;
+          }
+          if (verificationSubFilter === "approved") {
+            apiStatus = "active";
+          } else if (verificationSubFilter === "rejected") {
+            apiStatus = "rejected";
+          }
+        } else {
+          apiRole = roleFilter === "all" ? undefined : (roleFilter as ApiRole);
+          apiStatus = statusFilter === "all" ? undefined : (statusFilter as ApiAccountStatus);
         }
 
-        setUsers(filtered);
-        setTotal(filtered.length);
-      } else {
-        setUsers([]);
-        setTotal(0);
-      }
+        const res = await userService.getAdminUsers({
+          role: apiRole,
+          status: apiStatus,
+          search: search.trim() || undefined,
+          limit: 100,
+        });
 
-      // Check pending count for badge indicator
-      const countRes = await userService.getAdminUsers({
-        status: "pending_verification",
-        limit: 100,
-      });
-      if (countRes && countRes.success && Array.isArray(countRes.data)) {
-        const pendingCount = countRes.data.filter(
-          (u) => u.role === "psikolog" || u.role === "relawan"
-        ).length;
-        setPendingMitraCount(pendingCount);
+        if (res && res.success && Array.isArray(res.data)) {
+          let filtered = res.data.filter(
+            (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
+          );
+
+          if (activeTab === "verifications") {
+            filtered = filtered.filter((u) => u.role === "psikolog" || u.role === "relawan");
+          }
+
+          setUsers(filtered);
+          setTotal(filtered.length);
+        } else {
+          setUsers([]);
+          setTotal(0);
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
