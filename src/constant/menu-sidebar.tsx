@@ -159,6 +159,12 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
     ],
     utilityItems: [
       {
+        title: "Honor & Payout",
+        description: "Pencairan dana & riwayat payout",
+        url: "/listener/earnings",
+        icon: Wallet,
+      },
+      {
         title: "Panduan PFA",
         description: "Etika pendengar & eskalasi 119",
         url: "/listener/guidelines",
