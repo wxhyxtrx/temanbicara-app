@@ -301,14 +301,14 @@ export default function PatientTopUpPage() {
           <Link href="/patient/top-up/history">
             <Button
               variant="outline"
-              className="text-xs border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-3.5 py-2 h-9 font-semibold gap-1.5 cursor-pointer"
+              className="text-xs sm:text-sm border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-4 h-12 font-semibold gap-2 cursor-pointer"
             >
               <FileText size={14} className="text-teal-600 dark:text-teal-400" />
               <span>Mutasi & Riwayat</span>
             </Button>
           </Link>
 
-          <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 shadow-2xs">
+          <div className="flex items-center gap-2.5 px-4 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 shadow-2xs">
             <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0">
               <Coins size={16} />
             </div>
