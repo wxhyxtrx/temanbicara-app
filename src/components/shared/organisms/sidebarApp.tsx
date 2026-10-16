@@ -104,6 +104,21 @@ export function AppSidebar() {
   const currentRole = getEffectiveRole();
   const menuConfig = getMenuItemsByRole(currentRole);
 
+  const activeUrl = React.useMemo(() => {
+    if (!pathname) return null;
+    const currentPath = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+    const allNavItems = [...menuConfig.mainItems, ...menuConfig.utilityItems];
+    return allNavItems
+      .filter((item) => {
+        const itemPath = item.url.length > 1 && item.url.endsWith("/") ? item.url.slice(0, -1) : item.url;
+        return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
+      })
+      .reduce<string | null>((longest, item) => {
+        if (!longest) return item.url;
+        return item.url.length > longest.length ? item.url : longest;
+      }, null);
+  }, [menuConfig, pathname]);
+
   const defaultFallbackUser = mockUsers[currentRole] || mockUsers.patient;
 
   const displayName = mounted
@@ -266,7 +281,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {menuConfig.mainItems.map((item) => {
-                const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
+                const isActive = item.url === activeUrl;
                 const Icon = item.icon;
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -327,7 +342,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {menuConfig.utilityItems.map((item) => {
-                const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
+                const isActive = item.url === activeUrl;
                 const Icon = item.icon;
                 return (
                   <SidebarMenuItem key={item.title}>
