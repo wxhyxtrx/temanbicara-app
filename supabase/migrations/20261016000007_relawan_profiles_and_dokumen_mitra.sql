@@ -3,6 +3,7 @@
 -- Eksekusi file ini di: Supabase Dashboard -> SQL Editor -> New Query -> Run
 -- Scope:
 -- 1. Tambah kolom relawan_profiles: alias_name, is_available, topik_keahlian, rating_rata_rata
+-- 2. Update storage.buckets 'dokumen-mitra' (hanya PDF, maks 5 MB)
 -- ========================================================
 
 -- 1. ALTER TABLE relawan_profiles
@@ -16,3 +17,9 @@ COMMENT ON COLUMN public.relawan_profiles.alias_name IS 'Nama samaran publik rel
 COMMENT ON COLUMN public.relawan_profiles.is_available IS 'Status ketersediaan relawan untuk menerima sesi konsultasi';
 COMMENT ON COLUMN public.relawan_profiles.topik_keahlian IS 'Daftar topik curhat / keahlian yang dapat ditangani relawan';
 COMMENT ON COLUMN public.relawan_profiles.rating_rata_rata IS 'Rata-rata rating relawan (maksimal 5.00)';
+
+-- 2. UPDATE storage.buckets
+UPDATE storage.buckets
+SET allowed_mime_types = '{application/pdf}',
+    file_size_limit = 5242880
+WHERE id = 'dokumen-mitra';
