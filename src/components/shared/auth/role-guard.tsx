@@ -56,28 +56,7 @@ export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     );
   }
 
-  // Deteksi jika sesi cookie server sudah berganti tetapi store client belum selesai rehydrate
-  let effectiveRole = user.role;
-  if (typeof document !== "undefined") {
-    const cookieMatch = document.cookie.match(/tb_user_role=([^;]+)/);
-    if (cookieMatch && cookieMatch[1]) {
-      const roleMap: Record<string, UserRole> = {
-        pasien: "patient",
-        patient: "patient",
-        relawan: "peer_listener",
-        peer_listener: "peer_listener",
-        psikolog: "counselor",
-        counselor: "counselor",
-        admin: "admin",
-      };
-      const cookieMapped = roleMap[cookieMatch[1]];
-      if (cookieMapped && allowedRoles.includes(cookieMapped)) {
-        effectiveRole = cookieMapped;
-      }
-    }
-  }
-
-  const isAuthorized = allowedRoles.includes(effectiveRole);
+  const isAuthorized = allowedRoles.includes(user.role);
 
   if (!isAuthorized) {
     const userRoleName = roleNames[user.role] || user.role;
