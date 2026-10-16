@@ -88,6 +88,7 @@ export function UserDetailModal({
   const [topupSummary, setTopupSummary] = useState<PatientTopupSummary | null>(null);
   const [payoutSummary, setPayoutSummary] = useState<MitraPayoutSummary | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const [dokumenSignedUrl, setDokumenSignedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -101,6 +102,7 @@ export function UserDetailModal({
       setLoadingProfile(true);
       setDetailedUser(null);
       setDetailedProfile(null);
+      setDokumenSignedUrl(null);
       setWallet(null);
       setTopupSummary(null);
       setPayoutSummary(null);
@@ -108,6 +110,7 @@ export function UserDetailModal({
         .getUserById(user.id)
         .then((res) => {
           if (res.success && res.data) {
+            setDokumenSignedUrl(res.data.dokumen_signed_url ?? null);
             setDetailedProfile(res.data.profile as Record<string, unknown> | null);
             if (res.data.user) {
               setDetailedUser(res.data.user);
@@ -125,6 +128,7 @@ export function UserDetailModal({
         })
         .catch(() => {
           // Fallback gracefully to list row profile
+          setDokumenSignedUrl(null);
           setDetailedProfile(null);
           setDetailedUser(null);
           setWallet(null);
@@ -135,6 +139,7 @@ export function UserDetailModal({
           setLoadingProfile(false);
         });
     } else {
+      setDokumenSignedUrl(null);
       setDetailedProfile(null);
       setDetailedUser(null);
       setWallet(null);
@@ -180,10 +185,7 @@ export function UserDetailModal({
     setUpdating(true);
     try {
       if (action === "approve") {
-        const docUrl =
-          user.role === "psikolog"
-            ? (psikologProf?.dokumen_sipp_str_url || (user as unknown as { dokumen_sipp_str_url?: string }).dokumen_sipp_str_url)
-            : (relawanProf?.dokumen_cv_url || (user as unknown as { dokumen_cv_url?: string }).dokumen_cv_url);
+        const docUrl = dokumenSignedUrl;
         if (isMitra && !docUrl && typeof window !== "undefined") {
           const confirmApprove = window.confirm(
             "Peringatan: Berkas dokumen lisensi belum terlampir. Yakin ingin tetap menyetujui dan mengaktifkan akun mitra ini?"
@@ -538,11 +540,7 @@ export function UserDetailModal({
                 <Skeleton className="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700" />
               ) : (
                 <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-[11px]">
-                  {verifiedAt
-                    ? formatWIB(verifiedAt)
-                    : isMitra
-                      ? (activeUser.status === "active" ? "Terverifikasi" : "Belum diverifikasi")
-                      : "—"}
+                  {verifiedAt ? formatWIB(verifiedAt) : "-"}
                 </span>
               )}
             </div>
@@ -622,6 +620,22 @@ export function UserDetailModal({
                   {/* Relawan Fields */}
                   {activeUser.role === "relawan" && (
                     <div className="space-y-2 text-[11px]">
+                      {relawanProf?.topik_keahlian && relawanProf.topik_keahlian.length > 0 && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-slate-500 dark:text-slate-400 shrink-0">Topik Keahlian</span>
+                          <div className="flex flex-wrap items-center justify-end gap-1 text-right">
+                            {relawanProf.topik_keahlian.map((t, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 text-teal-800 dark:text-teal-300 border border-teal-200/60 text-[10px] font-medium"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {relawanProf?.latar_belakang && (
                         <div className="space-y-0.5">
                           <span className="text-slate-500 dark:text-slate-400 block">Latar Belakang:</span>
@@ -646,11 +660,7 @@ export function UserDetailModal({
                   <UserDocumentPreviewAccordion
                     role={activeUser.role}
                     userName={activeUser.fullName || activeUser.email}
-                    documentUrl={
-                      activeUser.role === "psikolog"
-                        ? (psikologProf?.dokumen_sipp_str_url || (activeUser as unknown as { dokumen_sipp_str_url?: string }).dokumen_sipp_str_url)
-                        : (relawanProf?.dokumen_cv_url || (activeUser as unknown as { dokumen_cv_url?: string }).dokumen_cv_url)
-                    }
+                    documentUrl={dokumenSignedUrl}
                     licenseNumber={activeUser.role === "psikolog" ? psikologProf?.nomor_sipp_str : undefined}
                     isLoading={loadingProfile}
                   />

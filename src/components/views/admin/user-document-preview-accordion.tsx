@@ -25,7 +25,7 @@ interface UserDocumentPreviewAccordionProps {
 }
 
 /**
- * Normalisasi URL dokumen: mendukung URL langsung, Supabase storage path, atau data URI
+ * Normalisasi URL dokumen: mendukung URL langsung (signed URL) atau data/blob URI
  */
 function getResolvedDocUrl(rawUrl?: string | null): string | null {
   if (!rawUrl || typeof rawUrl !== "string") return null;
@@ -41,16 +41,7 @@ function getResolvedDocUrl(rawUrl?: string | null): string | null {
     return trimmed;
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  if (supabaseUrl) {
-    const cleanPath = trimmed.replace(/^\/+/, "");
-    if (cleanPath.startsWith("storage/v1/object/public/")) {
-      return `${supabaseUrl}/${cleanPath}`;
-    }
-    return `${supabaseUrl}/storage/v1/object/public/dokumen-mitra/${cleanPath}`;
-  }
-
-  return trimmed;
+  return null;
 }
 
 export function UserDocumentPreviewAccordion({
@@ -149,7 +140,7 @@ export function UserDocumentPreviewAccordion({
               </Badge>
             ) : (
               <Badge className="text-[10px] bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 shrink-0 font-semibold">
-                Belum Diunggah
+                Tidak Tersedia
               </Badge>
             )}
             <ChevronDown
@@ -257,16 +248,16 @@ export function UserDocumentPreviewAccordion({
                 </div>
               </div>
             ) : (
-              /* State saat berkas belum diunggah */
+              /* State saat berkas tidak tersedia */
               <div className="p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30 space-y-2">
                 <div className="flex items-start gap-2">
                   <AlertTriangle size={15} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <p className="text-xs font-bold text-rose-900 dark:text-rose-200">
-                      Dokumen {docTypeLabel} Belum Diunggah
+                      Dokumen {docTypeLabel} Tidak Tersedia
                     </p>
                     <p className="text-[11px] text-rose-800/80 dark:text-rose-300/80 leading-relaxed">
-                      Pendaftar belum melampirkan berkas fisik {docTypeLabel}. Lampiran dokumen asli merupakan salah satu <strong>syarat wajib approval</strong> akun mitra.
+                      Dokumen fisik {docTypeLabel} tidak tersedia atau belum dilampirkan. Lampiran dokumen asli merupakan salah satu <strong>syarat wajib approval</strong> akun mitra.
                     </p>
                   </div>
                 </div>
