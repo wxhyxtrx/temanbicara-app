@@ -53,7 +53,9 @@ export function AppSidebar() {
       walletClient
         .getWalletMe()
         .then((data) => setPatientCoins(data.coin_balance))
-        .catch(() => {});
+        .catch(() => {
+          setPatientCoins(0);
+        });
     }
   }, [user?.role]);
 
@@ -96,7 +98,6 @@ export function AppSidebar() {
   const displayInitials = mounted
     ? user.avatarInitials || defaultFallbackUser.avatarInitials
     : defaultFallbackUser.avatarInitials;
-  const displayCoins = patientCoins !== null ? patientCoins : (mounted ? user.coins || 0 : defaultFallbackUser.coins);
 
   // Handler auto-close sidebar pada mobile dan tablet (< 1024px)
   const handleNavClick = () => {
@@ -422,9 +423,13 @@ export function AppSidebar() {
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
                   Saldo Konseling
                 </span>
-                <span className="text-xs sm:text-sm font-bold text-teal-800 dark:text-teal-300 font-heading truncate">
-                  {displayCoins} Koin
-                </span>
+                {patientCoins === null ? (
+                  <Skeleton className="h-4 w-16 rounded mt-0.5" />
+                ) : (
+                  <span className="text-xs sm:text-sm font-bold text-teal-800 dark:text-teal-300 font-heading truncate">
+                    {patientCoins} Koin
+                  </span>
+                )}
               </div>
             </Link>
 
