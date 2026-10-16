@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail, pageParams, sanitizeSearch } from '@/lib/auth/session';
+import {
+  adminCreatePsikologSchema,
+  adminCreateRelawanSchema,
+  adminCreatePasienSchema,
+  adminCreateAdminSchema,
+} from '@/lib/validations/auth';
 
 const ROLES = ['pasien', 'relawan', 'psikolog', 'admin'] as const;
 const STATUSES = [
@@ -144,49 +150,127 @@ export async function POST(req: Request) {
       return fail(400, 'INVALID_BODY', 'Body request tidak valid');
     }
 
-    const {
-      email,
-      password,
-      role,
-      fullName,
-      nama_lengkap,
-      no_wa,
-      status = 'active',
-      level,
-      nomor_sipp_str,
-      spesialisasi,
-      tarif_sesi,
-      dokumen_sipp_str_url,
-      dokumen_cv_url,
-      latar_belakang,
-      alasan_bergabung,
-      tahun_pengalaman,
-    } = body;
-
-    const finalName = (fullName || nama_lengkap || '').trim();
-
-    // Validasi dasar
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
-      return fail(400, 'VALIDATION_ERROR', 'Format email tidak valid');
-    }
-    if (!password || typeof password !== 'string' || password.length < 6) {
-      return fail(400, 'VALIDATION_ERROR', 'Password minimal 6 karakter');
-    }
+    const role = body.role;
     if (!role || !ROLES.includes(role as (typeof ROLES)[number])) {
-      return fail(400, 'VALIDATION_ERROR', 'Peran (role) pengguna tidak valid');
+      return fail(422, 'VALIDATION_ERROR', 'Peran (role) pengguna tidak valid');
     }
-    if (!finalName) {
-      return fail(400, 'VALIDATION_ERROR', 'Nama lengkap wajib diisi');
-    }
+
+    const status = body.status ?? 'active';
     if (status && !STATUSES.includes(status as (typeof STATUSES)[number])) {
-      return fail(400, 'VALIDATION_ERROR', 'Status akun tidak valid');
+      return fail(422, 'VALIDATION_ERROR', 'Status akun tidak valid');
+    }
+
+    // Validasi ketat berbasis schema Zod per peran (samakan dengan registrasi, password min 8)
+    let validatedEmail = '';
+    let validatedPassword = '';
+    let validatedNoWa = '';
+    let finalFullName = '';
+
+    let pasienData: { nama_lengkap: string } | null = null;
+    let relawanData: {
+      nama_lengkap: string;
+      latar_belakang: string;
+      dokumen_cv_url: string;
+      alasan_bergabung: string;
+    } | null = null;
+    let psikologData: {
+      nama_lengkap_gelar: string;
+      nomor_sipp_str: string;
+      dokumen_sipp_str_url: string;
+      spesialisasi: string[];
+      tahun_pengalaman: number;
+      tarif_sesi: number;
+    } | null = null;
+    let adminData: { nama_lengkap: string; level: string } | null = null;
+
+    if (role === 'psikolog') {
+      const parsed = adminCreatePsikologSchema.safeParse({
+        nama_lengkap_gelar: (body.nama_lengkap_gelar || body.fullName || body.nama_lengkap || '').trim(),
+        email: body.email ? String(body.email).trim().toLowerCase() : '',
+        no_wa: body.no_wa ? String(body.no_wa).trim() : '',
+        password: body.password,
+        nomor_sipp_str: body.nomor_sipp_str ? String(body.nomor_sipp_str).trim() : '',
+        dokumen_sipp_str_url: body.dokumen_sipp_str_url ? String(body.dokumen_sipp_str_url).trim() : '',
+        spesialisasi: body.spesialisasi,
+        tahun_pengalaman: body.tahun_pengalaman !== undefined ? Number(body.tahun_pengalaman) : undefined,
+        tarif_sesi: body.tarif_sesi !== undefined ? Number(body.tarif_sesi) : 0,
+      });
+
+      if (!parsed.success) {
+        const firstIssue = parsed.error.issues[0]?.message || 'Data psikolog tidak valid';
+        return fail(422, 'VALIDATION_ERROR', firstIssue);
+      }
+
+      validatedEmail = parsed.data.email;
+      validatedPassword = parsed.data.password;
+      validatedNoWa = parsed.data.no_wa;
+      finalFullName = parsed.data.nama_lengkap_gelar;
+      psikologData = parsed.data;
+    } else if (role === 'relawan') {
+      const parsed = adminCreateRelawanSchema.safeParse({
+        nama_lengkap: (body.nama_lengkap || body.fullName || '').trim(),
+        email: body.email ? String(body.email).trim().toLowerCase() : '',
+        no_wa: body.no_wa ? String(body.no_wa).trim() : '',
+        password: body.password,
+        latar_belakang: body.latar_belakang ? String(body.latar_belakang).trim() : '',
+        dokumen_cv_url: body.dokumen_cv_url ? String(body.dokumen_cv_url).trim() : '',
+        alasan_bergabung: body.alasan_bergabung ? String(body.alasan_bergabung).trim() : '',
+      });
+
+      if (!parsed.success) {
+        const firstIssue = parsed.error.issues[0]?.message || 'Data relawan tidak valid';
+        return fail(422, 'VALIDATION_ERROR', firstIssue);
+      }
+
+      validatedEmail = parsed.data.email;
+      validatedPassword = parsed.data.password;
+      validatedNoWa = parsed.data.no_wa;
+      finalFullName = parsed.data.nama_lengkap;
+      relawanData = parsed.data;
+    } else if (role === 'pasien') {
+      const parsed = adminCreatePasienSchema.safeParse({
+        nama_lengkap: (body.nama_lengkap || body.fullName || '').trim(),
+        email: body.email ? String(body.email).trim().toLowerCase() : '',
+        no_wa: body.no_wa ? String(body.no_wa).trim() : '',
+        password: body.password,
+      });
+
+      if (!parsed.success) {
+        const firstIssue = parsed.error.issues[0]?.message || 'Data pasien tidak valid';
+        return fail(422, 'VALIDATION_ERROR', firstIssue);
+      }
+
+      validatedEmail = parsed.data.email;
+      validatedPassword = parsed.data.password;
+      validatedNoWa = parsed.data.no_wa;
+      finalFullName = parsed.data.nama_lengkap;
+      pasienData = parsed.data;
+    } else if (role === 'admin') {
+      const parsed = adminCreateAdminSchema.safeParse({
+        nama_lengkap: (body.nama_lengkap || body.fullName || '').trim(),
+        email: body.email ? String(body.email).trim().toLowerCase() : '',
+        no_wa: body.no_wa ? String(body.no_wa).trim() : '',
+        password: body.password,
+        level: body.level || 'operator',
+      });
+
+      if (!parsed.success) {
+        const firstIssue = parsed.error.issues[0]?.message || 'Data admin tidak valid';
+        return fail(422, 'VALIDATION_ERROR', firstIssue);
+      }
+
+      validatedEmail = parsed.data.email;
+      validatedPassword = parsed.data.password;
+      validatedNoWa = parsed.data.no_wa;
+      finalFullName = parsed.data.nama_lengkap;
+      adminData = parsed.data;
     }
 
     // 1. Cek apakah email sudah terdaftar
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id')
-      .eq('email', email.trim().toLowerCase())
+      .eq('email', validatedEmail)
       .maybeSingle();
 
     if (existingUser) {
@@ -195,10 +279,10 @@ export async function POST(req: Request) {
 
     // 2. Buat akun di Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: email.trim().toLowerCase(),
-      password,
+      email: validatedEmail,
+      password: validatedPassword,
       email_confirm: true,
-      user_metadata: { role, full_name: finalName },
+      user_metadata: { role, full_name: finalFullName },
     });
 
     if (authError || !authData.user) {
@@ -210,8 +294,8 @@ export async function POST(req: Request) {
     // 3. Masukkan ke public.users
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: userId,
-      email: email.trim().toLowerCase(),
-      no_wa: no_wa ? String(no_wa).trim() : null,
+      email: validatedEmail,
+      no_wa: validatedNoWa,
       role,
       status,
       is_email_verified: true,
@@ -223,46 +307,46 @@ export async function POST(req: Request) {
       return fail(500, 'USER_INSERT_FAILED', userError.message);
     }
 
-    // 4. Masukkan ke tabel profil anak sesuai role
+    // 4. Masukkan ke tabel profil anak sesuai role (TANPA dummy fallback)
     let profileError: { message: string } | null = null;
 
-    if (role === 'pasien') {
+    if (role === 'pasien' && pasienData) {
       const { error: err } = await supabaseAdmin.from('pasien_profiles').insert({
         user_id: userId,
-        nama_lengkap: finalName,
+        nama_lengkap: pasienData.nama_lengkap,
       });
       profileError = err;
-    } else if (role === 'relawan') {
+    } else if (role === 'relawan' && relawanData) {
       const { error: err } = await supabaseAdmin.from('relawan_profiles').insert({
         user_id: userId,
-        nama_lengkap: finalName,
-        alias_name: finalName.split(' ')[0] || 'Relawan',
-        latar_belakang: latar_belakang || 'Didaftarkan oleh Admin',
-        dokumen_cv_url: dokumen_cv_url || '',
-        alasan_bergabung: alasan_bergabung || 'Akun Relawan Dibuat Admin',
+        nama_lengkap: relawanData.nama_lengkap,
+        alias_name: relawanData.nama_lengkap.split(' ')[0] || 'Relawan',
+        latar_belakang: relawanData.latar_belakang,
+        dokumen_cv_url: relawanData.dokumen_cv_url,
+        alasan_bergabung: relawanData.alasan_bergabung,
         total_sesi: 0,
         is_available: false,
         topik_keahlian: ['Dukungan Umum'],
       });
       profileError = err;
-    } else if (role === 'psikolog') {
+    } else if (role === 'psikolog' && psikologData) {
       const { error: err } = await supabaseAdmin.from('psikolog_profiles').insert({
         user_id: userId,
-        nama_lengkap_gelar: finalName,
-        nomor_sipp_str: nomor_sipp_str || `ADM-SIPP-${Date.now().toString().slice(-6)}`,
-        dokumen_sipp_str_url: dokumen_sipp_str_url || '',
-        spesialisasi: Array.isArray(spesialisasi) && spesialisasi.length > 0 ? spesialisasi : ['Konseling Umum'],
-        tahun_pengalaman: Number(tahun_pengalaman) || 1,
-        tarif_sesi: Number(tarif_sesi) || 0,
+        nama_lengkap_gelar: psikologData.nama_lengkap_gelar,
+        nomor_sipp_str: psikologData.nomor_sipp_str,
+        dokumen_sipp_str_url: psikologData.dokumen_sipp_str_url,
+        spesialisasi: psikologData.spesialisasi,
+        tahun_pengalaman: psikologData.tahun_pengalaman,
+        tarif_sesi: psikologData.tarif_sesi,
         saldo: 0,
         verified_at: status === 'active' ? new Date().toISOString() : null,
       });
       profileError = err;
-    } else if (role === 'admin') {
+    } else if (role === 'admin' && adminData) {
       const { error: err } = await supabaseAdmin.from('admin_profiles').insert({
         user_id: userId,
-        nama_lengkap: finalName,
-        level: level || 'operator',
+        nama_lengkap: adminData.nama_lengkap,
+        level: adminData.level,
       });
       profileError = err;
     }
@@ -280,11 +364,11 @@ export async function POST(req: Request) {
         message: 'Pengguna baru berhasil dibuat',
         data: {
           id: userId,
-          email: email.trim().toLowerCase(),
+          email: validatedEmail,
           role,
           status,
-          fullName: finalName,
-          no_wa: no_wa ? String(no_wa).trim() : null,
+          fullName: finalFullName,
+          no_wa: validatedNoWa || null,
         },
       },
       { status: 201 }

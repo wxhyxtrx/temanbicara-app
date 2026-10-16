@@ -99,3 +99,24 @@ export const adminCreateRelawanSchema = z.object({
 });
 
 export type AdminCreateRelawanDTO = z.infer<typeof adminCreateRelawanSchema>;
+
+// 7. ADMIN CREATE PASIEN
+export const adminCreatePasienSchema = z.object({
+  nama_lengkap: z.string().min(2, 'Nama lengkap minimal 2 karakter'),
+  email: z.string().email('Format email tidak valid'),
+  no_wa: z.string().regex(phoneRegex, 'Format nomor WhatsApp tidak valid (contoh: 08123456789)'),
+  password: z.string().min(8, 'Password minimal 8 karakter'),
+});
+
+export type AdminCreatePasienDTO = z.infer<typeof adminCreatePasienSchema>;
+
+// 8. ADMIN CREATE ADMIN
+export const adminCreateAdminSchema = z.object({
+  nama_lengkap: z.string().min(2, 'Nama lengkap minimal 2 karakter'),
+  email: z.string().email('Format email tidak valid'),
+  no_wa: z.string().regex(phoneRegex, 'Format nomor WhatsApp tidak valid (contoh: 08123456789)'),
+  password: z.string().min(8, 'Password minimal 8 karakter'),
+  level: z.string().optional().default('operator'),
+});
+
+export type AdminCreateAdminDTO = z.infer<typeof adminCreateAdminSchema>;
