@@ -360,7 +360,7 @@ export default function PatientTopUpPage() {
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-3.5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 {therapyPackages.map((pkg) => {
                   const isOutOfRange = pkg.coins < minCoins || pkg.coins > maxCoins;
                   const isSelected = !isCustomMode && selectedCoins === pkg.coins;
@@ -383,8 +383,8 @@ export default function PatientTopUpPage() {
                       aria-disabled={isOutOfRange}
                     >
                       {pkg.popular && (
-                        <div className="absolute top-3 right-3">
-                          <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
+                        <div className="absolute -top-2.5 right-4 z-10">
+                          <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full shadow-2xs">
                             Paling Populer
                           </span>
                         </div>
