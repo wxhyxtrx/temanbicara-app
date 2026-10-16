@@ -48,6 +48,8 @@ export interface TopupOrderEntity {
   provider_reference: string | null;
   settled_at: string | null;
   created_at: string;
+  expires_at?: string | null;
+  snap_redirect_url?: string | null;
 }
 
 export interface PayoutRequestEntity {

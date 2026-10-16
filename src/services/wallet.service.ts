@@ -1,6 +1,9 @@
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getRoleProfile, displayName } from '@/lib/auth/session';
+import { TOPUP_PAYMENT_EXPIRY_MINUTES } from '@/constant/wallet';
+import { normalizePayeeName } from '@/lib/wallet/payee-name';
+import { WalletPayoutService } from '@/services/wallet-payout.service';
 import type { UserEntity, UserRole } from '@/types/database';
 import type {
   AdminPayoutItem,
@@ -10,6 +13,8 @@ import type {
   TopupOrderEntity,
   WalletInfoResponse,
 } from '@/types/wallet';
+
+export { normalizePayeeName };
 
 export class WalletHttpError extends Error {
   constructor(
@@ -21,33 +26,6 @@ export class WalletHttpError extends Error {
     super(message);
     this.name = 'WalletHttpError';
   }
-}
-
-/**
- * Normalisasi nama untuk pencocokan rekening bank:
- * 1. Ambil bagian sebelum koma (buang gelar belakang seperti ", M.Psi", ", S.Psi, Psikolog", ", Sp.KJ").
- * 2. Buang gelar depan umum (Dr., dr., Drs., Dra., Prof., dsb.).
- * 3. Buang singkatan gelar belakang jika ditulis tanpa koma di ujung nama.
- * 4. Buang tanda baca, ubah huruf kecil, dan normalisasi spasi menjadi spasi tunggal.
- */
-export function normalizePayeeName(name: string): string {
-  if (!name) return '';
-
-  // 1. Ambil teks sebelum koma pertama (gelar belakang umumnya setelah koma)
-  let clean = name.split(',')[0] ?? '';
-
-  // 2. Buang gelar depan berulang (misal "Prof. Dr. ...", "dr. ...", "Dra. ...")
-  clean = clean.replace(/^(?:(?:prof|dr|drs|dra)\.?\s+)+/gi, '');
-
-  // 3. Buang singkatan gelar belakang jika ditulis tanpa koma
-  clean = clean.replace(/\b(?:m\.?psi(?:\.?\s*psikolog)?|s\.?psi|sp\.?kj|m\.?sc|ph\.?d|s\.?ked|s\.?sos|m\.?kes|psikolog)\b/gi, '');
-
-  // 4. Hapus karakter non-alfanumerik (kecuali spasi), ubah ke huruf kecil, normalisasi spasi
-  return clean
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 export class WalletService {
@@ -130,7 +108,15 @@ export class WalletService {
   public static async createTopupOrder(
     patient: UserEntity,
     coins: number
-  ): Promise<{ order_id: string; coins: number; amount_rupiah: number; snap_token: string; redirect_url: string }> {
+  ): Promise<{
+    order_id: string;
+    coins: number;
+    amount_rupiah: number;
+    snap_token: string;
+    redirect_url: string;
+    expires_at: string;
+    snap_redirect_url: string;
+  }> {
     if (!supabaseAdmin) {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
     }
@@ -167,12 +153,14 @@ export class WalletService {
     const randomSuffix = crypto.randomBytes(4).toString('hex').toUpperCase();
     const orderId = `TOPUP-${Date.now()}-${randomSuffix}`;
     const amountRupiah = coins * 10000;
+    const expiresAt = new Date(Date.now() + TOPUP_PAYMENT_EXPIRY_MINUTES * 60 * 1000);
 
     // Panggil RPC topup_order_create di PostgreSQL
     const { error: rpcErr } = await supabaseAdmin.rpc('topup_order_create', {
       p_order_id: orderId,
       p_patient_id: patient.id,
       p_coins: coins,
+      p_expires_at: expiresAt.toISOString(),
     });
 
     if (rpcErr) {
@@ -210,6 +198,8 @@ export class WalletService {
 
     const profile = await getRoleProfile(patient);
     const customerName = displayName(patient, profile);
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const finishUrl = `${appUrl}/patient/top-up/history`;
 
     const snapPayload = {
       transaction_details: {
@@ -228,6 +218,13 @@ export class WalletService {
           name: `Top-up ${coins} Koin Teman Bicara`,
         },
       ],
+      expiry: {
+        unit: 'minutes',
+        duration: TOPUP_PAYMENT_EXPIRY_MINUTES,
+      },
+      callbacks: {
+        finish: finishUrl,
+      },
     };
 
     let snapToken = '';
@@ -255,12 +252,27 @@ export class WalletService {
       throw new WalletHttpError(502, 'PAYMENT_GATEWAY_ERROR', 'Koneksi ke payment gateway bermasalah');
     }
 
+    // Catat snap_redirect_url dan pastikan expires_at tersimpan
+    const { error: updateErr } = await supabaseAdmin
+      .from('topup_orders')
+      .update({
+        snap_redirect_url: redirectUrl,
+        expires_at: expiresAt.toISOString(),
+      })
+      .eq('order_id', orderId);
+
+    if (updateErr) {
+      console.error('Error updating topup order with redirect URL:', updateErr);
+    }
+
     return {
       order_id: orderId,
       coins,
       amount_rupiah: amountRupiah,
       snap_token: snapToken,
       redirect_url: redirectUrl,
+      expires_at: expiresAt.toISOString(),
+      snap_redirect_url: redirectUrl,
     };
   }
 
@@ -277,7 +289,7 @@ export class WalletService {
 
     const { data, error } = await supabaseAdmin
       .from('topup_orders')
-      .select('id, order_id, patient_id, coins, amount_rupiah, status, provider_reference, settled_at, created_at')
+      .select('id, order_id, patient_id, coins, amount_rupiah, status, provider_reference, settled_at, created_at, expires_at, snap_redirect_url')
       .eq('order_id', orderId)
       .maybeSingle();
 
@@ -294,6 +306,12 @@ export class WalletService {
       throw new WalletHttpError(403, 'FORBIDDEN', 'Anda tidak berhak melihat pesanan ini');
     }
 
+    const now = new Date();
+    const isPending = data.status === 'pending';
+    const expiresAt = data.expires_at ? new Date(data.expires_at) : null;
+    const isNotExpired = expiresAt ? now < expiresAt : false;
+    const snapRedirectUrl = isPending && isNotExpired ? (data.snap_redirect_url ?? null) : null;
+
     return {
       id: data.id,
       order_id: data.order_id,
@@ -304,6 +322,68 @@ export class WalletService {
       provider_reference: data.provider_reference,
       settled_at: data.settled_at,
       created_at: data.created_at,
+      expires_at: data.expires_at ?? null,
+      snap_redirect_url: snapRedirectUrl,
+    };
+  }
+
+  /**
+   * Mengambil riwayat order top-up milik pasien dengan pagination { data, meta }.
+   * snap_redirect_url HANYA dikirim jika status pending DAN now < expires_at.
+   */
+  public static async getPatientTopups(
+    patientId: string,
+    options: { page?: number; limit?: number } = {}
+  ): Promise<{ items: TopupOrderEntity[]; total: number }> {
+    if (!supabaseAdmin) {
+      throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
+    }
+
+    const page = Math.max(1, Number(options.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(options.limit) || 20));
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data, error, count } = await supabaseAdmin
+      .from('topup_orders')
+      .select(
+        'id, order_id, patient_id, coins, amount_rupiah, status, provider_reference, settled_at, created_at, expires_at, snap_redirect_url',
+        { count: 'exact' }
+      )
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      console.error('Error fetching patient topup orders:', error);
+      throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memuat riwayat top-up');
+    }
+
+    const now = new Date();
+    const items: TopupOrderEntity[] = (data ?? []).map((row) => {
+      const isPending = row.status === 'pending';
+      const expiresAt = row.expires_at ? new Date(row.expires_at) : null;
+      const isNotExpired = expiresAt ? now < expiresAt : false;
+      const showSnapUrl = isPending && isNotExpired;
+
+      return {
+        id: row.id,
+        order_id: row.order_id,
+        patient_id: row.patient_id,
+        coins: Number(row.coins),
+        amount_rupiah: Number(row.amount_rupiah),
+        status: row.status,
+        provider_reference: row.provider_reference,
+        settled_at: row.settled_at,
+        created_at: row.created_at,
+        expires_at: row.expires_at ?? null,
+        snap_redirect_url: showSnapUrl ? (row.snap_redirect_url ?? null) : null,
+      };
+    });
+
+    return {
+      items,
+      total: count ?? 0,
     };
   }
 
@@ -406,291 +486,10 @@ export class WalletService {
     };
   }
 
-  /**
-   * Mitra mengajukan penarikan dana honor ke rekening bank.
-   */
-  public static async requestPayout(
-    mitra: UserEntity,
-    input: { amount_rupiah: number; bank_name: string; account_number: string; bank_account_name: string }
-  ): Promise<{ payout_id: string; amount_rupiah: number; fee_rupiah: number; total_deducted: number; status: string; requested_at: string }> {
-    if (!supabaseAdmin) {
-      throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
-    }
-
-    if (mitra.role !== 'psikolog' && mitra.role !== 'relawan') {
-      throw new WalletHttpError(403, 'FORBIDDEN', 'Hanya mitra yang dapat mengajukan payout');
-    }
-    if (mitra.status !== 'active') {
-      throw new WalletHttpError(403, 'USER_NOT_ACTIVE', 'Akun mitra belum aktif');
-    }
-
-    // Validasi nama rekening dengan nama profil terverifikasi (buang gelar, wajib sama persis)
-    const profile = await getRoleProfile(mitra);
-    const verifiedName = String(
-      (profile?.nama_lengkap_gelar as string | undefined) ??
-      (profile?.nama_lengkap as string | undefined) ??
-      ''
-    ).trim();
-
-    if (!verifiedName) {
-      throw new WalletHttpError(422, 'PROFILE_NOT_VERIFIED', 'Profil mitra belum terverifikasi');
-    }
-
-    const normAccountName = normalizePayeeName(input.bank_account_name);
-    const normVerifiedName = normalizePayeeName(verifiedName);
-
-    if (!normAccountName || normAccountName !== normVerifiedName) {
-      throw new WalletHttpError(
-        422,
-        'INVALID_ACCOUNT_NAME',
-        `Nama pemilik rekening ("${input.bank_account_name}") harus sama persis dengan nama profil terverifikasi ("${verifiedName}")`
-      );
-    }
-
-    // Ambil setting payout
-    const { data: settingRow, error: settingErr } = await supabaseAdmin
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'payout')
-      .maybeSingle();
-
-    if (settingErr || !settingRow) {
-      throw new WalletHttpError(500, 'SETTING_PAYOUT_INVALID', 'Konfigurasi payout tidak tersedia');
-    }
-
-    const minRupiah = Number(settingRow.value?.min_rupiah ?? 1000000);
-    const maxRupiah = Number(settingRow.value?.max_rupiah ?? 10000000);
-    const feeRupiah = Number(settingRow.value?.fee_rupiah ?? 6500);
-
-    if (input.amount_rupiah < minRupiah || input.amount_rupiah > maxRupiah) {
-      throw new WalletHttpError(
-        422,
-        'PAYOUT_OUT_OF_RANGE',
-        `Nominal penarikan harus antara Rp ${minRupiah.toLocaleString('id-ID')} dan Rp ${maxRupiah.toLocaleString('id-ID')}`
-      );
-    }
-
-    const payoutId = crypto.randomUUID();
-
-    const { error: rpcErr } = await supabaseAdmin.rpc('payout_request', {
-      p_payout_id: payoutId,
-      p_mitra_id: mitra.id,
-      p_amount: input.amount_rupiah,
-      p_bank_name: input.bank_name,
-      p_account_number: input.account_number,
-      p_account_name: input.bank_account_name,
-    });
-
-    if (rpcErr) {
-      console.error('Error calling payout_request RPC:', rpcErr);
-      if (rpcErr.message.includes('INSUFFICIENT_BALANCE') || rpcErr.code === 'P0001') {
-        throw new WalletHttpError(
-          402,
-          'INSUFFICIENT_BALANCE',
-          'Saldo available tidak mencukupi untuk nominal penarikan dan biaya transfer'
-        );
-      }
-      if (rpcErr.code === '22023') {
-        throw new WalletHttpError(422, 'PAYOUT_OUT_OF_RANGE', rpcErr.message);
-      }
-      if (rpcErr.code === '42501') {
-        throw new WalletHttpError(403, 'FORBIDDEN', rpcErr.message);
-      }
-      throw new WalletHttpError(500, 'RPC_ERROR', 'Gagal memproses pengajuan payout');
-    }
-
-    return {
-      payout_id: payoutId,
-      amount_rupiah: input.amount_rupiah,
-      fee_rupiah: feeRupiah,
-      total_deducted: input.amount_rupiah + feeRupiah,
-      status: 'requested',
-      requested_at: new Date().toISOString(),
-    };
-  }
-
-  /**
-   * Riwayat pengajuan payout milik mitra.
-   */
-  public static async getMitraPayouts(
-    mitraId: string,
-    options: { page: number; limit: number }
-  ): Promise<{ items: PayoutRequestEntity[]; total: number }> {
-    if (!supabaseAdmin) {
-      throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
-    }
-
-    const { page, limit } = options;
-    const from = (page - 1) * limit;
-    const to = page * limit - 1;
-
-    const { data, error, count } = await supabaseAdmin
-      .from('payout_requests')
-      .select('id, mitra_id, amount_rupiah, fee_rupiah, bank_name, account_number, bank_account_name, status, requested_at, decided_at, decided_by', { count: 'exact' })
-      .eq('mitra_id', mitraId)
-      .order('requested_at', { ascending: false })
-      .range(from, to);
-
-    if (error) {
-      console.error('Error fetching mitra payouts:', error);
-      throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memuat riwayat penarikan dana');
-    }
-
-    const items: PayoutRequestEntity[] = (data ?? []).map((row) => ({
-      id: row.id,
-      mitra_id: row.mitra_id,
-      amount_rupiah: Number(row.amount_rupiah),
-      fee_rupiah: Number(row.fee_rupiah),
-      bank_name: row.bank_name,
-      account_number: row.account_number,
-      bank_account_name: row.bank_account_name,
-      status: row.status,
-      requested_at: row.requested_at,
-      decided_at: row.decided_at,
-      decided_by: row.decided_by,
-    }));
-
-    return {
-      items,
-      total: count ?? items.length,
-    };
-  }
-
-  /**
-   * Daftar antrean pengajuan payout untuk admin.
-   */
-  public static async getAdminPayouts(
-    options: { status?: PayoutStatus; page: number; limit: number }
-  ): Promise<{ items: AdminPayoutItem[]; total: number }> {
-    if (!supabaseAdmin) {
-      throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
-    }
-
-    const { status, page, limit } = options;
-    const from = (page - 1) * limit;
-    const to = page * limit - 1;
-
-    let query = supabaseAdmin
-      .from('payout_requests')
-      .select('id, mitra_id, amount_rupiah, fee_rupiah, bank_name, account_number, bank_account_name, status, requested_at, decided_at, decided_by', { count: 'exact' });
-
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    const { data, error, count } = await query
-      .order('requested_at', { ascending: false })
-      .range(from, to);
-
-    if (error) {
-      console.error('Error fetching admin payouts:', error);
-      throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memuat daftar pengajuan payout');
-    }
-
-    const mitraIds = Array.from(new Set((data ?? []).map((r) => r.mitra_id)));
-
-    // Fetch mitra roles and profiles
-    const [usersRes, psikologRes, relawanRes] = await Promise.all([
-      mitraIds.length > 0 ? supabaseAdmin.from('users').select('id, role').in('id', mitraIds) : { data: [] },
-      mitraIds.length > 0 ? supabaseAdmin.from('psikolog_profiles').select('user_id, nama_lengkap_gelar').in('user_id', mitraIds) : { data: [] },
-      mitraIds.length > 0 ? supabaseAdmin.from('relawan_profiles').select('user_id, nama_lengkap').in('user_id', mitraIds) : { data: [] },
-    ]);
-
-    const roleMap = new Map((usersRes.data ?? []).map((u) => [u.id, u.role as UserRole]));
-    const nameMap = new Map<string, string>();
-
-    for (const p of psikologRes.data ?? []) {
-      nameMap.set(p.user_id, p.nama_lengkap_gelar);
-    }
-    for (const r of relawanRes.data ?? []) {
-      nameMap.set(r.user_id, r.nama_lengkap);
-    }
-
-    const items: AdminPayoutItem[] = (data ?? []).map((row) => ({
-      id: row.id,
-      mitra_id: row.mitra_id,
-      mitra_name: nameMap.get(row.mitra_id) ?? row.bank_account_name,
-      mitra_role: roleMap.get(row.mitra_id),
-      amount_rupiah: Number(row.amount_rupiah),
-      fee_rupiah: Number(row.fee_rupiah),
-      bank_name: row.bank_name,
-      account_number: row.account_number,
-      bank_account_name: row.bank_account_name,
-      status: row.status,
-      requested_at: row.requested_at,
-      decided_at: row.decided_at,
-      decided_by: row.decided_by,
-    }));
-
-    return {
-      items,
-      total: count ?? items.length,
-    };
-  }
-
-  /**
-   * Admin menolak pengajuan payout & mengembalikan dana ke saldo available mitra.
-   */
-  public static async rejectPayout(payoutId: string, adminId: string): Promise<{ payout_id: string; status: 'rejected' }> {
-    if (!supabaseAdmin) {
-      throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
-    }
-
-    const { error: rpcErr } = await supabaseAdmin.rpc('payout_reject', {
-      p_payout_id: payoutId,
-      p_admin_id: adminId,
-    });
-
-    if (rpcErr) {
-      console.error('Error calling payout_reject RPC:', rpcErr);
-      if (rpcErr.code === 'P0002') {
-        throw new WalletHttpError(404, 'PAYOUT_NOT_FOUND', 'Pengajuan payout tidak ditemukan');
-      }
-      if (rpcErr.code === 'P0001') {
-        throw new WalletHttpError(409, 'PAYOUT_NOT_REJECTABLE', 'Pengajuan payout tidak dalam status requested');
-      }
-      if (rpcErr.code === '42501') {
-        throw new WalletHttpError(403, 'FORBIDDEN', 'Hanya admin yang dapat menolak payout');
-      }
-      throw new WalletHttpError(500, 'RPC_ERROR', 'Gagal menolak pengajuan payout');
-    }
-
-    return {
-      payout_id: payoutId,
-      status: 'rejected',
-    };
-  }
-
-  /**
-   * Admin mengonfirmasi payout telah dibayarkan ke rekening mitra.
-   */
-  public static async markPayoutPaid(payoutId: string, adminId: string): Promise<{ payout_id: string; status: 'paid' }> {
-    if (!supabaseAdmin) {
-      throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
-    }
-
-    const { error: rpcErr } = await supabaseAdmin.rpc('payout_mark_paid', {
-      p_payout_id: payoutId,
-      p_admin_id: adminId,
-    });
-
-    if (rpcErr) {
-      console.error('Error calling payout_mark_paid RPC:', rpcErr);
-      if (rpcErr.code === 'P0002') {
-        throw new WalletHttpError(404, 'PAYOUT_NOT_FOUND', 'Pengajuan payout tidak ditemukan');
-      }
-      if (rpcErr.code === 'P0001') {
-        throw new WalletHttpError(409, 'PAYOUT_NOT_PAYABLE', 'Pengajuan payout tidak dalam status requested');
-      }
-      if (rpcErr.code === '42501') {
-        throw new WalletHttpError(403, 'FORBIDDEN', 'Hanya admin yang dapat menyetujui pembayaran payout');
-      }
-      throw new WalletHttpError(500, 'RPC_ERROR', 'Gagal memperbarui status payout');
-    }
-
-    return {
-      payout_id: payoutId,
-      status: 'paid',
-    };
-  }
+  // Delegasi operasi Payout Mitra & Admin ke WalletPayoutService
+  public static requestPayout = WalletPayoutService.requestPayout;
+  public static getMitraPayouts = WalletPayoutService.getMitraPayouts;
+  public static getAdminPayouts = WalletPayoutService.getAdminPayouts;
+  public static rejectPayout = WalletPayoutService.rejectPayout;
+  public static markPayoutPaid = WalletPayoutService.markPayoutPaid;
 }

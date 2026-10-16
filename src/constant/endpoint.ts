@@ -2,6 +2,7 @@ export const ENDPOINTS = {
   WALLET: {
     ME: '/api/wallet/me',
     TOPUP: '/api/wallet/topup',
+    TOPUPS: '/api/wallet/topups',
     TOPUP_DETAIL: (orderId: string) => `/api/wallet/topup/${encodeURIComponent(orderId)}`,
     TRANSACTIONS: '/api/wallet/transactions',
     PAYOUT: '/api/wallet/payout',

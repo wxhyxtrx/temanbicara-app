@@ -1,0 +1,2 @@
+export const TOPUP_PAYMENT_EXPIRY_MINUTES = 10;
+export const TOPUP_STALE_GRACE_MINUTES = 15;
