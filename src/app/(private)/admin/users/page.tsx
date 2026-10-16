@@ -233,7 +233,7 @@ function AdminUsersContent() {
   const columns: Column<AdminUserRow>[] = [
     {
       label: activeTab === "verifications" ? "Praktisi / Pemohon" : "Pengguna",
-      className: "w-[26%]",
+      className: "w-[22%]",
       renderCell: (u) => (
         <div>
           <p className="font-bold font-heading text-slate-900 dark:text-white text-xs sm:text-sm">
@@ -245,7 +245,7 @@ function AdminUsersContent() {
     },
     {
       label: "Peran Akun",
-      className: "w-[16%]",
+      className: "w-[13%]",
       renderCell: (u) => {
         const roleCfg = roleBadgeConfig[u.role] || {
           label: u.role,
@@ -261,8 +261,38 @@ function AdminUsersContent() {
       },
     },
     {
+      label: "Saldo",
+      className: "w-[15%]",
+      renderCell: (u) => {
+        if (u.role === "pasien") {
+          return (
+            <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-xs">
+              {(u.coin_balance ?? 0).toLocaleString("id-ID")} Koin
+            </span>
+          );
+        }
+        if (u.role === "psikolog" || u.role === "relawan") {
+          const avail = u.available_rupiah ?? 0;
+          const pending = u.pending_rupiah ?? 0;
+          return (
+            <div className="space-y-0.5">
+              <p className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-xs">
+                Rp {avail.toLocaleString("id-ID")}
+              </p>
+              {pending > 0 && (
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">
+                  tertahan Rp {pending.toLocaleString("id-ID")}
+                </p>
+              )}
+            </div>
+          );
+        }
+        return <span className="text-slate-400 dark:text-slate-500">—</span>;
+      },
+    },
+    {
       label: "Nomor WhatsApp",
-      className: "w-[18%]",
+      className: "w-[14%]",
       renderCell: (u) =>
         u.no_wa ? (
           <span className="font-mono text-slate-700 dark:text-slate-300">{u.no_wa}</span>
@@ -274,7 +304,7 @@ function AdminUsersContent() {
     },
     {
       label: activeTab === "verifications" ? "Diajukan Pada" : "Bergabung",
-      className: "w-[14%]",
+      className: "w-[12%]",
       renderCell: (u) => (
         <span className="text-slate-500 dark:text-slate-400 font-nunito text-xs">
           {formatDate(u.created_at)}
@@ -283,7 +313,7 @@ function AdminUsersContent() {
     },
     {
       label: activeTab === "verifications" ? "Status Verifikasi" : "Status Akun",
-      className: "w-[14%]",
+      className: "w-[13%]",
       renderCell: (u) => {
         const statusCfg = statusBadgeConfig[u.status] || {
           label: u.status,
@@ -299,7 +329,7 @@ function AdminUsersContent() {
     {
       label: "Aksi",
       align: "center",
-      className: "w-[12%]",
+      className: "w-[11%]",
       renderCell: (u) => (
         <div className="flex justify-center">
           {activeTab === "verifications" ? (
