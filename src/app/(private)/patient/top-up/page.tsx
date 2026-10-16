@@ -544,7 +544,7 @@ export default function PatientTopUpPage() {
                   <span>Kanal Pembayaran Otomatis</span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-nunito">
-                  Pilih metode pembayaran (QRIS, BCA, Mandiri, BNI, BRI, GoPay, ShopeePay) langsung di jendela pop-up Midtrans Snap yang aman.
+                  Pembayaran kartu kredit/debit via Midtrans (Sandbox).
                 </p>
               </div>
 
@@ -578,7 +578,7 @@ export default function PatientTopUpPage() {
 
                 <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-nunito">
                   <ShieldCheck size={13} className="text-teal-600 dark:text-teal-400" />
-                  <span>Midtrans Sandbox • Terverifikasi Bank Indonesia</span>
+                  <span>Midtrans (Sandbox)</span>
                 </div>
               </div>
             </CardContent>
