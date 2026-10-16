@@ -10,7 +10,7 @@ import {
 import type { TableInfoProps } from "./types";
 
 export const TableInfo = ({
-  list = [10, 15, 20, 25],
+  list = [10, 20, 50],
   total = 0,
   displayed = 10,
   onChangeDisplayed = () => {},

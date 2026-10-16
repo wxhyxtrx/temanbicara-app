@@ -43,6 +43,17 @@ export type TablePaginationProps = {
   className?: string;
 };
 
+export type TablePaginationFooterProps = {
+  totalItems: number;
+  page: number;
+  limit: number;
+  onPageChange: (newPage: number) => void;
+  onChangeLimit?: (newLimit: number) => void;
+  limitList?: number[];
+  className?: string;
+  showWhenEmpty?: boolean;
+};
+
 export type DataTableProps<T> = TableProps<T> & {
   totalItems?: number;
   onPageChange?: (newPage: number) => void;

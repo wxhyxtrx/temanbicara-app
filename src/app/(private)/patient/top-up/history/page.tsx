@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tables, TablePagination, TableInfo, Column } from "@/components/shared/atoms/Table";
+import { Tables, TablePaginationFooter, Column } from "@/components/shared/atoms/Table";
 import { walletClient, WalletApiError } from "@/services/wallet.client";
 import { openSnapModal } from "@/lib/snap";
 import { notify } from "@/lib/toast";
@@ -1016,22 +1016,13 @@ export default function PatientTransactionHistoryPage() {
               )}
 
               {/* Pagination Footer */}
-              {topupMeta.total > 0 && (
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800">
-                  <TableInfo
-                    total={topupMeta.total}
-                    displayed={topupLimit}
-                    onChangeDisplayed={handleTopupLimitChange}
-                    list={[10, 20, 50]}
-                  />
-                  <TablePagination
-                    totalItems={topupMeta.total}
-                    page={topupPage}
-                    limit={topupLimit}
-                    onPageChange={(p) => setTopupPage(p)}
-                  />
-                </div>
-              )}
+              <TablePaginationFooter
+                totalItems={topupMeta.total}
+                page={topupPage}
+                limit={topupLimit}
+                onPageChange={(p) => setTopupPage(p)}
+                onChangeLimit={handleTopupLimitChange}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -1194,22 +1185,13 @@ export default function PatientTransactionHistoryPage() {
               )}
 
               {/* Pagination Footer */}
-              {meta.total > 0 && (
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800">
-                  <TableInfo
-                    total={meta.total}
-                    displayed={limit}
-                    onChangeDisplayed={handleLimitChange}
-                    list={[10, 20, 50]}
-                  />
-                  <TablePagination
-                    totalItems={meta.total}
-                    page={page}
-                    limit={limit}
-                    onPageChange={(p) => setPage(p)}
-                  />
-                </div>
-              )}
+              <TablePaginationFooter
+                totalItems={meta.total}
+                page={page}
+                limit={limit}
+                onPageChange={(p) => setPage(p)}
+                onChangeLimit={handleLimitChange}
+              />
             </CardContent>
           </Card>
         </TabsContent>
