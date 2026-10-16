@@ -20,16 +20,19 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { usePayoutStore } from "@/store/payout-store";
 import { useVerificationStore } from "@/store/verification-store";
 import { useCrisisStore } from "@/store/crisis-store";
+import { walletClient } from "@/services/wallet.client";
 
 export default function AdminBerandaPage() {
-  const payouts = usePayoutStore((state) => state.payouts);
-  const pendingPayouts = React.useMemo(
-    () => payouts.filter((p) => p.status === "Diproses"),
-    [payouts]
-  );
+  const [realPendingPayoutCount, setRealPendingPayoutCount] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    walletClient
+      .getAdminPayouts({ status: "requested", limit: 1 })
+      .then((res) => setRealPendingPayoutCount(res.meta.total))
+      .catch(() => {});
+  }, []);
 
   const verifications = useVerificationStore((state) => state.verifications);
   const pendingVerifications = React.useMemo(
@@ -82,9 +85,9 @@ export default function AdminBerandaPage() {
                 <Button variant="outline" className="border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-4 py-5 text-sm cursor-pointer gap-2">
                   <Coins size={17} />
                   <span>Audit Koin</span>
-                  {pendingPayouts.length > 0 && (
+                  {realPendingPayoutCount > 0 && (
                     <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-xs font-bold animate-pulse">
-                      {pendingPayouts.length} Payout
+                      {realPendingPayoutCount} Payout
                     </span>
                   )}
                 </Button>

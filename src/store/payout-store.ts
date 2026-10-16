@@ -18,50 +18,8 @@ export interface PayoutRecord {
   notes?: string;
 }
 
-const initialPayouts: PayoutRecord[] = [
-  {
-    id: "po-pending-1",
-    invoiceNo: "PAY-20261010-099",
-    counselorName: "Dr. Sarah Alatas, M.Psi",
-    date: "Hari Ini, 10 Okt 2026",
-    timestamp: Date.now() - 1000 * 60 * 30, // 30 mins ago
-    amountRupiah: 2000000,
-    coinsDeducted: 200,
-    bankName: "Bank Central Asia (BCA)",
-    accountNo: "8820491823",
-    accountHolder: "DR. SARAH ALATAS",
-    status: "Diproses",
-    notes: "Pengajuan penarikan honor konsultasi mingguan.",
-  },
-  {
-    id: "po-hist-1",
-    invoiceNo: "PAY-20261001-081",
-    counselorName: "Dr. Sarah Alatas, M.Psi",
-    date: "1 Okt 2026, 14:00 WIB",
-    timestamp: 1790838000000,
-    amountRupiah: 5000000,
-    coinsDeducted: 500,
-    bankName: "Bank Central Asia (BCA)",
-    accountNo: "8820491823",
-    accountHolder: "DR. SARAH ALATAS",
-    status: "Berhasil",
-    notes: "Transfer terverifikasi via RTGS Bank BCA.",
-  },
-  {
-    id: "po-hist-2",
-    invoiceNo: "PAY-20260915-044",
-    counselorName: "Dr. Sarah Alatas, M.Psi",
-    date: "15 Sep 2026, 11:20 WIB",
-    timestamp: 1789446000000,
-    amountRupiah: 7200000,
-    coinsDeducted: 720,
-    bankName: "Bank Central Asia (BCA)",
-    accountNo: "8820491823",
-    accountHolder: "DR. SARAH ALATAS",
-    status: "Berhasil",
-    notes: "Transfer honor terverifikasi.",
-  },
-];
+// Mock payouts dibersihkan - Digantikan API riil /api/wallet/payouts dan /api/admin/payouts (Fase 2)
+const initialPayouts: PayoutRecord[] = [];
 
 export interface PayoutState {
   payouts: PayoutRecord[];

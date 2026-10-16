@@ -77,14 +77,14 @@ export const mockUsers: Record<UserRole, UserProfile> = {
     phone: "+62 812-3456-7890",
     avatarInitials: "WT",
     isVerified: true,
-    coins: 50,
+    coins: 0,
     patientId: "TB-88219",
     emergencyContact: "0811-9876-5432",
     mentalNotes: "Fokus konsultasi: manajemen kecemasan terkait deadline kerja dan pemulihan pola tidur.",
     isAnonymousDefault: false,
     patientData: {
       patientId: "TB-88219",
-      coins: 50,
+      coins: 0,
       emergencyContact: "0811-9876-5432",
       mentalNotes: "Fokus konsultasi: manajemen kecemasan terkait deadline kerja dan pemulihan pola tidur.",
       isAnonymousDefault: false,
@@ -99,7 +99,7 @@ export const mockUsers: Record<UserRole, UserProfile> = {
     phone: "+62 813-8899-7711",
     avatarInitials: "AW",
     isVerified: true,
-    coins: 480, // Total koin honor konsultasi yang diperoleh
+    coins: 0, // Mitra tidak memegang koin (Rupiah murni di Fase 2)
     patientId: "CS-0481",
     emergencyContact: "0812-1122-3344",
     mentalNotes: "Psikolog Klinis Dewasa spesialisasi CBT, kecemasan, dan trauma recovery.",
@@ -113,7 +113,7 @@ export const mockUsers: Record<UserRole, UserProfile> = {
       rating: 4.9,
       totalConsultations: 248,
       consultationMethods: ["chat", "voice"],
-      earningsCoins: 480,
+      earningsCoins: 0,
     },
   },
   peer_listener: {
@@ -125,7 +125,7 @@ export const mockUsers: Record<UserRole, UserProfile> = {
     phone: "+62 856-7788-9900",
     avatarInitials: "RP",
     isVerified: true,
-    coins: 25,
+    coins: 0, // Relawan tidak memegang koin (Rupiah murni di Fase 2)
     patientId: "PL-1029",
     emergencyContact: "0857-4455-6677",
     mentalNotes: "Relawan pendengar empatik terverifikasi Psychological First Aid (PFA).",
@@ -147,7 +147,7 @@ export const mockUsers: Record<UserRole, UserProfile> = {
     phone: "+62 811-0011-2233",
     avatarInitials: "SN",
     isVerified: true,
-    coins: 9999,
+    coins: 0,
     patientId: "ADM-001",
     emergencyContact: "0811-9988-7766",
     mentalNotes: "Administrator Operasional & Pengawasan Kode Etik Medis TemanBicara.",

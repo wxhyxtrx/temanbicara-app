@@ -121,7 +121,7 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
     utilityItems: [
       {
         title: "Honor & Payout",
-        description: "Klaim koin & mutasi honor",
+        description: "Pencairan dana & riwayat payout",
         url: "/counselor/earnings",
         icon: Wallet,
       },

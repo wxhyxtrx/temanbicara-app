@@ -100,7 +100,7 @@ export function ChatHeader({ onStartCall, onEndSession }: ChatHeaderProps) {
             variant="outline"
             onClick={onEndSession}
             className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl h-8 px-2.5 text-xs font-semibold cursor-pointer gap-1"
-            title="Akhiri sesi dan berikan evaluasi / tip"
+            title="Akhiri sesi dan berikan evaluasi"
           >
             <CheckCircle2 size={13} />
             <span className="hidden sm:inline">Akhiri Sesi</span>

@@ -35,6 +35,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { mockUsers } from "@/constant/mock-users";
 import { useUserStore, UserRole } from "@/store/user-store";
 import { authService } from "@/services/auth.service";
+import { walletClient } from "@/services/wallet.client";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -42,10 +43,17 @@ export function AppSidebar() {
   const user = useUserStore((state) => state.user);
   const logout = useUserStore((state) => state.logout);
   const [mounted, setMounted] = React.useState(false);
+  const [patientCoins, setPatientCoins] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     setMounted(true);
-  }, []);
+    if (user?.role === "patient" || !user?.role) {
+      walletClient
+        .getWalletMe()
+        .then((data) => setPatientCoins(data.coin_balance))
+        .catch(() => {});
+    }
+  }, [user?.role]);
 
   const getEffectiveRole = (): UserRole => {
     // 1. Pathname check is 100% deterministic on BOTH Server (SSR) and Client!
@@ -86,7 +94,7 @@ export function AppSidebar() {
   const displayInitials = mounted
     ? user.avatarInitials || defaultFallbackUser.avatarInitials
     : defaultFallbackUser.avatarInitials;
-  const displayCoins = mounted ? user.coins || 0 : defaultFallbackUser.coins;
+  const displayCoins = patientCoins !== null ? patientCoins : (mounted ? user.coins || 0 : defaultFallbackUser.coins);
 
   // Handler auto-close sidebar pada mobile dan tablet (< 1024px)
   const handleNavClick = () => {
@@ -342,29 +350,33 @@ export function AppSidebar() {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase tracking-wider">
-                  Honor Konseling
+                  Honor & Payout
                 </span>
                 <span className="text-xs sm:text-sm font-bold text-purple-900 dark:text-purple-200 font-heading truncate">
-                  {displayCoins} Koin
+                  Pencairan Dana
                 </span>
               </div>
             </Link>
           </div>
         ) : currentRole === "peer_listener" ? (
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <Link
+              href="/listener/earnings"
+              onClick={handleNavClick}
+              className="flex items-center gap-2.5 hover:opacity-85 transition-opacity min-w-0"
+            >
               <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/80 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0 border border-sky-200 dark:border-sky-700">
-                <Headphones size={16} />
+                <Wallet size={16} />
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[10px] text-sky-700 dark:text-sky-300 font-semibold uppercase tracking-wider">
-                  Status Siaga
+                  Honor & Payout
                 </span>
-                <span className="text-xs font-bold text-sky-900 dark:text-sky-200 font-heading">
-                  Siap Mendengarkan
+                <span className="text-xs sm:text-sm font-bold text-sky-900 dark:text-sky-200 font-heading truncate">
+                  Pencairan Dana
                 </span>
               </div>
-            </div>
+            </Link>
           </div>
         ) : currentRole === "admin" ? (
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">

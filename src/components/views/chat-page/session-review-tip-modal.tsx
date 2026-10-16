@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Star,
-  Coins,
   HeartHandshake,
   CheckCircle2,
   Sparkles,
@@ -20,7 +19,6 @@ import {
   Send,
 } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
-import { useTransactionStore } from "@/store/transaction-store";
 import { useNotificationStore } from "@/store/notification-store";
 import { useChatStore, Conversation } from "@/store/chat-store";
 import { usePeerVentStore } from "@/store/peer-vent-store";
@@ -33,8 +31,6 @@ const reviewTagOptions = [
   "Solutif & Terarah",
   "Membantu Regulasi Emosi",
 ];
-
-const tipPresetAmounts = [0, 10, 25, 50];
 
 interface SessionReviewTipModalProps {
   open: boolean;
@@ -50,23 +46,19 @@ export function SessionReviewTipModal({
   onSuccess,
 }: SessionReviewTipModalProps) {
   const user = useUserStore((state) => state.user);
-  const sendTip = useUserStore((state) => state.sendTip);
   const myActivePost = usePeerVentStore((state) => state.myActivePost);
   const closeSession = usePeerVentStore((state) => state.closeSession);
-  const addTransaction = useTransactionStore((state) => state.addTransaction);
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { messagesByConversation, selectedConversation } = useChatStore();
 
   const [rating, setRating] = useState<number>(5);
   const [selectedTags, setSelectedTags] = useState<string[]>(["Hangat & Empatis"]);
-  const [selectedTip, setSelectedTip] = useState<number>(10);
   const [thankYouNote, setThankYouNote] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   const isPeer = conversation.isPeerListener;
   const targetRole = isPeer ? ("peer_listener" as const) : ("counselor" as const);
-  const currentCoins = user.coins;
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -80,33 +72,8 @@ export function SessionReviewTipModal({
     setIsSubmitting(true);
 
     setTimeout(() => {
-      let tipGiven = 0;
-      if (selectedTip > 0 && currentCoins >= selectedTip) {
-        const successTip = sendTip(targetRole, selectedTip);
-        if (successTip) {
-          tipGiven = selectedTip;
-          // Catat mutasi koin tip
-          addTransaction({
-            date:
-              new Date().toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              }) + " WIB",
-            type: "usage",
-            category: "Tip Apresiasi",
-            title: `Tip Apresiasi Sesi untuk ${conversation.name}`,
-            targetParty: conversation.name,
-            coinChange: -tipGiven,
-            coinBalanceAfter: currentCoins - tipGiven,
-            paymentMethod: "Saldo Koin Pasien",
-            status: "berhasil",
-            notes: thankYouNote.trim() || "Apresiasi ketulusan mendengarkan.",
-          });
-        }
-      }
+      // Tip apresiasi dinonaktifkan sementara (Fase 3: endpoint API tips)
+      const tipGiven = 0;
 
       // Jika peer listener post aktif, tandai selesai
       if (myActivePost) {
@@ -260,53 +227,7 @@ export function SessionReviewTipModal({
               </div>
             </div>
 
-            {/* 3. Opsi Tip Koin Apresiasi Sukarela */}
-            <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-900/60 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
-                  <Coins size={15} className="text-amber-600 dark:text-amber-400" />
-                  <span>Kirim Tip Koin Apresiasi (Sukarela)</span>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="text-[10px] bg-white dark:bg-slate-900 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-bold"
-                >
-                  Saldomu: {currentCoins} Koin
-                </Badge>
-              </div>
-
-              <p className="text-[11px] text-amber-800/80 dark:text-amber-200/80 font-nunito leading-relaxed">
-                {isPeer
-                  ? "Relawan sebaya mendengarkan dengan sukarela. Tip koin adalah bentuk terima kasih tulus untuk menyemangati mereka."
-                  : "Konsultasi telah terbayar, namun kamu dapat memberikan tip ekstra bila merasa sangat tertolong."}
-              </p>
-
-              <div className="grid grid-cols-4 gap-2">
-                {tipPresetAmounts.map((amt) => {
-                  const isSelected = selectedTip === amt;
-                  const isInsufficient = amt > currentCoins;
-                  return (
-                    <button
-                      key={amt}
-                      type="button"
-                      disabled={isInsufficient}
-                      onClick={() => setSelectedTip(amt)}
-                      className={`py-2 px-1 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-amber-600 text-white border-amber-600 shadow-2xs"
-                          : isInsufficient
-                          ? "opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-800 border-slate-200 text-slate-400"
-                          : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-amber-400"
-                      }`}
-                    >
-                      {amt === 0 ? "Tanpa Tip" : `+${amt} Koin`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 4. Catatan Singkat (Opsional) */}
+            {/* 3. Catatan Singkat (Opsional) */}
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                 Pesan Terima Kasih (Opsional):
