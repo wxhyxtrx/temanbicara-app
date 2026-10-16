@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tables, Column } from "@/components/shared/atoms/Table";
+import { Tables, TablePagination, TableInfo, Column } from "@/components/shared/atoms/Table";
 import { walletClient, WalletApiError } from "@/services/wallet.client";
 import { openSnapModal } from "@/lib/snap";
 import { notify } from "@/lib/toast";
@@ -184,8 +184,9 @@ export default function PatientTransactionHistoryPage() {
 
   // Top-Up History State
   const [topups, setTopups] = useState<TopupOrderEntity[]>([]);
-  const [topupMeta, setTopupMeta] = useState<PaginationMeta>({ page: 1, limit: 20, total: 0, totalPages: 1 });
+  const [topupMeta, setTopupMeta] = useState<PaginationMeta>({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [topupPage, setTopupPage] = useState<number>(1);
+  const [topupLimit, setTopupLimit] = useState<number>(10);
   const [isLoadingTopups, setIsLoadingTopups] = useState<boolean>(true);
   const [topupStatusFilter, setTopupStatusFilter] = useState<"all" | "pending" | "settlement" | "expire" | "fail">("all");
   const [topupSearchQuery, setTopupSearchQuery] = useState<string>("");
@@ -199,8 +200,9 @@ export default function PatientTransactionHistoryPage() {
 
   // Mutation Ledger State
   const [transactions, setTransactions] = useState<LedgerEntryEntity[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta>({ page: 1, limit: 20, total: 0, totalPages: 1 });
+  const [meta, setMeta] = useState<PaginationMeta>({ page: 1, limit: 10, total: 0, totalPages: 1 });
   const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [filterType, setFilterType] = useState<"all" | "in" | "out">("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -216,10 +218,10 @@ export default function PatientTransactionHistoryPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const fetchTopups = useCallback(async (targetPage: number) => {
+  const fetchTopups = useCallback(async (targetPage: number, targetLimit: number) => {
     try {
       setIsLoadingTopups(true);
-      const res = await walletClient.getTopups({ page: targetPage, limit: 20 });
+      const res = await walletClient.getTopups({ page: targetPage, limit: targetLimit });
       setTopups(res.items);
       setTopupMeta(res.meta);
     } catch (err) {
@@ -230,10 +232,10 @@ export default function PatientTransactionHistoryPage() {
     }
   }, []);
 
-  const fetchTransactions = useCallback(async (targetPage: number) => {
+  const fetchTransactions = useCallback(async (targetPage: number, targetLimit: number) => {
     try {
       setIsLoading(true);
-      const res = await walletClient.getTransactions({ page: targetPage, limit: 20 });
+      const res = await walletClient.getTransactions({ page: targetPage, limit: targetLimit });
       setTransactions(res.items);
       setMeta(res.meta);
     } catch (err) {
@@ -242,6 +244,16 @@ export default function PatientTransactionHistoryPage() {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const handleTopupLimitChange = useCallback((newLimit: number) => {
+    setTopupLimit(newLimit);
+    setTopupPage(1);
+  }, []);
+
+  const handleLimitChange = useCallback((newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
   }, []);
 
   const fetchWallet = useCallback(async () => {
@@ -260,13 +272,13 @@ export default function PatientTransactionHistoryPage() {
   useEffect(() => {
     setMounted(true);
     fetchWallet();
-    fetchTransactions(page);
-    fetchTopups(topupPage);
+    fetchTransactions(page, limit);
+    fetchTopups(topupPage, topupLimit);
 
     const handleRefresh = () => {
       fetchWallet();
-      fetchTransactions(page);
-      fetchTopups(topupPage);
+      fetchTransactions(page, limit);
+      fetchTopups(topupPage, topupLimit);
     };
 
     if (typeof window !== "undefined") {
@@ -275,7 +287,7 @@ export default function PatientTransactionHistoryPage() {
         window.removeEventListener("wallet:refresh", handleRefresh);
       };
     }
-  }, [fetchWallet, fetchTransactions, fetchTopups, page, topupPage]);
+  }, [fetchWallet, fetchTransactions, fetchTopups, page, limit, topupPage, topupLimit]);
 
   // Cek Status Pembayaran ke Midtrans via Server Rekonsiliasi
   const handleCheckStatus = useCallback(
@@ -313,7 +325,7 @@ export default function PatientTransactionHistoryPage() {
             `Pembayaran ${updatedOrder.coins} koin telah diverifikasi. Saldo telah ditambahkan.`
           );
           fetchWallet();
-          fetchTransactions(page);
+          fetchTransactions(page, limit);
           if (typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("wallet:refresh"));
           }
@@ -371,23 +383,23 @@ export default function PatientTransactionHistoryPage() {
         await openSnapModal(token, {
           onSuccess: () => {
             notify.success("Top-Up Berhasil", "Pembayaran koin Anda telah diverifikasi.");
-            fetchTopups(topupPage);
+            fetchTopups(topupPage, topupLimit);
             fetchWallet();
-            fetchTransactions(page);
+            fetchTransactions(page, limit);
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("wallet:refresh"));
             }
           },
           onPending: () => {
             notify.info("Menunggu Pembayaran", "Silakan selesaikan pembayaran di Midtrans.");
-            fetchTopups(topupPage);
+            fetchTopups(topupPage, topupLimit);
           },
           onError: () => {
             notify.error("Pembayaran Gagal", "Transaksi tidak dapat diselesaikan.");
-            fetchTopups(topupPage);
+            fetchTopups(topupPage, topupLimit);
           },
           onClose: () => {
-            fetchTopups(topupPage);
+            fetchTopups(topupPage, topupLimit);
             fetchWallet();
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("wallet:refresh"));
@@ -997,33 +1009,20 @@ export default function PatientTransactionHistoryPage() {
               )}
 
               {/* Pagination Footer */}
-              {topupMeta.totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-                  <span>
-                    Halaman {topupMeta.page} dari {topupMeta.totalPages} (Total {topupMeta.total} pesanan)
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={topupPage <= 1 || isLoadingTopups}
-                      onClick={() => setTopupPage((p) => Math.max(1, p - 1))}
-                      className="h-8 text-xs rounded-lg gap-1 cursor-pointer"
-                    >
-                      <ChevronLeft size={14} />
-                      <span>Sebelumnya</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={topupPage >= topupMeta.totalPages || isLoadingTopups}
-                      onClick={() => setTopupPage((p) => Math.min(topupMeta.totalPages, p + 1))}
-                      className="h-8 text-xs rounded-lg gap-1 cursor-pointer"
-                    >
-                      <span>Berikutnya</span>
-                      <ChevronRight size={14} />
-                    </Button>
-                  </div>
+              {topupMeta.total > 0 && (
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800">
+                  <TableInfo
+                    total={topupMeta.total}
+                    displayed={topupLimit}
+                    onChangeDisplayed={handleTopupLimitChange}
+                    list={[10, 20, 50]}
+                  />
+                  <TablePagination
+                    totalItems={topupMeta.total}
+                    page={topupPage}
+                    limit={topupLimit}
+                    onPageChange={(p) => setTopupPage(p)}
+                  />
                 </div>
               )}
             </CardContent>
@@ -1188,33 +1187,20 @@ export default function PatientTransactionHistoryPage() {
               )}
 
               {/* Pagination Footer */}
-              {meta.totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-                  <span>
-                    Halaman {meta.page} dari {meta.totalPages} (Total {meta.total} transaksi)
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={page <= 1 || isLoading}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="h-8 text-xs rounded-lg gap-1 cursor-pointer"
-                    >
-                      <ChevronLeft size={14} />
-                      <span>Sebelumnya</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={page >= meta.totalPages || isLoading}
-                      onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-                      className="h-8 text-xs rounded-lg gap-1 cursor-pointer"
-                    >
-                      <span>Berikutnya</span>
-                      <ChevronRight size={14} />
-                    </Button>
-                  </div>
+              {meta.total > 0 && (
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-800">
+                  <TableInfo
+                    total={meta.total}
+                    displayed={limit}
+                    onChangeDisplayed={handleLimitChange}
+                    list={[10, 20, 50]}
+                  />
+                  <TablePagination
+                    totalItems={meta.total}
+                    page={page}
+                    limit={limit}
+                    onPageChange={(p) => setPage(p)}
+                  />
                 </div>
               )}
             </CardContent>
