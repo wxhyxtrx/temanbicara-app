@@ -189,7 +189,7 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
     badgeLabel: "Platform Administrator",
     mainItems: [
       {
-        title: "Ikhtisar Platform",
+        title: "Beranda",
         description: "Statistik sistem & aktivitas",
         url: "/admin/beranda",
         icon: Home,
