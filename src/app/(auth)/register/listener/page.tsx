@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { notify } from "@/lib/toast";
 import { authService } from "@/services/auth.service";
+import { usePublicSettings } from "@/hooks/use-public-settings";
 
 const listenerTopicInterests = [
   "Curhat Stres Kuliah & Skripsi",
@@ -38,6 +39,8 @@ const listenerTopicInterests = [
 
 export default function ListenerRegistrationPage() {
   const router = useRouter();
+  const { settings } = usePublicSettings();
+  const verificationMaxMb = settings?.upload?.verification_max_mb ?? 5;
 
   const [fullName, setFullName] = useState("");
   const [alias, setAlias] = useState("");
@@ -65,8 +68,15 @@ export default function ListenerRegistrationPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      notify.warning("Ukuran File Terlalu Besar", "Ukuran file CV maksimal 2MB.");
+    if (file.type !== "application/pdf" || !file.name.toLowerCase().endsWith(".pdf")) {
+      notify.warning("Format Berkas Tidak Valid", "Hanya berkas format PDF (.pdf) yang diperbolehkan.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > verificationMaxMb * 1024 * 1024) {
+      notify.warning("Ukuran File Terlalu Besar", `Ukuran file CV maksimal ${verificationMaxMb} MB.`);
+      e.target.value = "";
       return;
     }
     setSelectedFile(file);
@@ -107,8 +117,20 @@ export default function ListenerRegistrationPage() {
     }
 
     if (!selectedFile) {
-      setFormError("Dokumen CV wajib diunggah (PDF, maksimal 2MB).");
+      setFormError(`Dokumen CV wajib diunggah (PDF, maksimal ${verificationMaxMb} MB).`);
       notify.warning("Berkas Kosong", "Dokumen CV wajib diunggah.");
+      return;
+    }
+
+    if (selectedFile.type !== "application/pdf" || !selectedFile.name.toLowerCase().endsWith(".pdf")) {
+      setFormError("Format dokumen harus PDF (.pdf).");
+      notify.warning("Format Berkas Tidak Valid", "Hanya dokumen berformat PDF (.pdf) yang diperbolehkan.");
+      return;
+    }
+
+    if (selectedFile.size > verificationMaxMb * 1024 * 1024) {
+      setFormError(`Ukuran file CV maksimal ${verificationMaxMb} MB.`);
+      notify.warning("Ukuran File Terlalu Besar", `Ukuran file CV maksimal ${verificationMaxMb} MB.`);
       return;
     }
 
@@ -130,7 +152,7 @@ export default function ListenerRegistrationPage() {
       // 1. Dapatkan presigned upload URL
       const presigned = await authService.getPresignedUrl({
         file_name: selectedFile.name,
-        file_type: selectedFile.type || "application/pdf",
+        file_type: selectedFile.type,
         document_type: "cv",
         user_email_or_temp_id: email.trim().toLowerCase(),
       });
@@ -428,12 +450,12 @@ export default function ListenerRegistrationPage() {
               {/* Bagian 4: Upload Bukti CV */}
               <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                  4. Unggah Dokumen CV (PDF, Maksimal 2MB):
+                  4. Unggah Dokumen CV (PDF, Maksimal {verificationMaxMb} MB):
                 </label>
                 <label className="p-4 rounded-2xl border-2 border-dashed border-pink-300 dark:border-pink-800 bg-pink-50/30 dark:bg-pink-950/20 text-center space-y-2 block cursor-pointer hover:bg-pink-50/50 transition-colors">
                   <input
                     type="file"
-                    accept="application/pdf"
+                    accept="application/pdf,.pdf"
                     className="hidden"
                     onChange={handleFileChange}
                     disabled={loading}
@@ -451,7 +473,7 @@ export default function ListenerRegistrationPage() {
                     )}
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    Format didukung: PDF resmi (Maksimal 2MB)
+                    PDF, maksimal {verificationMaxMb} MB
                   </p>
                 </label>
               </div>

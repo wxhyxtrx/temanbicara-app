@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { notify } from "@/lib/toast";
 import { authService } from "@/services/auth.service";
+import { usePublicSettings } from "@/hooks/use-public-settings";
 
 const specialtyOptions = [
   "Kecemasan & Panic Attack",
@@ -44,6 +45,8 @@ const approachesOptions = [
 
 export default function CounselorRegistrationPage() {
   const router = useRouter();
+  const { settings } = usePublicSettings();
+  const verificationMaxMb = settings?.upload?.verification_max_mb ?? 5;
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -79,8 +82,15 @@ export default function CounselorRegistrationPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      notify.warning("Ukuran File Terlalu Besar", "Dokumen SIPPK/STR maksimal 5MB.");
+    if (file.type !== "application/pdf" || !file.name.toLowerCase().endsWith(".pdf")) {
+      notify.warning("Format Berkas Tidak Valid", "Hanya berkas format PDF (.pdf) yang diperbolehkan.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > verificationMaxMb * 1024 * 1024) {
+      notify.warning("Ukuran File Terlalu Besar", `Dokumen SIPPK/STR maksimal ${verificationMaxMb} MB.`);
+      e.target.value = "";
       return;
     }
     setSelectedFile(file);
@@ -126,6 +136,18 @@ export default function CounselorRegistrationPage() {
       return;
     }
 
+    if (selectedFile.type !== "application/pdf" || !selectedFile.name.toLowerCase().endsWith(".pdf")) {
+      setFormError("Format dokumen harus PDF (.pdf).");
+      notify.warning("Format Berkas Tidak Valid", "Hanya dokumen berformat PDF (.pdf) yang diperbolehkan.");
+      return;
+    }
+
+    if (selectedFile.size > verificationMaxMb * 1024 * 1024) {
+      setFormError(`Dokumen SIPPK/STR maksimal ${verificationMaxMb} MB.`);
+      notify.warning("Ukuran File Terlalu Besar", `Dokumen SIPPK/STR maksimal ${verificationMaxMb} MB.`);
+      return;
+    }
+
     if (selectedSpecialties.length === 0) {
       setFormError("Pilih minimal 1 bidang spesialisasi klinis.");
       notify.warning("Spesialisasi Kosong", "Pilih minimal 1 spesialisasi.");
@@ -144,7 +166,7 @@ export default function CounselorRegistrationPage() {
       // 1. Presigned Upload URL
       const presigned = await authService.getPresignedUrl({
         file_name: selectedFile.name,
-        file_type: selectedFile.type || "application/pdf",
+        file_type: selectedFile.type,
         document_type: "sipp_str",
         user_email_or_temp_id: email.trim().toLowerCase(),
       });
@@ -464,12 +486,12 @@ export default function CounselorRegistrationPage() {
               {/* Bagian 4: Upload Dokumen SIPPK/STR */}
               <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                  4. Unggah Salinan Dokumen SIPPK / STR (PDF/Gambar, Maksimal 5MB):
+                  4. Unggah Salinan Dokumen SIPPK / STR (PDF, Maksimal {verificationMaxMb} MB):
                 </label>
                 <label className="p-4 rounded-2xl border-2 border-dashed border-teal-300 dark:border-teal-800 bg-teal-50/30 dark:bg-teal-950/20 text-center space-y-2 block cursor-pointer hover:bg-teal-50/50 transition-colors">
                   <input
                     type="file"
-                    accept=".pdf,image/png,image/jpeg"
+                    accept="application/pdf,.pdf"
                     className="hidden"
                     onChange={handleFileChange}
                     disabled={loading}
@@ -487,7 +509,7 @@ export default function CounselorRegistrationPage() {
                     )}
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    Format didukung: PDF, JPG, PNG (Maksimal 5MB)
+                    PDF, maksimal {verificationMaxMb} MB
                   </p>
                 </label>
               </div>

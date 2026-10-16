@@ -32,6 +32,7 @@ import {
 import { userService } from "@/services/user.service";
 import { authService } from "@/services/auth.service";
 import { notify } from "@/lib/toast";
+import { usePublicSettings } from "@/hooks/use-public-settings";
 import type { ApiRole, ApiAccountStatus } from "@/types/user-profile";
 import {
   adminCreatePsikologSchema,
@@ -62,6 +63,9 @@ export function CreateUserModal({
   onOpenChange,
   onCreated,
 }: CreateUserModalProps) {
+  const { settings } = usePublicSettings();
+  const verificationMaxMb = settings?.upload?.verification_max_mb ?? 5;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -124,14 +128,21 @@ export function CreateUserModal({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     markTouched("document");
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) {
-        notify.warning("Ukuran Terlalu Besar", "Maksimal ukuran dokumen adalah 5MB");
-        return;
-      }
-      setSelectedFile(file);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf" || !file.name.toLowerCase().endsWith(".pdf")) {
+      notify.warning("Format Berkas Tidak Valid", "Hanya berkas format PDF (.pdf) yang diperbolehkan.");
+      e.target.value = "";
+      return;
     }
+
+    if (file.size > verificationMaxMb * 1024 * 1024) {
+      notify.warning("Ukuran Terlalu Besar", `Maksimal ukuran dokumen adalah ${verificationMaxMb} MB`);
+      e.target.value = "";
+      return;
+    }
+    setSelectedFile(file);
   };
 
   // Validasi Zod per isian sesuai role
@@ -264,11 +275,17 @@ export function CreateUserModal({
 
       // 1. Unggah dokumen jika admin melampirkan berkas SIPP/STR atau CV
       if (selectedFile) {
+        if (selectedFile.type !== "application/pdf" || !selectedFile.name.toLowerCase().endsWith(".pdf")) {
+          notify.warning("Format Berkas Tidak Valid", "Hanya dokumen berformat PDF (.pdf) yang diperbolehkan.");
+          setSubmitting(false);
+          return;
+        }
+
         const docType = role === "psikolog" ? "sipp_str" : "cv";
         const cleanEmail = email.trim().toLowerCase();
         const presigned = await authService.getPresignedUrl({
           file_name: selectedFile.name,
-          file_type: selectedFile.type || "application/pdf",
+          file_type: selectedFile.type,
           document_type: docType,
           user_email_or_temp_id: cleanEmail || "admin_created_user",
         });
@@ -541,7 +558,7 @@ export function CreateUserModal({
               {/* Upload Dokumen SIPP/STR */}
               <div className="space-y-1.5 pt-1">
                 <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
-                  Unggah Dokumen Lisensi SIPP / STR (PDF / JPG / PNG) <span className="text-rose-500">*</span>
+                  Unggah Dokumen Lisensi SIPP / STR (PDF, maksimal {verificationMaxMb} MB) <span className="text-rose-500">*</span>
                 </Label>
                 <label
                   className={cn(
@@ -553,7 +570,7 @@ export function CreateUserModal({
                 >
                   <input
                     type="file"
-                    accept=".pdf,image/png,image/jpeg"
+                    accept="application/pdf,.pdf"
                     className="hidden"
                     onChange={handleFileChange}
                     disabled={submitting}
@@ -581,7 +598,7 @@ export function CreateUserModal({
                         </button>
                       </div>
                     ) : (
-                      <span>Klik untuk memilih berkas SIPP/STR (Maks. 5MB)</span>
+                      <span>Klik untuk memilih berkas SIPP/STR (PDF, maksimal {verificationMaxMb} MB)</span>
                     )}
                   </div>
                 </label>
@@ -633,7 +650,7 @@ export function CreateUserModal({
               {/* Upload Dokumen CV/Portofolio */}
               <div className="space-y-1.5 pt-1">
                 <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
-                  Unggah Dokumen CV / Portofolio Relawan (PDF / JPG / PNG) <span className="text-rose-500">*</span>
+                  Unggah Dokumen CV / Portofolio Relawan (PDF, maksimal {verificationMaxMb} MB) <span className="text-rose-500">*</span>
                 </Label>
                 <label
                   className={cn(
@@ -645,7 +662,7 @@ export function CreateUserModal({
                 >
                   <input
                     type="file"
-                    accept=".pdf,image/png,image/jpeg"
+                    accept="application/pdf,.pdf"
                     className="hidden"
                     onChange={handleFileChange}
                     disabled={submitting}
@@ -673,7 +690,7 @@ export function CreateUserModal({
                         </button>
                       </div>
                     ) : (
-                      <span>Klik untuk memilih berkas CV / Sertifikat (Maks. 5MB)</span>
+                      <span>Klik untuk memilih berkas CV / Sertifikat (PDF, maksimal {verificationMaxMb} MB)</span>
                     )}
                   </div>
                 </label>
