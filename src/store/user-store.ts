@@ -468,6 +468,7 @@ export const useUserStore = create<UserState>()(
             const targetUser = profiles[mapped] || mockUsers[mapped] || mockUsers.patient;
             set({
               isAuthenticated: true,
+              isProfileLoaded: true,
               user: targetUser,
             });
           }

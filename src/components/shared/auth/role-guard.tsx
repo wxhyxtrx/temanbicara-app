@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserRole } from "@/constant/mock-users";
 import { useUserStore } from "@/store/user-store";
-import { ShieldAlert, ArrowRight, RefreshCw, UserCheck } from "lucide-react";
+import { ShieldAlert, ArrowRight, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface RoleGuardProps {
@@ -29,6 +29,8 @@ const roleHomes: Record<UserRole, string> = {
 export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
   const router = useRouter();
   const user = useUserStore((state) => state.user);
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
+  const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
   const switchRole = useUserStore((state) => state.switchRole);
   const syncSession = useUserStore((state) => state.syncSession);
   const [mounted, setMounted] = useState(false);
@@ -38,8 +40,21 @@ export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     syncSession();
   }, [syncSession]);
 
-  if (!mounted) {
-    return <>{children}</>;
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [mounted, isAuthenticated, router]);
+
+  if (!mounted || !isAuthenticated || !isProfileLoaded) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center font-nunito p-4">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={32} className="animate-spin text-teal-600 dark:text-teal-400" />
+          <p className="text-xs text-slate-500 dark:text-slate-400">Memuat sesi...</p>
+        </div>
+      </div>
+    );
   }
 
   // Deteksi jika sesi cookie server sudah berganti tetapi store client belum selesai rehydrate

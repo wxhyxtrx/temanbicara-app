@@ -137,13 +137,13 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     handleNavClick();
+    window.location.href = "/login";
     try {
       await authService.logout();
     } catch {
       // Ignore network errors on logout
     }
     logout();
-    window.location.href = "/login";
   };
 
   const getPortalHome = () => {
