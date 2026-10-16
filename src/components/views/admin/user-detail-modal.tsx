@@ -207,7 +207,10 @@ export function UserDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-nunito p-6 max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-nunito p-6 min-h-[520px] max-h-[90vh] overflow-y-auto [scrollbar-gutter:stable]"
+        style={{ scrollbarGutter: "stable" }}
+      >
         <DialogHeader className="flex flex-col items-center justify-center text-center sm:text-center gap-1.5 pt-1 px-6">
           <DialogTitle className="font-heading text-lg font-bold text-slate-900 dark:text-white text-center leading-snug">
             Detail & Pengawasan Pengguna
@@ -466,13 +469,13 @@ export function UserDetailModal({
               <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold shrink-0">
                 Pilih Status Baru
               </Label>
-              <div className="w-[180px] sm:w-[220px]">
+              <div className="w-[180px] sm:w-[220px] shrink-0">
                 <Select
                   value={newStatus}
                   onValueChange={(val) => setNewStatus(val as ApiAccountStatus)}
                 >
-                  <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900 border-teal-200 dark:border-teal-800/80 rounded-lg">
-                    <SelectValue placeholder="Pilih status..." />
+                  <SelectTrigger className="w-full min-w-0 max-w-full h-8 text-xs bg-white dark:bg-slate-900 border-teal-200 dark:border-teal-800/80 rounded-lg overflow-hidden [&>span]:truncate [&>span]:block [&>span]:text-left">
+                    <SelectValue placeholder="Pilih status..." className="truncate block text-left" />
                   </SelectTrigger>
                   <SelectContent className="text-xs">
                     <SelectItem value="active">Aktif (Dapat Mengakses Platform)</SelectItem>
