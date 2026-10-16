@@ -1,7 +1,7 @@
-const ROLE_COOKIE_SECRET =
-  process.env.JWT_SECRET ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  'temanbicara-fallback-role-secret-key-32b';
+function getSecret(): string | null {
+  const secret = process.env.ROLE_COOKIE_SECRET?.trim();
+  return secret || null;
+}
 
 async function getHmacHex(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -25,21 +25,33 @@ async function getHmacHex(message: string, secret: string): Promise<string> {
 
 /**
  * Menandatangani role pengguna menggunakan Web Crypto HMAC-SHA256: `<role>.<hmac_hex>`
- * Kompatibel 100% dengan Next.js Edge Runtime tanpa Node.js dependencies.
+ * Membutuhkan environment variable ROLE_COOKIE_SECRET.
+ * Melempar error jika secret belum dikonfigurasi (tanpa fallback hardcode).
  */
 export async function signRole(role: string): Promise<string> {
+  const secret = getSecret();
+  if (!secret) {
+    throw new Error('ROLE_COOKIE_SECRET environment variable is not configured');
+  }
+
   const normalized = role.trim().toLowerCase();
-  const hex = await getHmacHex(normalized, ROLE_COOKIE_SECRET);
+  const hex = await getHmacHex(normalized, secret);
   return `${normalized}.${hex}`;
 }
 
 /**
  * Memverifikasi tanda tangan HMAC pada cookie tb_user_role.
- * Mengembalikan role yang valid jika signature cocok, atau null jika tidak valid / dimanipulasi.
+ * Mengembalikan role yang valid jika signature cocok.
+ * Mengembalikan null jika secret kosong (semua dianggap belum login) atau signature tidak cocok.
  */
 export async function verifyRole(
   cookieValue: string | undefined | null
 ): Promise<string | null> {
+  const secret = getSecret();
+  if (!secret) {
+    return null;
+  }
+
   if (!cookieValue || typeof cookieValue !== 'string') return null;
 
   const dotIndex = cookieValue.indexOf('.');
@@ -50,7 +62,7 @@ export async function verifyRole(
 
   if (!role || !signature) return null;
 
-  const expectedHmac = await getHmacHex(role, ROLE_COOKIE_SECRET);
+  const expectedHmac = await getHmacHex(role, secret);
 
   if (signature.length !== expectedHmac.length) return null;
 
