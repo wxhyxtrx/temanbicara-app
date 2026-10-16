@@ -36,11 +36,13 @@ import { mockUsers } from "@/constant/mock-users";
 import { useUserStore, UserRole } from "@/store/user-store";
 import { authService } from "@/services/auth.service";
 import { walletClient } from "@/services/wallet.client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
   const user = useUserStore((state) => state.user);
+  const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
   const logout = useUserStore((state) => state.logout);
   const [mounted, setMounted] = React.useState(false);
   const [patientCoins, setPatientCoins] = React.useState<number | null>(null);
@@ -206,27 +208,39 @@ export function AppSidebar() {
       <SidebarContent className="px-3 py-2 space-y-3 bg-white dark:bg-slate-900">
         {/* 2. User Profile Card with Dynamic Role */}
         <SidebarGroup className="p-0">
-          <Link
-            href={getSettingsUrl()}
-            onClick={handleNavClick}
-            className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 hover:bg-teal-50/50 dark:hover:bg-slate-800 hover:border-teal-200 dark:hover:border-teal-700 transition-all duration-150 group"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className={`w-10 h-10 rounded-full font-bold text-xs flex items-center justify-center border shrink-0 font-heading shadow-2xs ${getAvatarBgClass()}`}
-              >
-                {displayInitials}
-              </div>
-              <div className="min-w-0 space-y-0.5">
-                <p className="font-heading font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate group-hover:text-teal-800 dark:group-hover:text-teal-300 transition-colors">
-                  {displayName}
-                </p>
-                {renderRoleBadge()}
+          {!mounted || !isProfileLoaded ? (
+            <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60">
+              <div className="flex items-center gap-3 min-w-0">
+                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                <div className="min-w-0 space-y-1.5">
+                  <Skeleton className="h-4 w-28 rounded" />
+                  <Skeleton className="h-3 w-20 rounded" />
+                </div>
               </div>
             </div>
+          ) : (
+            <Link
+              href={getSettingsUrl()}
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 hover:bg-teal-50/50 dark:hover:bg-slate-800 hover:border-teal-200 dark:hover:border-teal-700 transition-all duration-150 group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`w-10 h-10 rounded-full font-bold text-xs flex items-center justify-center border shrink-0 font-heading shadow-2xs ${getAvatarBgClass()}`}
+                >
+                  {displayInitials}
+                </div>
+                <div className="min-w-0 space-y-0.5">
+                  <p className="font-heading font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate group-hover:text-teal-800 dark:group-hover:text-teal-300 transition-colors">
+                    {displayName}
+                  </p>
+                  {renderRoleBadge()}
+                </div>
+              </div>
 
-            <ChevronRight size={14} className="text-slate-400 group-hover:text-teal-600 dark:group-hover:text-teal-400 shrink-0 transition-colors" />
-          </Link>
+              <ChevronRight size={14} className="text-slate-400 group-hover:text-teal-600 dark:group-hover:text-teal-400 shrink-0 transition-colors" />
+            </Link>
+          )}
         </SidebarGroup>
 
         {/* 3. Main Navigation */}

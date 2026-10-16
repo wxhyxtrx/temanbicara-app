@@ -11,15 +11,19 @@ import { useUserStore, UserRole } from "@/store/user-store";
 import { NotificationDropdown } from "@/components/shared/organisms/notification-dropdown";
 import { ThemeToggle } from "@/components/shared/atoms/theme-toggle";
 import { GlobalToastListener } from "@/components/shared/global-toast-listener";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PrivateLayouts({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const user = useUserStore((state) => state.user);
+  const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
+  const syncSession = useUserStore((state) => state.syncSession);
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
-  }, []);
+    syncSession();
+  }, [syncSession]);
 
   const currentRole: UserRole = mounted && user?.role ? user.role : "patient";
   const menuConfig = getMenuItemsByRole(currentRole);
@@ -106,12 +110,19 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
             <ThemeToggle />
 
             <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800">
-              <div className="flex flex-col text-right">
-                <span className="text-xs font-semibold text-slate-800 dark:text-white leading-tight">
-                  {displayName}
-                </span>
-                {renderRoleBadge()}
-              </div>
+              {!mounted || !isProfileLoaded ? (
+                <div className="flex flex-col items-end gap-1.5 py-0.5">
+                  <Skeleton className="h-3.5 w-24 rounded" />
+                  <Skeleton className="h-3 w-16 rounded" />
+                </div>
+              ) : (
+                <div className="flex flex-col text-right">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-white leading-tight">
+                    {displayName}
+                  </span>
+                  {renderRoleBadge()}
+                </div>
+              )}
             </div>
           </div>
         </header>

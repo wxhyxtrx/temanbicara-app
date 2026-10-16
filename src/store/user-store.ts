@@ -23,6 +23,7 @@ export interface UserState {
   user: UserProfile;
   roleProfiles: Record<UserRole, UserProfile>;
   isAuthenticated: boolean;
+  isProfileLoaded: boolean;
   login: (email: string, name?: string) => UserProfile;
   loginWithRole: (role: UserRole) => UserProfile;
   switchRole: (role: UserRole) => void;
@@ -54,12 +55,17 @@ export interface UserState {
   logout: () => void;
 }
 
+const createInitialUserState = () => ({
+  user: { ...mockUsers.patient },
+  roleProfiles: { ...mockUsers },
+  isAuthenticated: false,
+  isProfileLoaded: false,
+});
+
 export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
-      user: mockUsers.patient,
-      roleProfiles: { ...mockUsers },
-      isAuthenticated: false,
+      ...createInitialUserState(),
 
       login: (email, name) => {
         // Cek apakah email cocok dengan akun preset mock
@@ -71,6 +77,7 @@ export const useUserStore = create<UserState>()(
         if (matchedMock) {
           set({
             isAuthenticated: true,
+            isProfileLoaded: true,
             user: matchedMock,
           });
           if (typeof window !== "undefined") {
@@ -96,6 +103,7 @@ export const useUserStore = create<UserState>()(
         const profiles = get().roleProfiles || { ...mockUsers };
         set({
           isAuthenticated: true,
+          isProfileLoaded: true,
           user: customUser,
           roleProfiles: {
             ...profiles,
@@ -115,6 +123,7 @@ export const useUserStore = create<UserState>()(
         const targetUser = profiles[role] || mockUsers[role] || mockUsers.patient;
         set({
           isAuthenticated: true,
+          isProfileLoaded: true,
           user: targetUser,
         });
         if (typeof window !== "undefined") {
@@ -163,6 +172,7 @@ export const useUserStore = create<UserState>()(
         const profiles = get().roleProfiles || { ...mockUsers };
         set({
           isAuthenticated: true,
+          isProfileLoaded: true,
           user: newUser,
           roleProfiles: {
             ...profiles,
@@ -379,6 +389,7 @@ export const useUserStore = create<UserState>()(
 
         set({
           isAuthenticated: true,
+          isProfileLoaded: Boolean(profile),
           user: updatedUser,
           roleProfiles: {
             ...profiles,
@@ -441,6 +452,7 @@ export const useUserStore = create<UserState>()(
             const json = await res.json();
             if (json?.data?.user) {
               get().setAuthSession(json.data.user, token, json.data.profile || null);
+              set({ isProfileLoaded: true });
               return;
             }
           }
@@ -471,14 +483,18 @@ export const useUserStore = create<UserState>()(
           document.cookie = "tb_user_status=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         }
         set({
-          isAuthenticated: false,
-          user: mockUsers.patient,
+          ...createInitialUserState(),
         });
       },
     }),
     {
       name: "tb_user_store_v4",
       version: 4,
+      partialize: (state) => ({
+        user: state.user,
+        roleProfiles: state.roleProfiles,
+        isAuthenticated: state.isAuthenticated,
+      }),
       migrate: (persistedState: unknown) => {
         const state = persistedState as {
           user?: Partial<UserProfile>;

@@ -38,6 +38,7 @@ import { BookingModal } from "@/components/views/schedule/booking-modal";
 export default function PatientBerandaPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const user = useUserStore((state) => state.user);
+  const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
   const rawSchedules = useScheduleStore((state) => state.schedules);
   const [ventingModalOpen, setVentingModalOpen] = useState(false);
   const myActivePost = usePeerVentStore((state) => state.myActivePost);
@@ -131,7 +132,12 @@ export default function PatientBerandaPage() {
             </div>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white tracking-tight leading-snug">
-              Selamat Datang, {displayName}
+              Selamat Datang,{" "}
+              {!isProfileLoaded ? (
+                <span className="inline-block w-36 h-7 align-middle bg-teal-800/80 rounded animate-pulse" />
+              ) : (
+                displayName
+              )}
             </h1>
 
             <p className="text-sm sm:text-base text-teal-100/80 leading-relaxed max-w-xl">

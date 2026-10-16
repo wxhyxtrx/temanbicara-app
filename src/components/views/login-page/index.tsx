@@ -39,7 +39,7 @@ export default function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isExpired = searchParams.get("expired") === "true";
-  const { isAuthenticated, user, setAuthSession, logout } = useUserStore();
+  const { isAuthenticated, user, setAuthSession, syncSession, logout } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -89,6 +89,11 @@ export default function Login() {
 
       if (res.success && res.data) {
         setAuthSession(res.data.user, res.data.session.access_token);
+        try {
+          await syncSession();
+        } catch {
+          // Abaikan kesalahan jaringan sementara
+        }
         const isActive = res.data.user.status === "active";
         if (isActive) notify.success("Masuk Berhasil", res.message || "Selamat datang kembali!");
 
