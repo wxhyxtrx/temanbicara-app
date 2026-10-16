@@ -544,15 +544,21 @@ export default function PatientTransactionHistoryPage() {
       renderCell: (order) => {
         const isPastExp = isPastExpiry(order.expires_at, currentTime);
         const isPending = order.status === "pending";
+        const isChecking = Boolean(checkingOrderIds[order.order_id]);
         const remaining = isPending && !isPastExp ? formatRemainingTime(order.expires_at, currentTime) : null;
 
         return (
           <div className="space-y-1">
             <div>
-              {isPending && isPastExp ? (
+              {isChecking ? (
                 <Badge className="bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-800 text-[10px] font-bold gap-1">
                   <Loader2 size={11} className="animate-spin" />
                   <span>Memeriksa pembayaran…</span>
+                </Badge>
+              ) : isPending && isPastExp ? (
+                <Badge className="bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800 text-[10px] font-bold gap-1">
+                  <Clock size={11} />
+                  <span>Belum dibayar</span>
                 </Badge>
               ) : (
                 renderTopupStatusBadge(order.status)
@@ -590,6 +596,7 @@ export default function PatientTransactionHistoryPage() {
         const canContinue = isPending && !isPastExp && Boolean(order.snap_redirect_url);
         const isRecentExpire =
           order.status === "expire" && isCreatedWithin24Hours(order.created_at, currentTime);
+        const canCheckStatus = (isPending && isPastExp) || isRecentExpire;
 
         if (canContinue) {
           return (
@@ -608,7 +615,7 @@ export default function PatientTransactionHistoryPage() {
           );
         }
 
-        if (isRecentExpire) {
+        if (canCheckStatus) {
           return (
             <div className="flex justify-center">
               <Button
