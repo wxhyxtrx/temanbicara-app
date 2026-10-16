@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, Suspense } from "react";
-import TableInfo from "@/components/shared/atoms/Table/TableInfo";
-import TablePagination from "@/components/shared/atoms/Table/TablePagination";
-import Tables from "@/components/shared/atoms/Table/Tables";
+import { Tables, TablePaginationFooter } from "@/components/shared/atoms/Table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -495,19 +493,14 @@ function PatientScheduleContent() {
           </div>
 
           {/* Pagination & Footer Info */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
-            <TableInfo
-              total={filteredData.length}
-              displayed={itemsPerPage}
-              onChangeDisplayed={setItemsPerPage}
-            />
-            <TablePagination
-              totalItems={filteredData.length}
-              page={currentPage}
-              limit={itemsPerPage}
-              onPageChange={setCurrentPage}
-            />
-          </div>
+          <TablePaginationFooter
+            totalItems={filteredData.length}
+            page={currentPage}
+            limit={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onChangeLimit={setItemsPerPage}
+            className="pt-2 px-0"
+          />
         </CardContent>
       </Card>
 
