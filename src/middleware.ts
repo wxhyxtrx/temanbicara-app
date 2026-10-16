@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { verifyRole } from '@/lib/auth/role-cookie';
+import { verifyRole, getJwtSub } from '@/lib/auth/role-cookie';
 
 const AUTH_PAGES = ['/login', '/register', '/register/counselor', '/register/listener'];
 
@@ -19,10 +19,13 @@ export async function middleware(req: NextRequest) {
   const rawRoleCookie = req.cookies.get('tb_user_role')?.value;
   const userStatus = req.cookies.get('tb_user_status')?.value || 'active';
 
-  // Verifikasi tanda tangan HMAC pada tb_user_role
-  // Jika tanda tangan tidak cocok atau cookie dimanipulasi di DevTools,
+  // Ekstrak sub (userId) dari access token untuk verifikasi pengikatan sesi
+  const tokenSub = getJwtSub(token);
+
+  // Verifikasi tanda tangan HMAC pada tb_user_role (terikat ke role + userId + exp)
+  // Jika tanda tangan tidak cocok, exp kedaluwarsa, atau userId != sub access token,
   // anggap pengguna tidak login (redirect /login).
-  const verifiedRole = await verifyRole(rawRoleCookie);
+  const verifiedRole = await verifyRole(rawRoleCookie, tokenSub);
 
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
   const isStatusPage =

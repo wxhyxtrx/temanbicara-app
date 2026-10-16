@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { email, password } = parsed.data;
+    const { email, password, remember_me } = parsed.data;
 
     // 1. Verifikasi kredensial via Supabase Auth
     const { data: authData, error: authError } = await supabasePublic.auth.signInWithPassword({
@@ -130,21 +130,22 @@ export async function POST(req: Request) {
       },
     });
 
+    const maxAge = remember_me ? 60 * 60 * 24 * 7 : 60 * 60 * 24;
     response.cookies.set('tb_access_token', authData.session.access_token, {
       path: '/',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge,
       sameSite: 'lax',
     });
-    response.cookies.set('tb_user_role', await signRole(userProfile.role), {
+    response.cookies.set('tb_user_role', await signRole(userProfile.role, authData.user.id, maxAge), {
       path: '/',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge,
       sameSite: 'lax',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
     });
     response.cookies.set('tb_user_status', userProfile.status, {
       path: '/',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge,
       sameSite: 'lax',
     });
 

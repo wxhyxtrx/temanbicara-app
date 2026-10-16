@@ -24,28 +24,57 @@ async function getHmacHex(message: string, secret: string): Promise<string> {
 }
 
 /**
- * Menandatangani role pengguna menggunakan Web Crypto HMAC-SHA256: `<role>.<hmac_hex>`
- * Membutuhkan environment variable ROLE_COOKIE_SECRET.
- * Melempar error jika secret belum dikonfigurasi (tanpa fallback hardcode).
+ * Ekstrak 'sub' (User ID) dari Supabase JWT access token secara Edge-compatible.
  */
-export async function signRole(role: string): Promise<string> {
+export function getJwtSub(token: string | undefined | null): string | null {
+  if (!token || typeof token !== 'string') return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (base64.length % 4) base64 += '=';
+    const jsonStr = atob(base64);
+    const payload = JSON.parse(jsonStr) as { sub?: string };
+    return typeof payload.sub === 'string' && payload.sub.trim()
+      ? payload.sub.trim()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Menandatangani role pengguna yang diikat ke userId dan exp (timestamp detik):
+ * Format: `<role>.<userId>.<exp>.<hmac_hex>`
+ */
+export async function signRole(
+  role: string,
+  userId: string,
+  maxAgeSeconds: number = 60 * 60 * 24 * 7
+): Promise<string> {
   const secret = getSecret();
   if (!secret) {
     throw new Error('ROLE_COOKIE_SECRET environment variable is not configured');
   }
 
-  const normalized = role.trim().toLowerCase();
-  const hex = await getHmacHex(normalized, secret);
-  return `${normalized}.${hex}`;
+  const normalizedRole = role.trim().toLowerCase();
+  const normalizedUserId = userId.trim();
+  const exp = Math.floor(Date.now() / 1000) + maxAgeSeconds;
+
+  const payload = `${normalizedRole}.${normalizedUserId}.${exp}`;
+  const hex = await getHmacHex(payload, secret);
+  return `${payload}.${hex}`;
 }
 
 /**
  * Memverifikasi tanda tangan HMAC pada cookie tb_user_role.
- * Mengembalikan role yang valid jika signature cocok.
- * Mengembalikan null jika secret kosong (semua dianggap belum login) atau signature tidak cocok.
+ * - Memeriksa keabsahan signature
+ * - Memeriksa apakah exp belum lewat
+ * - Memeriksa apakah userId sama dengan sub di access token
  */
 export async function verifyRole(
-  cookieValue: string | undefined | null
+  cookieValue: string | undefined | null,
+  expectedUserId?: string | null
 ): Promise<string | null> {
   const secret = getSecret();
   if (!secret) {
@@ -54,23 +83,52 @@ export async function verifyRole(
 
   if (!cookieValue || typeof cookieValue !== 'string') return null;
 
-  const dotIndex = cookieValue.indexOf('.');
-  if (dotIndex === -1) return null;
+  const parts = cookieValue.split('.');
 
-  const role = cookieValue.slice(0, dotIndex).trim().toLowerCase();
-  const signature = cookieValue.slice(dotIndex + 1).trim();
+  // Format 4 bagian: <role>.<userId>.<exp>.<signature>
+  if (parts.length === 4) {
+    const [role, userId, expStr, signature] = parts;
+    if (!role || !userId || !expStr || !signature) return null;
 
-  if (!role || !signature) return null;
+    const exp = Number(expStr);
+    if (!Number.isFinite(exp)) return null;
 
-  const expectedHmac = await getHmacHex(role, secret);
+    // 1. Cek batas kedaluwarsa (exp)
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (nowSec > exp) return null;
 
-  if (signature.length !== expectedHmac.length) return null;
+    // 2. Cek apakah userId cocok dengan sub di access token
+    if (expectedUserId && userId !== expectedUserId) {
+      return null;
+    }
 
-  // Constant-time character comparison to prevent timing attacks
-  let mismatch = 0;
-  for (let i = 0; i < signature.length; i++) {
-    mismatch |= signature.charCodeAt(i) ^ expectedHmac.charCodeAt(i);
+    const payload = `${role.toLowerCase()}.${userId}.${expStr}`;
+    const expectedHmac = await getHmacHex(payload, secret);
+
+    if (signature.length !== expectedHmac.length) return null;
+
+    let mismatch = 0;
+    for (let i = 0; i < signature.length; i++) {
+      mismatch |= signature.charCodeAt(i) ^ expectedHmac.charCodeAt(i);
+    }
+
+    return mismatch === 0 ? role.toLowerCase() : null;
   }
 
-  return mismatch === 0 ? role : null;
+  // Format 2 bagian (legacy): <role>.<signature>
+  if (parts.length === 2) {
+    const [role, signature] = parts;
+    if (!role || !signature) return null;
+
+    const expectedHmac = await getHmacHex(role.toLowerCase(), secret);
+    if (signature.length !== expectedHmac.length) return null;
+
+    let mismatch = 0;
+    for (let i = 0; i < signature.length; i++) {
+      mismatch |= signature.charCodeAt(i) ^ expectedHmac.charCodeAt(i);
+    }
+    return mismatch === 0 ? role.toLowerCase() : null;
+  }
+
+  return null;
 }

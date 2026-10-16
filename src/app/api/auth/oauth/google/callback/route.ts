@@ -68,7 +68,7 @@ export async function GET(req: Request) {
     const withSessionCookies = async (res: NextResponse, role: string, status: string) => {
       const opts = { path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' as const };
       res.cookies.set('tb_access_token', accessToken, opts);
-      res.cookies.set('tb_user_role', await signRole(role), {
+      res.cookies.set('tb_user_role', await signRole(role, authUser.id, 60 * 60 * 24 * 7), {
         ...opts,
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
