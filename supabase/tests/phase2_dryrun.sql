@@ -336,11 +336,11 @@ BEGIN
     v_role := NULL;
     SELECT u.role INTO v_role
     FROM public.users AS u
-    WHERE u.id = v_order.patient_id AND u.status = 'active'::public.account_status
+    WHERE u.id = v_order.patient_id
     FOR SHARE;
 
     IF v_role IS NULL THEN
-        RAISE EXCEPTION 'USER_NOT_ACTIVE' USING ERRCODE='P0001';
+        RAISE EXCEPTION 'USER_NOT_FOUND' USING ERRCODE='P0002';
     END IF;
     IF v_role <> 'pasien' THEN
         RAISE EXCEPTION 'PATIENT_ROLE_REQUIRED' USING ERRCODE='42501';

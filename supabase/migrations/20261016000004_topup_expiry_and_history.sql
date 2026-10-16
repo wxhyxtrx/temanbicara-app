@@ -11,6 +11,8 @@
 -- Semua SECURITY DEFINER memakai search_path = '' dan nama objek fully qualified.
 -- ========================================================
 
+BEGIN;
+
 -- 1. TAMBAH KOLOM KE TABEL TOPUP_ORDERS
 ALTER TABLE public.topup_orders
 ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ,
@@ -129,11 +131,11 @@ BEGIN
     v_role := NULL;
     SELECT u.role INTO v_role
     FROM public.users AS u
-    WHERE u.id = v_order.patient_id AND u.status = 'active'::public.account_status
+    WHERE u.id = v_order.patient_id
     FOR SHARE;
 
     IF v_role IS NULL THEN
-        RAISE EXCEPTION 'USER_NOT_ACTIVE' USING ERRCODE='P0001';
+        RAISE EXCEPTION 'USER_NOT_FOUND' USING ERRCODE='P0002';
     END IF;
     IF v_role <> 'pasien' THEN
         RAISE EXCEPTION 'PATIENT_ROLE_REQUIRED' USING ERRCODE='42501';
@@ -234,3 +236,5 @@ SELECT cron.schedule(
     '*/15 * * * *',
     'SELECT public.topup_expire_stale(100);'
 );
+
+COMMIT;

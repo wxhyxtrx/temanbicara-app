@@ -5,42 +5,78 @@
 -- 2. Partial index topup_orders_stale_pending_idx
 -- 3. RPC topup_order_create (expires_at 10 menit)
 -- 4. RPC topup_expire_stale (pending -> expire jika now > expires_at + 15 menit)
--- 5. RPC topup_settle (PENTING: uang aman, status 'expire' tetap dikreditkan koinnya)
+-- 5. RPC topup_settle (PENTING: uang aman, status 'expire' & pasien suspended tetap dikreditkan koinnya)
 -- 6. Verifikasi idempotensi dan proteksi deny/cancel
 -- SELURUH UJI BERJALAN DALAM SATU TRANSAKSI DAN OTOMATIS DI-ROLLBACK
 -- ========================================================
 
 BEGIN;
 
--- 1. PASTIKAN USER TEST TERSEDIA (IDEMPOTEN)
-INSERT INTO public.users (id, email, password_hash, role, status)
-VALUES
-    ('a1000000-0000-0000-0000-000000000001', 'dryrun.pasien@temanbicara.id', '$2b$10$dummyhashpasien', 'pasien'::public.user_role, 'active'::public.account_status),
-    ('a2000000-0000-0000-0000-000000000002', 'dryrun.psikolog@temanbicara.id', '$2b$10$dummyhashpsikolog', 'psikolog'::public.user_role, 'active'::public.account_status)
-ON CONFLICT (id) DO UPDATE SET status = 'active'::public.account_status;
-
-INSERT INTO public.wallets (user_id, coin_balance, pending_rupiah, available_rupiah)
-VALUES ('a1000000-0000-0000-0000-000000000001', 0, 0, 0)
-ON CONFLICT (user_id) DO UPDATE SET coin_balance = 0;
-
+-- 1. SETUP SYSTEM SETTINGS
 INSERT INTO public.system_settings (key, value)
-VALUES ('topup', '{"min_coins": 10, "max_coins": 500}'::jsonb)
+VALUES
+    ('topup', '{"min_coins": 10, "max_coins": 500}'::jsonb),
+    ('tip', '{"min_coins": 1, "max_coins": 50, "daily_cap_coins_per_patient": 50}'::jsonb),
+    ('holding', '{"hours": 48}'::jsonb),
+    ('payout', '{"min_rupiah": 1000000, "max_rupiah": 10000000, "fee_rupiah": 6500}'::jsonb)
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
--- 2. APLIKASIKAN DDL MIGRASI BARU
+-- 2. SETUP USER TEST: auth.users (to satisfy users_id_fkey)
+INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
+VALUES
+    ('a1000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dryrun_pasien_phase2@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
+    ('a2000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dryrun_psikolog_phase2@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
+    ('a5000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dryrun_suspended_pasien_phase2@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb)
+ON CONFLICT (id) DO NOTHING;
+
+-- 3. SETUP USER TEST: public.users & profil
+INSERT INTO public.users (id, email, no_wa, role, status)
+VALUES
+    ('a1000000-0000-0000-0000-000000000001', 'dryrun_pasien_phase2@temanbicara.test', '081111110001', 'pasien'::public.user_role, 'active'::public.account_status),
+    ('a2000000-0000-0000-0000-000000000002', 'dryrun_psikolog_phase2@temanbicara.test', '081111110002', 'psikolog'::public.user_role, 'active'::public.account_status),
+    ('a5000000-0000-0000-0000-000000000005', 'dryrun_suspended_pasien_phase2@temanbicara.test', '081111110005', 'pasien'::public.user_role, 'suspended'::public.account_status)
+ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, status = EXCLUDED.status;
+
+INSERT INTO public.pasien_profiles (user_id, nama_lengkap)
+VALUES
+    ('a1000000-0000-0000-0000-000000000001', 'Dryrun Pasien Active'),
+    ('a5000000-0000-0000-0000-000000000005', 'Dryrun Pasien Suspended')
+ON CONFLICT (user_id) DO UPDATE SET nama_lengkap = EXCLUDED.nama_lengkap;
+
+INSERT INTO public.psikolog_profiles (user_id, nama_lengkap_gelar, nomor_sipp_str, dokumen_sipp_str_url)
+VALUES ('a2000000-0000-0000-0000-000000000002', 'Dr. Dryrun Psikolog, M.Psi', 'STR-DRYRUN-001', 'https://example.com/str.pdf')
+ON CONFLICT (user_id) DO UPDATE SET nama_lengkap_gelar = EXCLUDED.nama_lengkap_gelar;
+
+-- INITIAL WALLETS FOR TEST USERS
+INSERT INTO public.wallets (user_id, coin_balance, pending_rupiah, available_rupiah)
+VALUES
+    ('a1000000-0000-0000-0000-000000000001', 0, 0, 0),
+    ('a2000000-0000-0000-0000-000000000002', 0, 0, 0),
+    ('a5000000-0000-0000-0000-000000000005', 0, 0, 0)
+ON CONFLICT (user_id) DO UPDATE SET coin_balance = 0;
+
+
+-- ========================================================
+-- SALINAN PERSIS DARI supabase/migrations/20261016000004_topup_expiry_and_history.sql
+-- (Bagian DDL dan RPCs, tanpa BEGIN/COMMIT dan tanpa pg_cron)
+-- ========================================================
+
+-- 1. TAMBAH KOLOM KE TABEL TOPUP_ORDERS
 ALTER TABLE public.topup_orders
 ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS snap_redirect_url TEXT;
 
+-- Backfill data lama jika ada yang belum memiliki expires_at
 UPDATE public.topup_orders
 SET expires_at = created_at + INTERVAL '10 minutes'
 WHERE expires_at IS NULL;
 
+-- 2. PARTIAL INDEX UNTUK PENGECEKAN ORDER STALE PENDING
 CREATE INDEX IF NOT EXISTS topup_orders_stale_pending_idx
 ON public.topup_orders(expires_at)
 WHERE status = 'pending'::public.payment_status;
 
--- 3. APLIKASIKAN RPC BARU: topup_order_create (10 Menit)
+-- 3. UPDATE RPC: topup_order_create
 DROP FUNCTION IF EXISTS public.topup_order_create(TEXT, UUID, BIGINT);
 
 CREATE OR REPLACE FUNCTION public.topup_order_create(
@@ -115,7 +151,8 @@ $$;
 REVOKE ALL ON FUNCTION public.topup_order_create(TEXT, UUID, BIGINT, TIMESTAMPTZ) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.topup_order_create(TEXT, UUID, BIGINT, TIMESTAMPTZ) TO service_role;
 
--- 4. APLIKASIKAN RPC BARU: topup_settle (Proteksi Uang untuk Order 'expire')
+-- 4. UPDATE RPC: topup_settle
+-- PENTING (UANG): Order berstatus 'expire' WAJIB tetap mengkreditkan koin bila Midtrans melaporkan settlement valid.
 CREATE OR REPLACE FUNCTION public.topup_settle(
     p_order_id TEXT,
     p_provider_reference TEXT,
@@ -142,11 +179,11 @@ BEGIN
     v_role := NULL;
     SELECT u.role INTO v_role
     FROM public.users AS u
-    WHERE u.id = v_order.patient_id AND u.status = 'active'::public.account_status
+    WHERE u.id = v_order.patient_id
     FOR SHARE;
 
     IF v_role IS NULL THEN
-        RAISE EXCEPTION 'USER_NOT_ACTIVE' USING ERRCODE='P0001';
+        RAISE EXCEPTION 'USER_NOT_FOUND' USING ERRCODE='P0002';
     END IF;
     IF v_role <> 'pasien' THEN
         RAISE EXCEPTION 'PATIENT_ROLE_REQUIRED' USING ERRCODE='42501';
@@ -156,7 +193,7 @@ BEGIN
         RETURN FALSE;
     END IF;
 
-    -- PENTING (UANG): Order berstatus 'pending' ATAU 'expire' tetap wajib dikreditkan bila pembayaran sukses
+    -- Proteksi uang: order pending maupun expire tetap boleh diselesaikan jika uang sudah masuk
     IF v_order.status NOT IN ('pending'::public.payment_status, 'expire'::public.payment_status) THEN
         RAISE EXCEPTION 'TOPUP_NOT_SETTLEABLE' USING ERRCODE='P0001';
     END IF;
@@ -188,7 +225,7 @@ $$;
 REVOKE ALL ON FUNCTION public.topup_settle(TEXT, TEXT, BIGINT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.topup_settle(TEXT, TEXT, BIGINT) TO service_role;
 
--- 5. APLIKASIKAN RPC BARU: topup_expire_stale (Job Kedaluwarsa)
+-- 5. RPC JOB KEDALUWARSA: topup_expire_stale
 CREATE OR REPLACE FUNCTION public.topup_expire_stale(
     p_batch_limit INTEGER DEFAULT 100
 )
@@ -377,11 +414,70 @@ BEGIN
 END;
 $$;
 
--- TEST 4: Proteksi Order Berstatus 'deny' & 'cancel' TIDAK Boleh di-Settle
+-- TEST 4: PENTING (UANG) - Pasien Suspended dengan Order Pending TETAP Dikreditkan Koinnya
 DO $$
 DECLARE
-    v_order_deny TEXT := 'TOPUP-DENY-006';
-    v_order_cancel TEXT := 'TOPUP-CANCEL-007';
+    v_order_suspended TEXT := 'TOPUP-SUSPENDED-006';
+    v_patient_id UUID := 'a5000000-0000-0000-0000-000000000005';
+    v_initial_coins BIGINT;
+    v_after_coins BIGINT;
+    v_settle_res BOOLEAN;
+    v_ledger_found BOOLEAN;
+    v_order_row public.topup_orders%ROWTYPE;
+BEGIN
+    -- Verifikasi pasien memang dalam status suspended
+    PERFORM 1 FROM public.users WHERE id = v_patient_id AND status = 'suspended'::public.account_status;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'TEST 4 SETUP FAILED: User bukan pasien suspended';
+    END IF;
+
+    -- Pasien membuat order sebelum di-suspend (order pending Rp 250.000 = 25 koin)
+    INSERT INTO public.topup_orders (order_id, patient_id, coins, amount_rupiah, status, expires_at)
+    VALUES (v_order_suspended, v_patient_id, 25, 250000, 'pending'::public.payment_status, pg_catalog.now() + INTERVAL '10 minutes');
+
+    SELECT coin_balance INTO v_initial_coins FROM public.wallets WHERE user_id = v_patient_id;
+
+    -- Webhook Midtrans masuk setelah akun di-suspend -> WAJIB SUKSES kredit
+    v_settle_res := public.topup_settle(v_order_suspended, 'MIDTRANS-SUSPENDED-REF-777', 250000);
+
+    IF NOT v_settle_res THEN
+        RAISE EXCEPTION 'TEST 4 FAILED: topup_settle untuk pasien suspended harus menghasilkan true';
+    END IF;
+
+    -- Saldo dompet koin pasien suspended bertambah 25 koin
+    SELECT coin_balance INTO v_after_coins FROM public.wallets WHERE user_id = v_patient_id;
+    IF v_after_coins <> v_initial_coins + 25 THEN
+        RAISE EXCEPTION 'TEST 4 FAILED: Saldo koin pasien suspended tidak bertambah 25! Awal: %, Akhir: %', v_initial_coins, v_after_coins;
+    END IF;
+
+    -- Ledger tercatat
+    SELECT EXISTS (
+        SELECT 1 FROM public.ledger_entries
+        WHERE user_id = v_patient_id
+          AND account = 'patient_coins'
+          AND amount = 25
+          AND unit = 'coin'
+          AND reason = 'topup_settled'
+          AND ref_type = 'topup_order'
+    ) INTO v_ledger_found;
+
+    IF NOT v_ledger_found THEN
+        RAISE EXCEPTION 'TEST 4 FAILED: Ledger entry untuk pasien suspended tidak ditemukan';
+    END IF;
+
+    -- Status order berubah ke settlement
+    SELECT * INTO v_order_row FROM public.topup_orders WHERE order_id = v_order_suspended;
+    IF v_order_row.status <> 'settlement'::public.payment_status OR v_order_row.settled_at IS NULL THEN
+        RAISE EXCEPTION 'TEST 4 FAILED: Status order di topup_orders bukan settlement';
+    END IF;
+END;
+$$;
+
+-- TEST 5: Proteksi Order Berstatus 'deny' & 'cancel' TIDAK Boleh di-Settle
+DO $$
+DECLARE
+    v_order_deny TEXT := 'TOPUP-DENY-007';
+    v_order_cancel TEXT := 'TOPUP-CANCEL-008';
     v_caught BOOLEAN;
 BEGIN
     PERFORM public.topup_order_create(v_order_deny, 'a1000000-0000-0000-0000-000000000001', 10);
@@ -394,7 +490,7 @@ BEGIN
         v_caught := TRUE;
     END;
     IF NOT v_caught THEN
-        RAISE EXCEPTION 'TEST 4 FAILED: topup_settle pada order deny harus memicu exception P0001';
+        RAISE EXCEPTION 'TEST 5 FAILED: topup_settle pada order deny harus memicu exception P0001';
     END IF;
 
     PERFORM public.topup_order_create(v_order_cancel, 'a1000000-0000-0000-0000-000000000001', 10);
@@ -407,7 +503,7 @@ BEGIN
         v_caught := TRUE;
     END;
     IF NOT v_caught THEN
-        RAISE EXCEPTION 'TEST 4 FAILED: topup_settle pada order cancel harus memicu exception P0001';
+        RAISE EXCEPTION 'TEST 5 FAILED: topup_settle pada order cancel harus memicu exception P0001';
     END IF;
 END;
 $$;
@@ -415,6 +511,6 @@ $$;
 -- ========================================================
 -- HASIL FINAL & AUTOMATIC ROLLBACK (DATABASE TETAP BERSIH)
 -- ========================================================
-SELECT 'SEMUA TEST TOPUP EXPIRY & EXPIRED SETTLEMENT LULUS DENGAN AMAN' AS hasil;
+SELECT 'SEMUA TEST TOPUP EXPIRY & SETTLEMENT LULUS DENGAN AMAN' AS hasil;
 
 ROLLBACK;
