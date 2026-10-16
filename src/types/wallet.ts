@@ -50,6 +50,7 @@ export interface TopupOrderEntity {
   created_at: string;
   expires_at?: string | null;
   snap_redirect_url?: string | null;
+  reconciled_at?: string | null;
 }
 
 export interface PayoutRequestEntity {

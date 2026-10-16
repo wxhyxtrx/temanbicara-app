@@ -4,6 +4,7 @@ export const ENDPOINTS = {
     TOPUP: '/api/wallet/topup',
     TOPUPS: '/api/wallet/topups',
     TOPUP_DETAIL: (orderId: string) => `/api/wallet/topup/${encodeURIComponent(orderId)}`,
+    TOPUP_CHECK: (orderId: string) => `/api/wallet/topup/${encodeURIComponent(orderId)}/check`,
     TRANSACTIONS: '/api/wallet/transactions',
     PAYOUT: '/api/wallet/payout',
     PAYOUTS: '/api/wallet/payouts',

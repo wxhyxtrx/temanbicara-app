@@ -20,10 +20,15 @@ export async function GET(
 
     const data = await WalletService.getTopupOrder(order_id, session.user);
 
-    return NextResponse.json({
+    const resPayload: Record<string, unknown> = {
       success: true,
       data,
-    });
+    };
+    if (data.reconciled_at) {
+      resPayload.reconciled_at = data.reconciled_at;
+    }
+
+    return NextResponse.json(resPayload);
   } catch (error) {
     if (error instanceof WalletHttpError) {
       return fail(error.status, error.code, error.message);

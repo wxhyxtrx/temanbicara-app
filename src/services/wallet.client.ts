@@ -188,6 +188,18 @@ export const walletClient = {
   },
 
   /**
+   * Memicu rekonsiliasi manual status pesanan top-up ke Midtrans ("Cek Status")
+   */
+  async checkTopupStatus(orderId: string): Promise<TopupOrderEntity> {
+    const res = await fetch(ENDPOINTS.WALLET.TOPUP_CHECK(orderId), {
+      method: 'POST',
+      credentials: 'include',
+    });
+    const result = await handleWalletResponse<TopupOrderEntity>(res);
+    return result.data;
+  },
+
+  /**
    * Mengambil riwayat pesanan top-up pasien
    */
   async getTopups(params?: { page?: number; limit?: number }): Promise<{

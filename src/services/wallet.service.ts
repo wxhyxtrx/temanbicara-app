@@ -4,6 +4,7 @@ import { getRoleProfile, displayName } from '@/lib/auth/session';
 import { TOPUP_PAYMENT_EXPIRY_MINUTES } from '@/constant/wallet';
 import { normalizePayeeName } from '@/lib/wallet/payee-name';
 import { WalletPayoutService } from '@/services/wallet-payout.service';
+import { WalletReconcileService } from '@/services/wallet-reconcile.service';
 import type { UserEntity, UserRole } from '@/types/database';
 import type {
   AdminPayoutItem,
@@ -274,54 +275,13 @@ export class WalletService {
   }
 
   /**
-   * Cek status order top-up koin.
+   * Cek status order top-up koin dengan rekonsiliasi otomatis Midtrans.
    */
   public static async getTopupOrder(
     orderId: string,
     currentUser: UserEntity
   ): Promise<TopupOrderEntity> {
-    if (!supabaseAdmin) {
-      throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('topup_orders')
-      .select('id, order_id, patient_id, coins, amount_rupiah, status, provider_reference, settled_at, created_at, expires_at, snap_redirect_url')
-      .eq('order_id', orderId)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error fetching topup order:', error);
-      throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memuat status pesanan');
-    }
-
-    if (!data) {
-      throw new WalletHttpError(404, 'ORDER_NOT_FOUND', 'Pesanan top-up tidak ditemukan');
-    }
-
-    if (currentUser.role !== 'admin' && data.patient_id !== currentUser.id) {
-      throw new WalletHttpError(403, 'FORBIDDEN', 'Anda tidak berhak melihat pesanan ini');
-    }
-
-    const now = new Date();
-    const isPending = data.status === 'pending';
-    const expiresAt = data.expires_at ? new Date(data.expires_at) : null;
-    const isNotExpired = expiresAt ? now < expiresAt : false;
-    const snapRedirectUrl = isPending && isNotExpired ? (data.snap_redirect_url ?? null) : null;
-
-    return {
-      id: data.id,
-      order_id: data.order_id,
-      patient_id: data.patient_id,
-      coins: Number(data.coins),
-      amount_rupiah: Number(data.amount_rupiah),
-      status: data.status,
-      provider_reference: data.provider_reference,
-      settled_at: data.settled_at,
-      created_at: data.created_at,
-      expires_at: data.expires_at ?? null,
-      snap_redirect_url: snapRedirectUrl,
-    };
+    return WalletReconcileService.reconcileAndGetOrder(orderId, currentUser);
   }
 
   /**
