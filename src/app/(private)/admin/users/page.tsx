@@ -150,93 +150,133 @@ function AdminUsersContent() {
         // Abaikan error background stats
       }
 
-      // 2. Ambil data pengguna sesuai tab dan filter
-      if (activeTab === "verifications" && verificationSubFilter === "pending") {
-        if (roleFilter === "psikolog") {
-          const res = await userService.getAdminUsers({
-            role: "psikolog",
-            status: "pending_verification",
-            search: search.trim() || undefined,
-            limit: 100,
-          });
-          const list = (res.success && Array.isArray(res.data) ? res.data : []).filter(
-            (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
-          );
-          setUsers(list);
-          setTotal(list.length);
-        } else if (roleFilter === "relawan") {
-          const res = await userService.getAdminUsers({
-            role: "relawan",
-            status: "pending_approval",
-            search: search.trim() || undefined,
-            limit: 100,
-          });
-          const list = (res.success && Array.isArray(res.data) ? res.data : []).filter(
-            (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
-          );
-          setUsers(list);
-          setTotal(list.length);
-        } else {
-          // Semua Mitra: psikolog pending_verification + relawan pending_approval
-          const [psiRes, relRes] = await Promise.all([
-            userService.getAdminUsers({
+      // 2. Ambil data pengguna dengan pagination server
+      if (activeTab === "verifications") {
+        if (verificationSubFilter === "pending") {
+          if (roleFilter === "psikolog") {
+            const res = await userService.getAdminUsers({
               role: "psikolog",
               status: "pending_verification",
               search: search.trim() || undefined,
-              limit: 100,
-            }),
-            userService.getAdminUsers({
+              page,
+              limit,
+            });
+            if (res.success && Array.isArray(res.data)) {
+              setUsers(res.data);
+              setTotal(res.meta.total);
+            } else {
+              setUsers([]);
+              setTotal(0);
+            }
+          } else if (roleFilter === "relawan") {
+            const res = await userService.getAdminUsers({
               role: "relawan",
               status: "pending_approval",
               search: search.trim() || undefined,
-              limit: 100,
-            }),
-          ]);
+              page,
+              limit,
+            });
+            if (res.success && Array.isArray(res.data)) {
+              setUsers(res.data);
+              setTotal(res.meta.total);
+            } else {
+              setUsers([]);
+              setTotal(0);
+            }
+          } else {
+            // Semua Mitra: psikolog pending_verification + relawan pending_approval
+            // Catatan: Karena endpoint GET /api/users belum mendukung multi-status/multi-role dalam 1 request,
+            // FE sementara query paralel kedua role lalu menggabungkannya.
+            const [psiRes, relRes] = await Promise.all([
+              userService.getAdminUsers({
+                role: "psikolog",
+                status: "pending_verification",
+                search: search.trim() || undefined,
+                page,
+                limit,
+              }),
+              userService.getAdminUsers({
+                role: "relawan",
+                status: "pending_approval",
+                search: search.trim() || undefined,
+                page,
+                limit,
+              }),
+            ]);
 
-          const psiList = psiRes.success && Array.isArray(psiRes.data) ? psiRes.data : [];
-          const relList = relRes.success && Array.isArray(relRes.data) ? relRes.data : [];
-          const merged = [...psiList, ...relList].filter(
-            (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
-          );
-          setUsers(merged);
-          setTotal(merged.length);
-        }
-      } else {
-        let apiRole: ApiRole | undefined;
-        let apiStatus: ApiAccountStatus | undefined;
+            const psiList = psiRes.success && Array.isArray(psiRes.data) ? psiRes.data : [];
+            const relList = relRes.success && Array.isArray(relRes.data) ? relRes.data : [];
+            const psiTotal = psiRes.success ? psiRes.meta.total : 0;
+            const relTotal = relRes.success ? relRes.meta.total : 0;
 
-        if (activeTab === "verifications") {
-          if (roleFilter === "psikolog" || roleFilter === "relawan") {
-            apiRole = roleFilter as ApiRole;
-          }
-          if (verificationSubFilter === "approved") {
-            apiStatus = "active";
-          } else if (verificationSubFilter === "rejected") {
-            apiStatus = "rejected";
+            setUsers([...psiList, ...relList]);
+            setTotal(psiTotal + relTotal);
           }
         } else {
-          apiRole = roleFilter === "all" ? undefined : (roleFilter as ApiRole);
-          apiStatus = statusFilter === "all" ? undefined : (statusFilter as ApiAccountStatus);
+          // approved, rejected, all
+          let apiStatus: ApiAccountStatus | undefined;
+          if (verificationSubFilter === "approved") apiStatus = "active";
+          else if (verificationSubFilter === "rejected") apiStatus = "rejected";
+
+          if (roleFilter === "psikolog" || roleFilter === "relawan") {
+            const res = await userService.getAdminUsers({
+              role: roleFilter as ApiRole,
+              status: apiStatus,
+              search: search.trim() || undefined,
+              page,
+              limit,
+            });
+            if (res.success && Array.isArray(res.data)) {
+              setUsers(res.data);
+              setTotal(res.meta.total);
+            } else {
+              setUsers([]);
+              setTotal(0);
+            }
+          } else {
+            // Semua Mitra: psikolog + relawan
+            const [psiRes, relRes] = await Promise.all([
+              userService.getAdminUsers({
+                role: "psikolog",
+                status: apiStatus,
+                search: search.trim() || undefined,
+                page,
+                limit,
+              }),
+              userService.getAdminUsers({
+                role: "relawan",
+                status: apiStatus,
+                search: search.trim() || undefined,
+                page,
+                limit,
+              }),
+            ]);
+
+            const psiList = psiRes.success && Array.isArray(psiRes.data) ? psiRes.data : [];
+            const relList = relRes.success && Array.isArray(relRes.data) ? relRes.data : [];
+            const psiTotal = psiRes.success ? psiRes.meta.total : 0;
+            const relTotal = relRes.success ? relRes.meta.total : 0;
+
+            setUsers([...psiList, ...relList]);
+            setTotal(psiTotal + relTotal);
+          }
         }
+      } else {
+        // Tab Semua Pengguna
+        const apiRole = roleFilter === "all" ? undefined : (roleFilter as ApiRole);
+        const apiStatus = statusFilter === "all" ? undefined : (statusFilter as ApiAccountStatus);
 
         const res = await userService.getAdminUsers({
           role: apiRole,
           status: apiStatus,
           search: search.trim() || undefined,
-          limit: 100,
+          page,
+          limit,
         });
 
         if (res && res.success && Array.isArray(res.data)) {
-          let filtered = res.data.filter(
-            (u) => u.id !== currentUser?.id && u.email !== currentUser?.email
-          );
-
-          if (activeTab === "verifications") {
-            filtered = filtered.filter((u) => u.role === "psikolog" || u.role === "relawan");
-          }
-
-          setUsers(filtered);
-          setTotal(filtered.length);
+          setUsers(res.data);
+          setTotal(res.meta.total);
         } else {
           setUsers([]);
           setTotal(0);
@@ -252,7 +292,7 @@ function AdminUsersContent() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, roleFilter, statusFilter, verificationSubFilter, search, currentUser?.id, currentUser?.email]);
+  }, [activeTab, roleFilter, statusFilter, verificationSubFilter, search, page, limit]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -610,8 +650,8 @@ function AdminUsersContent() {
         isLoading={loading}
         currentPage={page}
         itemsPerPage={limit}
-        totalItems={users.length}
-        autoPaginate={true}
+        totalItems={total}
+        autoPaginate={false}
         onPageChange={setPage}
         onChangeDisplayed={handleLimitChange}
         pageSizeList={[10, 20, 50]}
