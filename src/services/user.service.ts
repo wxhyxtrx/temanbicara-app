@@ -6,6 +6,7 @@ import {
   AdminUserActionResponse,
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
+  AdminDashboardStatsResponse,
   ApiAccountStatus,
   MeResponse,
   PsychologistDetailResponse,
@@ -180,5 +181,16 @@ export const userService = {
       credentials: 'include',
     });
     return handleResponse<AdminUserActionResponse>(res);
+  },
+
+  /**
+   * Mengambil statistik & KPI platform untuk dashboard admin
+   */
+  async getAdminStats(): Promise<AdminDashboardStatsResponse> {
+    const res = await fetch('/api/admin/stats', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<AdminDashboardStatsResponse>(res);
   },
 };
