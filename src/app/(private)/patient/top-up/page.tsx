@@ -157,6 +157,50 @@ export default function PatientTopUpPage() {
   }, [fetchWallet, fetchSettings]);
 
   // Cek Status Order Top-up dari GET /api/wallet/topup/[order_id]
+  const lastRefreshAtRef = React.useRef<number>(0);
+
+  const handleRefreshStatus = async (orderId: string) => {
+    const now = Date.now();
+    if (now - lastRefreshAtRef.current < 10000) {
+      notify.info(
+        "Mohon Tunggu",
+        "Pengecekan status dibatasi maksimal 1 kali per 10 detik. Silakan coba sesaat lagi."
+      );
+      return;
+    }
+    lastRefreshAtRef.current = now;
+
+    try {
+      setIsCheckingStatus(true);
+      const detail = await walletClient.checkTopupStatus(orderId);
+      setOrderDetail(detail);
+
+      if (detail.status === "settlement") {
+        notify.success(
+          "Top-Up Koin Berhasil!",
+          `Pembayaran ${detail.coins} koin telah diverifikasi. Saldo Anda telah diperbarui.`
+        );
+        fetchWallet();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("wallet:refresh"));
+        }
+      } else if (detail.status === "pending") {
+        notify.info(
+          "Menunggu Pembayaran",
+          `Pesanan ${detail.order_id} masih menunggu pembayaran. Selesaikan transaksi Anda melalui Midtrans.`
+        );
+      } else if (detail.status === "expire" || detail.status === "deny" || detail.status === "cancel") {
+        notify.error("Pembayaran Tidak Berhasil", `Status transaksi: ${detail.status}.`);
+      }
+    } catch (err) {
+      if (err instanceof WalletApiError && err.handled) return;
+      console.error("Error refresh status order via Midtrans:", err);
+      notify.error("Gagal Memperbarui Status", "Tidak dapat memeriksa status pesanan ke gateway pembayaran saat ini.");
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
   const checkOrderStatus = async (orderId: string) => {
     try {
       setIsCheckingStatus(true);
@@ -617,7 +661,7 @@ export default function PatientTopUpPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => checkOrderStatus(activeOrderId)}
+                onClick={() => handleRefreshStatus(activeOrderId)}
                 disabled={isCheckingStatus}
                 className="text-xs rounded-xl"
               >
