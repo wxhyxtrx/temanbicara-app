@@ -156,10 +156,13 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
   useEffect(() => {
     setMounted(true);
     fetchWallet();
-    fetchPayouts(page);
     fetchSettings();
     fetchUserProfile();
-  }, [fetchWallet, fetchPayouts, fetchSettings, fetchUserProfile, page]);
+  }, [fetchWallet, fetchSettings, fetchUserProfile]);
+
+  useEffect(() => {
+    fetchPayouts(page);
+  }, [fetchPayouts, page]);
 
   const availableRupiah = wallet?.available_rupiah ?? 0;
   const pendingRupiah = wallet?.pending_rupiah ?? 0;

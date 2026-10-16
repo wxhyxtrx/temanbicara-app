@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   /* config options here */
   devIndicators: false,
   allowedDevOrigins: ["localhost", "192.168.1.3", "0.0.0.0"],
+  env: {
+    NEXT_PUBLIC_PAYMENT_IS_PRODUCTION: process.env.PAYMENT_IS_PRODUCTION,
+  },
   async redirects() {
     return [
       { source: "/beranda", destination: "/patient/beranda", permanent: true },

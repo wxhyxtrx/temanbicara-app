@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useUserStore } from "@/store/user-store";
 import { useCrisisStore } from "@/store/crisis-store";
 import { useScheduleStore } from "@/store/schedule-store";
-import { usePayoutStore } from "@/store/payout-store";
 import { useReviewStore } from "@/store/review-store";
 import { usePeerVentStore } from "@/store/peer-vent-store";
 import { notify } from "@/lib/toast";
@@ -19,14 +18,12 @@ export function GlobalToastListener() {
   const isMountedRef = useRef(false);
   const lastCrisisCountRef = useRef<number | null>(null);
   const lastScheduleCountRef = useRef<number | null>(null);
-  const lastPayoutCountRef = useRef<number | null>(null);
   const lastReviewCountRef = useRef<number | null>(null);
   const lastWaitingPostCountRef = useRef<number | null>(null);
 
   // Stores
   const crisisReports = useCrisisStore((state) => state.reports);
   const schedules = useScheduleStore((state) => state.schedules);
-  const payouts = usePayoutStore((state) => state.payouts);
   const reviews = useReviewStore((state) => state.reviews);
   const ventPosts = usePeerVentStore((state) => state.posts);
 
@@ -34,7 +31,6 @@ export function GlobalToastListener() {
   useEffect(() => {
     lastCrisisCountRef.current = crisisReports.length;
     lastScheduleCountRef.current = schedules.length;
-    lastPayoutCountRef.current = payouts.length;
     lastReviewCountRef.current = reviews.length;
     lastWaitingPostCountRef.current = ventPosts.filter((p) => p.status === "menunggu").length;
 
@@ -45,7 +41,7 @@ export function GlobalToastListener() {
     return () => clearTimeout(timer);
   }, []);
 
-  // 1. ADMIN LISTENER: Alert Tiket Krisis Baru & Pengajuan Payout
+  // 1. ADMIN LISTENER: Alert Tiket Krisis Baru
   useEffect(() => {
     if (!isMountedRef.current || currentRole !== "admin") {
       lastCrisisCountRef.current = crisisReports.length;
@@ -65,28 +61,6 @@ export function GlobalToastListener() {
     }
     lastCrisisCountRef.current = crisisReports.length;
   }, [crisisReports, currentRole, router]);
-
-  // Admin Payout Request Listener
-  useEffect(() => {
-    if (!isMountedRef.current || currentRole !== "admin") {
-      lastPayoutCountRef.current = payouts.length;
-      return;
-    }
-
-    if (lastPayoutCountRef.current !== null && payouts.length > lastPayoutCountRef.current) {
-      const latest = payouts[0];
-      const rupiahText = latest?.amountRupiah ? `Rp ${latest.amountRupiah.toLocaleString("id-ID")}` : "honor konseling";
-      notify.info(
-        "Pengajuan Payout Honor Masuk",
-        `${latest?.counselorName || "Mitra"} mengajukan pencairan ${rupiahText}.`,
-        {
-          label: "Tinjau Payout",
-          onClick: () => router.push("/admin/transactions"),
-        }
-      );
-    }
-    lastPayoutCountRef.current = payouts.length;
-  }, [payouts, currentRole, router]);
 
   // 2. COUNSELOR LISTENER: Permintaan Konseling Baru & Ulasan Pasien Masuk
   useEffect(() => {
