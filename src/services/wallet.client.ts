@@ -26,19 +26,28 @@ export class WalletApiError extends Error {
 
 export function formatWalletErrorMessage(status: number, code?: string, serverMessage?: string): string {
   if (status === 401 || code === 'UNAUTHENTICATED' || code === 'INVALID_TOKEN') {
-    return 'Sesi Anda telah berakhir. Silakan masuk kembali.';
+    return 'Sesi login telah berakhir. Silakan masuk kembali ke akun Anda.';
   }
   if (status === 402 || code === 'INSUFFICIENT_COINS' || code === 'INSUFFICIENT_BALANCE') {
-    return serverMessage || 'Saldo koin atau dana tidak mencukupi untuk melakukan transaksi ini.';
+    return serverMessage || 'Saldo koin atau dana tidak mencukupi untuk memproses transaksi atau penarikan ini.';
   }
   if (status === 403 || code === 'FORBIDDEN' || code === 'USER_NOT_ACTIVE') {
-    return serverMessage || 'Akses ditolak atau akun Anda belum aktif.';
+    return serverMessage || 'Akses tidak diizinkan atau akun Anda belum aktif.';
   }
   if (status === 404 || code === 'ORDER_NOT_FOUND' || code === 'PAYOUT_NOT_FOUND') {
-    return serverMessage || 'Data pesanan atau transaksi tidak ditemukan.';
+    return serverMessage || 'Data pesanan atau pengajuan penarikan dana tidak ditemukan.';
   }
-  if (status === 409 || code === 'DUPLICATE_ORDER' || code === 'PAYOUT_NOT_REJECTABLE' || code === 'PAYOUT_NOT_PAYABLE') {
-    return serverMessage || 'Permintaan ditolak karena duplikasi atau status transaksi telah berubah.';
+  if (
+    status === 409 ||
+    code === 'DUPLICATE_ORDER' ||
+    code === 'PAYOUT_NOT_REJECTABLE' ||
+    code === 'PAYOUT_NOT_PAYABLE' ||
+    code === 'DUPLICATE_TIP'
+  ) {
+    return (
+      serverMessage ||
+      'Permintaan ditolak: Pengajuan ini sudah pernah diproses sebelumnya atau status transaksi telah berubah.'
+    );
   }
   if (
     status === 422 ||
@@ -50,14 +59,17 @@ export function formatWalletErrorMessage(status: number, code?: string, serverMe
   ) {
     return (
       serverMessage ||
-      'Data transaksi tidak valid atau di luar batas yang ditentukan sistem. Periksa kembali data Anda.'
+      'Data transaksi tidak valid: Pastikan nominal berada dalam batas yang ditentukan dan nama pemilik rekening sama persis dengan nama profil terverifikasi tanpa gelar.'
     );
   }
   if (status === 429 || code === 'RATE_LIMIT_EXCEEDED') {
-    return serverMessage || 'Terlalu banyak permintaan dalam waktu singkat. Mohon tunggu beberapa saat.';
+    return (
+      serverMessage ||
+      'Terlalu banyak permintaan dalam waktu singkat (kuota terlampaui). Mohon tunggu beberapa saat sebelum mencoba kembali.'
+    );
   }
   if (status === 502 || code === 'PAYMENT_GATEWAY_ERROR') {
-    return serverMessage || 'Layanan gateway pembayaran sedang sibuk atau bermasalah. Silakan coba lagi.';
+    return serverMessage || 'Layanan gateway pembayaran sedang bermasalah atau sibuk. Silakan coba kembali beberapa saat lagi.';
   }
   return serverMessage || `Terjadi kesalahan pada sistem (Kode HTTP ${status}).`;
 }

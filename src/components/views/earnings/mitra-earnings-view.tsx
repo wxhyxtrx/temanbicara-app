@@ -762,6 +762,13 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
               </div>
             </div>
 
+            {formError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+                <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                <span className="leading-snug">{formError}</span>
+              </div>
+            )}
+
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
               Dana Anda akan diproses oleh tim keuangan TemanBicara dalam 1-3 hari kerja. Saldo Anda akan dikembalikan secara otomatis jika pengajuan ditolak.
             </p>

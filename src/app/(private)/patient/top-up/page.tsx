@@ -65,6 +65,7 @@ export default function PatientTopUpPage() {
   const [orderDetail, setOrderDetail] = useState<TopupOrderEntity | null>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState<boolean>(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
+  const [topupError, setTopupError] = useState<string | null>(null);
 
   // 4 Paket Terapi Berorientasi Pemulihan (Harga murni: koin * COIN_TO_RUPIAH)
   const therapyPackages: TherapyPackage[] = [
@@ -179,11 +180,11 @@ export default function PatientTopUpPage() {
 
   // Eksekusi Pembayaran Snap Midtrans
   const handlePayNow = async () => {
+    setTopupError(null);
     if (!isCoinsInRange) {
-      notify.warning(
-        "Jumlah Koin Tidak Sesuai",
-        `Top-up koin harus berada antara ${minCoins} dan ${maxCoins} koin.`
-      );
+      const msg = `Jumlah koin top-up harus antara ${minCoins} dan ${maxCoins} koin.`;
+      setTopupError(msg);
+      notify.warning("Jumlah Koin Tidak Sesuai", msg);
       return;
     }
 
@@ -210,9 +211,12 @@ export default function PatientTopUpPage() {
       });
     } catch (err) {
       if (err instanceof WalletApiError) {
+        setTopupError(err.message);
         notify.error("Gagal Memulai Pembayaran", err.message);
       } else {
-        notify.error("Kesalahan Sistem", "Tidak dapat menghubungi gateway pembayaran.");
+        const msg = "Tidak dapat menghubungi gateway pembayaran. Silakan coba beberapa saat lagi.";
+        setTopupError(msg);
+        notify.error("Kesalahan Sistem", msg);
       }
     } finally {
       setIsSubmitting(false);
@@ -486,6 +490,13 @@ export default function PatientTopUpPage() {
 
               {/* Action Buttons: Open Payment Gateway Simulator Modal */}
               <div className="space-y-2 pt-1">
+                {topupError && (
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+                    <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                    <span className="leading-snug">{topupError}</span>
+                  </div>
+                )}
+
                 <Button
                   onClick={handlePayNow}
                   disabled={isSubmitting || !isCoinsInRange}

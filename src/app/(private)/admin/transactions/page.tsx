@@ -50,6 +50,7 @@ export default function AdminTransactionsPage() {
   // Modal dialog state
   const [selectedPayout, setSelectedPayout] = useState<AdminPayoutItem | null>(null);
   const [actionType, setActionType] = useState<"paid" | "reject" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchPayouts = useCallback(async (targetPage: number, status: PayoutStatus | "all") => {
     try {
@@ -113,11 +114,13 @@ export default function AdminTransactionsPage() {
   const handleOpenPaidModal = (item: AdminPayoutItem) => {
     setSelectedPayout(item);
     setActionType("paid");
+    setActionError(null);
   };
 
   const handleOpenRejectModal = (item: AdminPayoutItem) => {
     setSelectedPayout(item);
     setActionType("reject");
+    setActionError(null);
   };
 
   const handleConfirmAction = async () => {
@@ -125,6 +128,7 @@ export default function AdminTransactionsPage() {
 
     try {
       setIsProcessing(true);
+      setActionError(null);
       if (actionType === "paid") {
         await walletClient.markAdminPayoutPaid(selectedPayout.id);
         notify.success(
@@ -144,9 +148,12 @@ export default function AdminTransactionsPage() {
       fetchPayouts(page, statusFilter);
     } catch (err) {
       if (err instanceof WalletApiError) {
+        setActionError(err.message);
         notify.error("Gagal Memproses Aksi", err.message);
       } else {
-        notify.error("Kesalahan Sistem", "Gagal memperbarui status payout.");
+        const msg = "Terjadi kesalahan sistem saat memperbarui status payout.";
+        setActionError(msg);
+        notify.error("Kesalahan Sistem", msg);
       }
     } finally {
       setIsProcessing(false);
@@ -520,7 +527,14 @@ export default function AdminTransactionsPage() {
 
           {selectedPayout && (
             <div className="space-y-3 py-2 text-xs">
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+              {actionError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+                <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                <span className="leading-snug">{actionError}</span>
+              </div>
+            )}
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500">Nama Pemohon:</span>
                   <span className="font-bold text-slate-900 dark:text-white">
