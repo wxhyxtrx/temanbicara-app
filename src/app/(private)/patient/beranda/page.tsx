@@ -126,7 +126,7 @@ export default function PatientBerandaPage() {
         <div className="absolute -bottom-10 left-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
-          <div className="space-y-3.5 max-w-2xl">
+          <div className="space-y-3.5 flex-1 min-w-0 max-w-4xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/60 border border-teal-700/60 text-teal-200 text-xs font-semibold backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>Ruang Suaka & Pendampingan Pasien</span>
@@ -145,32 +145,32 @@ export default function PatientBerandaPage() {
               Setiap emosi yang kamu rasakan adalah valid. Ambil jeda, tarik napas perlahan, dan ketahuilah bahwa kamu tidak sendirian. Psikolog klinis dan AI empatik kami siap mendampingimu.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link href="/patient/room">
-                <Button className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-5 py-5 text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-2">
-                  <MessageCircle size={17} />
-                  Mulai Curhat AI Instan (24/7)
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-2">
+              <Link href="/patient/room" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-4 xl:px-5 h-11 text-xs sm:text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-2 whitespace-nowrap">
+                  <MessageCircle size={16} />
+                  <span>Mulai Curhat AI Instan (24/7)</span>
                 </Button>
               </Link>
               <Button
                 type="button"
                 onClick={() => setVentingModalOpen(true)}
-                className="border border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 font-semibold rounded-xl px-5 py-5 text-sm cursor-pointer gap-2 backdrop-blur-md shadow-xs"
+                className="w-full sm:w-auto border border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 font-semibold rounded-xl px-4 xl:px-5 h-11 text-xs sm:text-sm cursor-pointer gap-2 backdrop-blur-md shadow-xs whitespace-nowrap"
               >
-                <HeartHandshake size={17} className="text-pink-400" />
-                Curhat Pendengar Sebaya (Anonim)
+                <HeartHandshake size={16} className="text-pink-400" />
+                <span>Curhat Pendengar Sebaya (Anonim)</span>
               </Button>
-              <Link href="/patient/schedule?booking=true">
-                <Button variant="outline" className="border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-5 py-5 text-sm cursor-pointer gap-2">
-                  <Calendar size={17} />
-                  Reservasi Sesi Psikolog
+              <Link href="/patient/schedule?booking=true" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-4 xl:px-5 h-11 text-xs sm:text-sm cursor-pointer gap-2 whitespace-nowrap">
+                  <Calendar size={16} />
+                  <span>Reservasi Sesi Psikolog</span>
                 </Button>
               </Link>
             </div>
           </div>
 
           {/* Clinical Assurance Mini-Card */}
-          <div className="rounded-2xl bg-teal-900/40 border border-teal-700/50 p-4 sm:p-5 backdrop-blur-md max-w-xs space-y-3">
+          <div className="rounded-2xl bg-teal-900/40 border border-teal-700/50 p-4 sm:p-5 backdrop-blur-md w-full lg:w-72 xl:w-80 shrink-0 space-y-3">
             <div className="flex items-center gap-2.5 text-emerald-300 font-semibold text-xs">
               <ShieldCheck size={18} />
               <span>Standar Etika Medis HIMPSI</span>
