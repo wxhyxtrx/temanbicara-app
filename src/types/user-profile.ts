@@ -52,10 +52,10 @@ export interface RelawanProfile {
   dokumen_cv_url: string;
   alasan_bergabung: string;
   total_sesi: number;
-  alias_name?: string | null;
-  is_available?: boolean;
-  topik_keahlian?: string[];
-  rating_rata_rata?: number | string | null;
+  alias_name: string | null;
+  is_available: boolean;
+  topik_keahlian: string[];
+  rating_rata_rata: number | string | null;
   created_at: string;
   updated_at: string;
 }
