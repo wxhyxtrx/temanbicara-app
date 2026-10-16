@@ -142,6 +142,17 @@ export default function PatientTopUpPage() {
     setMounted(true);
     fetchWallet();
     fetchSettings();
+
+    const handleRefresh = () => {
+      fetchWallet();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("wallet:refresh", handleRefresh);
+      return () => {
+        window.removeEventListener("wallet:refresh", handleRefresh);
+      };
+    }
   }, [fetchWallet, fetchSettings]);
 
   // Cek Status Order Top-up dari GET /api/wallet/topup/[order_id]
@@ -158,6 +169,9 @@ export default function PatientTopUpPage() {
           `Pembayaran ${detail.coins} koin telah diverifikasi. Saldo Anda telah diperbarui.`
         );
         fetchWallet();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("wallet:refresh"));
+        }
       } else if (detail.status === "pending") {
         notify.info(
           "Menunggu Pembayaran",

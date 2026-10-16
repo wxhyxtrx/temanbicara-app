@@ -137,6 +137,18 @@ export default function PatientTransactionHistoryPage() {
     setMounted(true);
     fetchWallet();
     fetchTransactions(page);
+
+    const handleRefresh = () => {
+      fetchWallet();
+      fetchTransactions(page);
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("wallet:refresh", handleRefresh);
+      return () => {
+        window.removeEventListener("wallet:refresh", handleRefresh);
+      };
+    }
   }, [fetchWallet, fetchTransactions, page]);
 
   // Filtered List

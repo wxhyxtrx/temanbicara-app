@@ -47,8 +47,7 @@ export function AppSidebar() {
   const [mounted, setMounted] = React.useState(false);
   const [patientCoins, setPatientCoins] = React.useState<number | null>(null);
 
-  React.useEffect(() => {
-    setMounted(true);
+  const refreshCoins = React.useCallback(() => {
     if (user?.role === "patient" || !user?.role) {
       walletClient
         .getWalletMe()
@@ -58,6 +57,21 @@ export function AppSidebar() {
         });
     }
   }, [user?.role]);
+
+  React.useEffect(() => {
+    setMounted(true);
+    refreshCoins();
+
+    if (typeof window !== "undefined") {
+      const handleWalletRefresh = () => {
+        refreshCoins();
+      };
+      window.addEventListener("wallet:refresh", handleWalletRefresh);
+      return () => {
+        window.removeEventListener("wallet:refresh", handleWalletRefresh);
+      };
+    }
+  }, [refreshCoins]);
 
   const getEffectiveRole = (): UserRole => {
     // 1. Pathname check is 100% deterministic on BOTH Server (SSR) and Client!
