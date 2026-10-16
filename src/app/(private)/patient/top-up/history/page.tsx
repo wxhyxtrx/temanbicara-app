@@ -45,6 +45,7 @@ import {
   ShieldCheck,
   CreditCard,
   XCircle,
+  RefreshCw,
 } from "lucide-react";
 
 function getReasonMetadata(reason: string): { label: string; description: string; isCredit: boolean } {
@@ -112,16 +113,16 @@ function getReasonMetadata(reason: string): { label: string; description: string
   }
 }
 
-function getEffectiveStatus(order: TopupOrderEntity, now: number): PaymentStatus {
-  if (order.status === "pending") {
-    if (order.expires_at) {
-      const exp = new Date(order.expires_at).getTime();
-      if (!isNaN(exp) && now >= exp) {
-        return "expire";
-      }
-    }
-  }
-  return order.status;
+function isPastExpiry(expiresAt: string | null | undefined, now: number): boolean {
+  if (!expiresAt) return false;
+  const exp = new Date(expiresAt).getTime();
+  return !isNaN(exp) && now >= exp;
+}
+
+function isCreatedWithin24Hours(createdAt: string, now: number): boolean {
+  const createdTime = new Date(createdAt).getTime();
+  if (isNaN(createdTime)) return false;
+  return now - createdTime < 24 * 60 * 60 * 1000;
 }
 
 function formatRemainingTime(expiresAt: string | null | undefined, now: number): string | null {
@@ -189,6 +190,12 @@ export default function PatientTransactionHistoryPage() {
   const [topupStatusFilter, setTopupStatusFilter] = useState<"all" | "pending" | "settlement" | "expire" | "fail">("all");
   const [topupSearchQuery, setTopupSearchQuery] = useState<string>("");
   const [isOpeningSnap, setIsOpeningSnap] = useState<boolean>(false);
+
+  // Status Reconciliation State & Guards
+  const [checkingOrderIds, setCheckingOrderIds] = useState<Record<string, boolean>>({});
+  const autoCheckedOrderIdsRef = React.useRef<Set<string>>(new Set());
+  const inFlightOrderIdsRef = React.useRef<Set<string>>(new Set());
+  const lastCheckedAtRef = React.useRef<Record<string, number>>({});
 
   // Mutation Ledger State
   const [transactions, setTransactions] = useState<LedgerEntryEntity[]>([]);
@@ -270,6 +277,87 @@ export default function PatientTransactionHistoryPage() {
     }
   }, [fetchWallet, fetchTransactions, fetchTopups, page, topupPage]);
 
+  // Cek Status Pembayaran ke Midtrans via Server Rekonsiliasi
+  const handleCheckStatus = useCallback(
+    async (orderId: string, isAuto = false) => {
+      if (inFlightOrderIdsRef.current.has(orderId)) return;
+
+      if (!isAuto) {
+        const lastCheck = lastCheckedAtRef.current[orderId] || 0;
+        if (Date.now() - lastCheck < 10000) {
+          notify.info(
+            "Mohon Tunggu",
+            "Pengecekan status dibatasi maksimal 1 kali per 10 detik. Silakan coba sesaat lagi."
+          );
+          return;
+        }
+      }
+
+      inFlightOrderIdsRef.current.add(orderId);
+      if (isAuto) {
+        autoCheckedOrderIdsRef.current.add(orderId);
+      }
+      lastCheckedAtRef.current[orderId] = Date.now();
+      setCheckingOrderIds((prev) => ({ ...prev, [orderId]: true }));
+
+      try {
+        const updatedOrder = await walletClient.checkTopupStatus(orderId);
+
+        setTopups((prev) =>
+          prev.map((item) => (item.order_id === orderId ? { ...item, ...updatedOrder } : item))
+        );
+
+        if (updatedOrder.status === "settlement") {
+          notify.success(
+            "Top-Up Koin Berhasil!",
+            `Pembayaran ${updatedOrder.coins} koin telah diverifikasi. Saldo telah ditambahkan.`
+          );
+          fetchWallet();
+          fetchTransactions(page);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("wallet:refresh"));
+          }
+        } else if (!isAuto) {
+          if (updatedOrder.status === "expire") {
+            notify.info("Status Pesanan", "Status transaksi di Midtrans: kedaluwarsa.");
+          } else if (updatedOrder.status === "pending") {
+            notify.info("Status Pesanan", "Pesanan masih menunggu pembayaran di Midtrans.");
+          } else {
+            notify.info("Status Pesanan", `Status transaksi di Midtrans: ${updatedOrder.status}.`);
+          }
+        }
+      } catch (err) {
+        if (err instanceof WalletApiError && err.handled) return;
+        console.error("Gagal memeriksa status pesanan:", err);
+        if (!isAuto) {
+          notify.error("Gagal Cek Status", "Tidak dapat memeriksa status pesanan saat ini.");
+        }
+      } finally {
+        inFlightOrderIdsRef.current.delete(orderId);
+        setCheckingOrderIds((prev) => {
+          const next = { ...prev };
+          delete next[orderId];
+          return next;
+        });
+      }
+    },
+    [fetchWallet, fetchTransactions, page]
+  );
+
+  // Auto-check SEKALI untuk order pending yang sudah lewat batas waktu (expires_at)
+  useEffect(() => {
+    topups.forEach((order) => {
+      if (
+        order.status === "pending" &&
+        isPastExpiry(order.expires_at, currentTime) &&
+        !autoCheckedOrderIdsRef.current.has(order.order_id) &&
+        !inFlightOrderIdsRef.current.has(order.order_id)
+      ) {
+        handleCheckStatus(order.order_id, true);
+      }
+    });
+  }, [topups, currentTime, handleCheckStatus]);
+
   // Handle Lanjutkan Pembayaran (buka Snap lagi)
   const handleContinuePayment = async (order: TopupOrderEntity) => {
     if (!order.snap_redirect_url) return;
@@ -321,14 +409,13 @@ export default function PatientTransactionHistoryPage() {
   // Filtered Topup List
   const filteredTopups = useMemo(() => {
     return topups.filter((order) => {
-      const effectiveStatus = getEffectiveStatus(order, currentTime);
       const matchStatus =
         topupStatusFilter === "all" ||
-        (topupStatusFilter === "pending" && effectiveStatus === "pending") ||
-        (topupStatusFilter === "settlement" && effectiveStatus === "settlement") ||
-        (topupStatusFilter === "expire" && effectiveStatus === "expire") ||
+        (topupStatusFilter === "pending" && order.status === "pending") ||
+        (topupStatusFilter === "settlement" && order.status === "settlement") ||
+        (topupStatusFilter === "expire" && order.status === "expire") ||
         (topupStatusFilter === "fail" &&
-          (effectiveStatus === "deny" || effectiveStatus === "cancel" || effectiveStatus === "refund"));
+          (order.status === "deny" || order.status === "cancel" || order.status === "refund"));
 
       const q = topupSearchQuery.toLowerCase();
       const matchQuery =
@@ -340,7 +427,7 @@ export default function PatientTransactionHistoryPage() {
 
       return matchStatus && matchQuery;
     });
-  }, [topups, topupStatusFilter, topupSearchQuery, currentTime]);
+  }, [topups, topupStatusFilter, topupSearchQuery]);
 
   // Aggregate Topup Metrics
   const topupSettledCoins = useMemo(
@@ -352,9 +439,8 @@ export default function PatientTransactionHistoryPage() {
   );
 
   const topupPendingCount = useMemo(
-    () =>
-      topups.filter((t) => getEffectiveStatus(t, currentTime) === "pending").length,
-    [topups, currentTime]
+    () => topups.filter((t) => t.status === "pending").length,
+    [topups]
   );
 
   // Filtered Ledger List
@@ -444,19 +530,29 @@ export default function PatientTransactionHistoryPage() {
       label: "Status & Batas Waktu",
       className: "w-[26%]",
       renderCell: (order) => {
-        const effectiveStatus = getEffectiveStatus(order, currentTime);
-        const remaining =
-          effectiveStatus === "pending" ? formatRemainingTime(order.expires_at, currentTime) : null;
+        const isPastExp = isPastExpiry(order.expires_at, currentTime);
+        const isPending = order.status === "pending";
+        const remaining = isPending && !isPastExp ? formatRemainingTime(order.expires_at, currentTime) : null;
+
         return (
           <div className="space-y-1">
-            <div>{renderTopupStatusBadge(effectiveStatus)}</div>
-            {effectiveStatus === "pending" && remaining && (
+            <div>
+              {isPending && isPastExp ? (
+                <Badge className="bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-800 text-[10px] font-bold gap-1">
+                  <Loader2 size={11} className="animate-spin" />
+                  <span>Memeriksa pembayaran…</span>
+                </Badge>
+              ) : (
+                renderTopupStatusBadge(order.status)
+              )}
+            </div>
+            {isPending && remaining && (
               <span className="text-[10px] font-mono font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
                 <Clock size={11} className="shrink-0" />
                 <span>Sisa {remaining}</span>
               </span>
             )}
-            {effectiveStatus === "settlement" && order.settled_at && (
+            {order.status === "settlement" && order.settled_at && (
               <span className="text-[10px] text-slate-400 block font-mono">
                 {new Date(order.settled_at).toLocaleString("id-ID", {
                   day: "2-digit",
@@ -476,30 +572,53 @@ export default function PatientTransactionHistoryPage() {
       align: "center",
       className: "w-[24%]",
       renderCell: (order) => {
-        const effectiveStatus = getEffectiveStatus(order, currentTime);
-        const remaining =
-          effectiveStatus === "pending" ? formatRemainingTime(order.expires_at, currentTime) : null;
-        const canContinue =
-          effectiveStatus === "pending" && remaining !== null && Boolean(order.snap_redirect_url);
+        const isPastExp = isPastExpiry(order.expires_at, currentTime);
+        const isPending = order.status === "pending";
+        const isChecking = Boolean(checkingOrderIds[order.order_id]);
+        const canContinue = isPending && !isPastExp && Boolean(order.snap_redirect_url);
+        const isRecentExpire =
+          order.status === "expire" && isCreatedWithin24Hours(order.created_at, currentTime);
 
-        if (!canContinue) {
-          return <span className="text-slate-400 text-xs">-</span>;
+        if (canContinue) {
+          return (
+            <div className="flex justify-center">
+              <Button
+                size="sm"
+                onClick={() => handleContinuePayment(order)}
+                disabled={isOpeningSnap}
+                className="h-8 text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-3 font-semibold gap-1.5 shadow-2xs cursor-pointer"
+                title="Lanjutkan Pembayaran via Midtrans Snap"
+              >
+                <CreditCard size={13} />
+                <span>Lanjutkan Pembayaran</span>
+              </Button>
+            </div>
+          );
         }
 
-        return (
-          <div className="flex justify-center">
-            <Button
-              size="sm"
-              onClick={() => handleContinuePayment(order)}
-              disabled={isOpeningSnap}
-              className="h-8 text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-3 font-semibold gap-1.5 shadow-2xs cursor-pointer"
-              title="Lanjutkan Pembayaran via Midtrans Snap"
-            >
-              <CreditCard size={13} />
-              <span>Lanjutkan Pembayaran</span>
-            </Button>
-          </div>
-        );
+        if (isRecentExpire) {
+          return (
+            <div className="flex justify-center">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleCheckStatus(order.order_id, false)}
+                disabled={isChecking}
+                className="h-8 text-xs border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-slate-800 rounded-xl px-3 font-semibold gap-1.5 shadow-2xs cursor-pointer"
+                title="Cek Status Pembayaran ke Midtrans"
+              >
+                {isChecking ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={13} />
+                )}
+                <span>Cek Status</span>
+              </Button>
+            </div>
+          );
+        }
+
+        return <span className="text-slate-400 text-xs">-</span>;
       },
     },
   ];
