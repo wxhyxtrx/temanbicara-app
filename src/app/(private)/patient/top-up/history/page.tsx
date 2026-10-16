@@ -903,10 +903,10 @@ export default function PatientTransactionHistoryPage() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <CardTitle className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                    Daftar Pesanan Top-Up
+                    Riwayat Top-Up
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Semua transaksi pengisian koin via gateway pembayaran Midtrans
+                    Semua pembelian koin, termasuk yang menunggu atau gagal.
                   </CardDescription>
                 </div>
 
@@ -1103,10 +1103,10 @@ export default function PatientTransactionHistoryPage() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <CardTitle className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                    Daftar Mutasi Dompet
+                    Mutasi Koin
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Semua perubahan koin tersimpan di buku besar audit
+                    Semua koin masuk dan keluar dari saldomu.
                   </CardDescription>
                 </div>
 
