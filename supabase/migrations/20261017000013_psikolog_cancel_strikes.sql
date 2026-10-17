@@ -168,7 +168,7 @@ BEGIN
     v_per_late_cancel := COALESCE(v_per_late_cancel, 1::SMALLINT);
 
     -- 3. Hitung choice_deadline_at = least(now() + choice_deadline_hours, start_at)
-    v_choice_deadline_at := pg_catalog.least(
+    v_choice_deadline_at := LEAST(
         pg_catalog.now() + (v_choice_deadline_hours * INTERVAL '1 hour'),
         v_booking.start_at
     );
