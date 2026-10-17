@@ -9,6 +9,7 @@ import {
   AdminDashboardStatsResponse,
   ApiAccountStatus,
   MeResponse,
+  UpdateMePayload,
   PsychologistDetailResponse,
   PsychologistListResponse,
   VolunteerDetailResponse,
@@ -35,6 +36,19 @@ export const userService = {
     const res = await fetch('/api/users/me', {
       method: 'GET',
       credentials: 'include',
+    });
+    return handleResponse<MeResponse>(res);
+  },
+
+  /**
+   * Memperbarui data profil/pengaturan pengguna login saat ini
+   */
+  async updateMe(payload: UpdateMePayload): Promise<MeResponse> {
+    const res = await fetch('/api/users/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
     });
     return handleResponse<MeResponse>(res);
   },

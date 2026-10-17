@@ -96,6 +96,40 @@ export type MeResponse =
     }
   | ApiError;
 
+// ---------- /api/users/me PATCH ----------
+export interface UpdateMePasienPayload {
+  no_wa?: string;
+  nama_lengkap?: string;
+  nama_panggilan?: string | null;
+  kontak_darurat_nama?: string;
+  kontak_darurat_wa?: string;
+  is_anonim_default?: boolean;
+}
+
+export interface UpdateMePsikologPayload {
+  no_wa?: string;
+  spesialisasi?: string[];
+  tahun_pengalaman?: number;
+  tarif_sesi?: number;
+}
+
+export interface UpdateMeRelawanPayload {
+  no_wa?: string;
+  alias_name?: string;
+  topik_keahlian?: string[];
+  is_available?: boolean;
+}
+
+export interface UpdateMeAdminPayload {
+  no_wa?: string;
+}
+
+export type UpdateMePayload =
+  | UpdateMePasienPayload
+  | UpdateMePsikologPayload
+  | UpdateMeRelawanPayload
+  | UpdateMeAdminPayload;
+
 // ---------- /api/psychologists ----------
 export interface PublicPsychologist {
   id: string;
