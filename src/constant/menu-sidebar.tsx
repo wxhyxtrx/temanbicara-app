@@ -144,11 +144,10 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
     badgeLabel: "Relawan Empati Terlatih",
     mainItems: [
       {
-        title: "Antrean Curhat",
-        description: "Ruang penerimaan teman bicara",
+        title: "Beranda",
+        description: "Ringkasan aktivitas relawan",
         url: "/listener/beranda",
         icon: Headphones,
-        badge: "Segera",
       },
       {
         title: "Ruang Dengar",
