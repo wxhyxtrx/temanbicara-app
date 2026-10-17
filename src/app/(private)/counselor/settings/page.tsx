@@ -1,41 +1,185 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
-  User,
   ShieldCheck,
   Building2,
   Bell,
   Save,
   CheckCircle2,
-  FileCheck2,
   Coins,
+  Lock,
+  Plus,
+  X,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
+import { notify } from "@/lib/toast";
+import { userService, UserApiError } from "@/services/user.service";
+import type { PsikologProfile, UpdateMePsikologPayload } from "@/types/user-profile";
+
+const SUGGESTED_SPECIALIZATIONS = [
+  "Ansietas Klinis",
+  "Depresi & Gangguan Mood",
+  "Trauma & PTSD",
+  "Konseling Relasi & Pasangan",
+  "Burnout Karier & Stres Kerja",
+  "Regulasi Emosi",
+  "Grief & Duka Cita",
+  "Pengembangan Diri",
+];
 
 export default function CounselorSettingsPage() {
   const user = useUserStore((state) => state.user);
 
-  const [fullName, setFullName] = useState(user.fullName || "Dr. Sarah Alatas, M.Psi");
-  const [sippk, setSippk] = useState(user.counselorData?.licenseNumber || "198402-2019-01");
-  const [rateCoins, setRateCoins] = useState(user.counselorData?.hourlyRateCoins || 60);
+  const [mounted, setMounted] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Read-only credentials
+  const [fullNameWithDegree, setFullNameWithDegree] = useState("");
+  const [sippNumber, setSippNumber] = useState("");
+
+  // Editable fields
+  const [phone, setPhone] = useState("");
+  const [specializations, setSpecializations] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState("");
+  const [experienceYears, setExperienceYears] = useState<number>(0);
+  const [sessionRate, setSessionRate] = useState<number>(150000);
+
+  // Bank Info (payout reference)
   const [bankAccount, setBankAccount] = useState("8820491823");
   const [bankName, setBankName] = useState("Bank Central Asia (BCA)");
-  const [notifyEmail, setNotifyEmail] = useState(true);
-  const [notifyWhatsapp, setNotifyWhatsapp] = useState(true);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  // Status feedback
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setMounted(true);
+    let isSubscribed = true;
+
+    async function loadMe() {
+      try {
+        setLoadingProfile(true);
+        const res = await userService.getMe();
+        if (!isSubscribed) return;
+
+        if (res.success && res.data) {
+          const u = res.data.user;
+          const p = res.data.profile as PsikologProfile | null;
+
+          setFullNameWithDegree(p?.nama_lengkap_gelar || u.fullName || "");
+          setSippNumber(p?.nomor_sipp_str || "");
+          setPhone(u.no_wa || "");
+
+          if (Array.isArray(p?.spesialisasi) && p.spesialisasi.length > 0) {
+            setSpecializations(p.spesialisasi);
+          } else {
+            setSpecializations(["Ansietas Klinis", "Burnout Karier & Stres Kerja"]);
+          }
+
+          setExperienceYears(p?.tahun_pengalaman ?? 0);
+          const rawTarif = Number(p?.tarif_sesi) || 150000;
+          setSessionRate(rawTarif > 0 ? rawTarif : 150000);
+        }
+      } catch (err) {
+        console.error("Gagal memuat profil psikolog dari API:", err);
+      } finally {
+        if (isSubscribed) setLoadingProfile(false);
+      }
+    }
+
+    loadMe();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
+
+  const handleAddTag = (tagToAdd: string) => {
+    const trimmed = tagToAdd.trim();
+    if (!trimmed) return;
+    if (specializations.includes(trimmed)) return;
+    if (specializations.length >= 10) {
+      notify.error("Batas Maksimal", "Maksimal 10 bidang spesialisasi.");
+      return;
+    }
+    setSpecializations((prev) => [...prev, trimmed]);
+    setNewTagInput("");
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setSpecializations((prev) => prev.filter((t) => t !== tagToRemove));
+  };
+
+  const calculatedCoins = Math.floor(sessionRate / 10000);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    setIsSubmitting(true);
+    setErrors({});
+
+    if (specializations.length === 0) {
+      setErrors({ spesialisasi: "Minimal tentukan 1 bidang spesialisasi" });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (sessionRate % 10000 !== 0) {
+      setErrors({ tarif_sesi: "Tarif sesi harus kelipatan Rp 10.000" });
+      setIsSubmitting(false);
+      return;
+    }
+
+    const payload: UpdateMePsikologPayload = {
+      spesialisasi: specializations,
+      tahun_pengalaman: Number(experienceYears),
+      tarif_sesi: Number(sessionRate),
+    };
+
+    if (phone.trim()) {
+      payload.no_wa = phone.trim();
+    }
+
+    try {
+      const res = await userService.updateMe(payload);
+      if (res.success && res.data) {
+        useUserStore.getState().setAuthSession(res.data.user, undefined, res.data.profile);
+        await useUserStore.getState().syncSession();
+
+        notify.success("Pengaturan Disimpan", "Profil praktik psikolog berhasil diperbarui.");
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    } catch (err: unknown) {
+      if (err instanceof UserApiError) {
+        if (err.status === 409 || err.code === "PHONE_ALREADY_EXISTS") {
+          setErrors({ no_wa: err.message });
+        } else if (err.status === 422 && err.details) {
+          const fieldErrors: Record<string, string> = {};
+          for (const [key, msgs] of Object.entries(err.details)) {
+            if (Array.isArray(msgs) && msgs.length > 0) {
+              fieldErrors[key] = msgs[0];
+            }
+          }
+          setErrors(fieldErrors);
+        }
+        notify.error("Gagal Menyimpan", err.message);
+      } else {
+        notify.error("Kesalahan Sistem", err instanceof Error ? err.message : "Gagal memperbarui profil.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -46,7 +190,7 @@ export default function CounselorSettingsPage() {
           Pengaturan Praktik & Lisensi SIPPK
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Kelola kredensial klinis, tarif sesi koin, dan rekening penerima honor konsultasi
+          Kelola kontak WhatsApp, tarif per sesi, spesialisasi klinis, dan kredensial praktik psikolog
         </p>
       </div>
 
@@ -59,85 +203,238 @@ export default function CounselorSettingsPage() {
 
       {/* 2. Main Form */}
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Card 1: Identitas & Lisensi */}
+        {/* Card 1: Identitas & Lisensi (Read-Only dengan Ikon Gembok) */}
         <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <ShieldCheck size={18} className="text-teal-600 dark:text-teal-400" />
-              Kredensial & Izin Praktik Psikolog
+              Kredensial & Lisensi Terverifikasi (Terkunci)
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-              Nomor Surat Izin Praktik Psikologi Klinis terverifikasi oleh HIMPSI dan Kementerian Kesehatan
+              Data lisensi hukum dan identitas resmi diverifikasi langsung oleh Admin TemanBicara
             </CardDescription>
           </CardHeader>
 
           <CardContent className="p-4 sm:p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nama Lengkap & Gelar (Read-only) */}
               <div className="space-y-1.5">
-                <Label htmlFor="counselorName" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nama Lengkap & Gelar Akademik
-                </Label>
-                <Input
-                  id="counselorName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="h-9 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="sippkNumber" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nomor SIPPK Resmi
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Lock size={13} className="text-slate-400" />
+                    Nama Lengkap & Gelar Akademik
+                  </Label>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">
+                    Hubungi admin untuk mengubah
+                  </span>
+                </div>
                 <div className="relative">
                   <Input
-                    id="sippkNumber"
-                    value={sippk}
-                    onChange={(e) => setSippk(e.target.value)}
-                    className="h-9 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl pr-24"
-                    required
+                    disabled
+                    value={loadingProfile ? "Memuat..." : fullNameWithDegree}
+                    className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed pl-8"
                   />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded border border-emerald-200">
-                    Terverifikasi
-                  </span>
+                  <Lock size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
               </div>
 
+              {/* Nomor SIPPK Resmi (Read-only) */}
               <div className="space-y-1.5">
-                <Label htmlFor="hourlyCoins" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                  <Coins size={14} className="text-teal-600" /> Tarif per Sesi Konseling (Koin)
-                </Label>
-                <Input
-                  id="hourlyCoins"
-                  type="number"
-                  min={30}
-                  max={200}
-                  value={rateCoins}
-                  onChange={(e) => setRateCoins(Number(e.target.value))}
-                  className="h-9 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
-                  required
-                />
-                <span className="text-[11px] text-slate-500 font-nunito">
-                  Tarif riil yang dibayar klien: Rp {(rateCoins * 10000).toLocaleString("id-ID")} / 50 menit
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Afiliasi Profesi
-                </Label>
-                <Input
-                  disabled
-                  value="Himpunan Psikologi Indonesia (HIMPSI)"
-                  className="h-9 text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 rounded-xl"
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Lock size={13} className="text-slate-400" />
+                    Nomor SIPPK / STR Resmi
+                  </Label>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">
+                    Hubungi admin untuk mengubah
+                  </span>
+                </div>
+                <div className="relative">
+                  <Input
+                    disabled
+                    value={loadingProfile ? "Memuat..." : sippNumber}
+                    className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed pl-8 pr-24 font-mono"
+                  />
+                  <Lock size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                    Terverifikasi
+                  </span>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Card 2: Rekening Bank Pencairan */}
+        {/* Card 2: Pengaturan Sesi & Kontak Praktik (Dapat Diedit) */}
+        <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+          <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Coins size={18} className="text-teal-600 dark:text-teal-400" />
+              Kontak, Tarif Sesi & Pengalaman Praktik
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+              Tentukan tarif sesi konsultasi yang ditampilkan kepada calon klien
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="p-4 sm:p-6 space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Nomor WhatsApp */}
+              <div className="space-y-1.5">
+                <Label htmlFor="counselorPhone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Nomor WhatsApp Praktik
+                </Label>
+                <PhoneInput
+                  id="counselorPhone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="812 3456 7890"
+                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-within:ring-teal-600"
+                />
+                {errors.no_wa && (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.no_wa}</p>
+                )}
+              </div>
+
+              {/* Tahun Pengalaman */}
+              <div className="space-y-1.5">
+                <Label htmlFor="experienceYears" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Pengalaman Praktik Klinis (Tahun)
+                </Label>
+                <Input
+                  id="experienceYears"
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={experienceYears}
+                  onChange={(e) => setExperienceYears(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl"
+                  required
+                />
+                {errors.tahun_pengalaman && (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400">{errors.tahun_pengalaman}</p>
+                )}
+              </div>
+
+              {/* Tarif per Sesi Konseling (Rp, kelipatan 10.000) */}
+              <div className="space-y-1.5 md:col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="sessionRate" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Tarif per Sesi Konseling (Rp)
+                  </Label>
+                  <span className="text-xs font-bold font-mono text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/70 px-2.5 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
+                    = {calculatedCoins.toLocaleString("id-ID")} koin
+                  </span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs text-slate-400">
+                    Rp
+                  </span>
+                  <Input
+                    id="sessionRate"
+                    type="number"
+                    step={10000}
+                    min={50000}
+                    max={5000000}
+                    value={sessionRate}
+                    onChange={(e) => setSessionRate(parseInt(e.target.value) || 0)}
+                    className="h-9 text-xs sm:text-sm pl-9 font-mono font-bold bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl"
+                    required
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-nunito">
+                  <span>Kelipatan Rp 10.000 (Min. Rp 50.000, Maks. Rp 5.000.000)</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    1 Koin = Rp 10.000
+                  </span>
+                </div>
+                {errors.tarif_sesi && (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.tarif_sesi}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Bidang Spesialisasi Klinis */}
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Bidang Spesialisasi & Keahlian Konseling ({specializations.length}/10)
+              </Label>
+              
+              {/* Selected Tags */}
+              <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+                {specializations.length === 0 ? (
+                  <span className="text-xs text-slate-400 italic">Belum ada spesialisasi dipilih</span>
+                ) : (
+                  specializations.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs font-semibold"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
+                        title="Hapus"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+
+              {/* Input New Tag */}
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newTagInput}
+                  onChange={(e) => setNewTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddTag(newTagInput);
+                    }
+                  }}
+                  placeholder="Ketik spesialisasi baru lalu tekan Tambah"
+                  className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddTag(newTagInput)}
+                  className="h-8 text-xs rounded-xl shrink-0 gap-1"
+                >
+                  <Plus size={13} />
+                  Tambah
+                </Button>
+              </div>
+
+              {/* Suggestions */}
+              <div className="space-y-1 pt-1">
+                <span className="text-[11px] text-slate-400 block font-nunito">Saran spesialisasi populer:</span>
+                <div className="flex flex-wrap gap-1">
+                  {SUGGESTED_SPECIALIZATIONS.filter((s) => !specializations.includes(s)).map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => handleAddTag(sug)}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 hover:bg-teal-50 dark:bg-slate-800 dark:hover:bg-teal-950/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                    >
+                      + {sug}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {errors.spesialisasi && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.spesialisasi}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 3: Rekening Bank Pencairan */}
         <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -145,7 +442,7 @@ export default function CounselorSettingsPage() {
               Rekening Bank Pencairan Honor
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-              Rekening untuk transfer pencairan honor koin konsultasi mingguan
+              Rekening rujukan untuk pencairan honor koin konsultasi
             </CardDescription>
           </CardHeader>
 
@@ -159,7 +456,7 @@ export default function CounselorSettingsPage() {
                   id="bankName"
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
-                  className="h-9 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
+                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 rounded-xl"
                   required
                 />
               </div>
@@ -172,7 +469,7 @@ export default function CounselorSettingsPage() {
                   id="accountNumber"
                   value={bankAccount}
                   onChange={(e) => setBankAccount(e.target.value)}
-                  className="h-9 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl"
+                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 rounded-xl"
                   required
                 />
               </div>
@@ -180,49 +477,23 @@ export default function CounselorSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Card 3: Notifikasi Sesi */}
-        <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Bell size={18} className="text-teal-600 dark:text-teal-400" />
-              Preferensi Notifikasi Booking Klien
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="p-4 sm:p-6 space-y-4 divide-y divide-slate-100 dark:divide-slate-800">
-            <div className="flex items-center justify-between gap-4 pt-1 first:pt-0">
-              <div className="space-y-0.5">
-                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                  Notifikasi Instan via WhatsApp
-                </p>
-                <p className="text-xs text-slate-500 font-nunito">
-                  Kirim ringkasan saat ada klien baru yang memesan jadwal konsultasi Anda.
-                </p>
-              </div>
-              <Switch checked={notifyWhatsapp} onCheckedChange={setNotifyWhatsapp} className="cursor-pointer" />
-            </div>
-
-            <div className="flex items-center justify-between gap-4 pt-4">
-              <div className="space-y-0.5">
-                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                  Pengingat Email Kalender Google
-                </p>
-                <p className="text-xs text-slate-500 font-nunito">
-                  Sinkronisasi undangan kalender .ics otomatis 15 menit sebelum sesi dimulai.
-                </p>
-              </div>
-              <Switch checked={notifyEmail} onCheckedChange={setNotifyEmail} className="cursor-pointer" />
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="flex justify-end pt-2">
           <Button
             type="submit"
-            className="text-xs sm:text-sm bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-6 py-2.5 h-10 shadow-xs gap-1.5 cursor-pointer"
+            disabled={isSubmitting}
+            className="text-xs sm:text-sm bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-6 py-2.5 h-10 shadow-xs gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <Save size={15} />
-            Simpan Pengaturan Praktik
+            {isSubmitting ? (
+              <>
+                <Loader2 size={15} className="animate-spin" />
+                <span>Menyimpan...</span>
+              </>
+            ) : (
+              <>
+                <Save size={15} />
+                <span>Simpan Pengaturan Praktik</span>
+              </>
+            )}
           </Button>
         </div>
       </form>
