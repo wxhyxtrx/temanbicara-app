@@ -122,6 +122,34 @@ export const mediaRetentionSchema = z.object({
   days: z.number().int().min(1, 'Retensi media minimal 1 hari').max(365, 'Retensi media maksimal 365 hari'),
 });
 
+export const bookingSchema = z
+  .object({
+    min_hours_before: z.number().int().min(1, 'Minimal jam sebelum mulai harus >= 1'),
+    max_days_ahead: z.number().int().min(1, 'Maksimal hari ke depan harus >= 1'),
+    max_active_per_patient: z.number().int().min(1, 'Maksimal booking aktif per pasien harus >= 1'),
+    max_per_psikolog_per_day: z.number().int().min(1, 'Maksimal booking per psikolog per hari harus >= 1'),
+    reschedule_min_hours: z.number().int().min(1, 'Batas minimal jam reschedule harus >= 1'),
+    psikolog_cancel_free_hours: z.number().int().min(0, 'Batas jam pembatalan bebas penalti harus >= 0'),
+    choice_deadline_hours: z.number().int().min(1, 'Batas jam pilihan pasien harus >= 1'),
+  })
+  .refine((data) => data.max_days_ahead * 24 > data.min_hours_before, {
+    message: 'max_days_ahead (dalam jam) harus lebih besar dari min_hours_before',
+    path: ['max_days_ahead'],
+  });
+
+export const strikeSchema = z.object({
+  per_late_cancel: z.number().int().min(1, 'Poin strike late cancel minimal 1'),
+  per_noshow: z.number().int().min(1, 'Poin strike no-show minimal 1'),
+  threshold: z.number().int().min(1, 'Ambang batas strike minimal 1'),
+  window_days: z.number().int().min(1, 'Masa berlaku strike minimal 1 hari'),
+  suspend_days: z.number().int().min(1, 'Durasi suspensi minimal 1 hari'),
+});
+
+export const ratingSchema = z.object({
+  window_days: z.number().int().min(1, 'Batas hari rating minimal 1 hari'),
+  min_count_to_show: z.number().int().min(1, 'Minimal jumlah ulasan untuk tampil minimal 1'),
+});
+
 export const systemSettingsValidators = {
   maintenance: maintenanceSchema,
   topup: topupSchema,
@@ -136,6 +164,9 @@ export const systemSettingsValidators = {
   relawan: relawanSchema,
   upload: uploadSchema,
   media_retention: mediaRetentionSchema,
+  booking: bookingSchema,
+  strike: strikeSchema,
+  rating: ratingSchema,
 } as const;
 
 export type SettingKey = keyof typeof systemSettingsValidators;

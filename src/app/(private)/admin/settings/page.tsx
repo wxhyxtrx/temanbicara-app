@@ -55,7 +55,15 @@ const SUB_TAB_GROUPS: Record<
   sesi: {
     label: "Sesi",
     icon: Clock,
-    keys: ["refund_policy", "psikolog_late", "patient_noshow", "extension_price"],
+    keys: [
+      "booking",
+      "strike",
+      "rating",
+      "refund_policy",
+      "psikolog_late",
+      "patient_noshow",
+      "extension_price",
+    ],
   },
   relawan: {
     label: "Relawan",

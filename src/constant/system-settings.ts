@@ -43,6 +43,26 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   },
   upload: { verification_max_mb: 5, chat_media_max_mb: 10, voice_note_max_seconds: 180 },
   media_retention: { days: 30 },
+  booking: {
+    min_hours_before: 2,
+    max_days_ahead: 14,
+    max_active_per_patient: 3,
+    max_per_psikolog_per_day: 1,
+    reschedule_min_hours: 24,
+    psikolog_cancel_free_hours: 24,
+    choice_deadline_hours: 48,
+  },
+  strike: {
+    per_late_cancel: 1,
+    per_noshow: 2,
+    threshold: 3,
+    window_days: 30,
+    suspend_days: 7,
+  },
+  rating: {
+    window_days: 7,
+    min_count_to_show: 3,
+  },
 };
 
 // Fallback ini hanya untuk tampilan. Jangan gunakan untuk memproses transaksi.
@@ -61,4 +81,6 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   upload: DEFAULT_SYSTEM_SETTINGS.upload,
   refund_policy: DEFAULT_SYSTEM_SETTINGS.refund_policy,
   revenue_share: DEFAULT_SYSTEM_SETTINGS.revenue_share,
+  booking: DEFAULT_SYSTEM_SETTINGS.booking,
+  rating: DEFAULT_SYSTEM_SETTINGS.rating,
 };

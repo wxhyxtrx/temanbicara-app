@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { SystemSettings } from "@/types/system-settings";
-import { AlertCircle, Clock, Coins, HandCoins, HardDrive, type LucideIcon, Upload, Users, Wallet } from "lucide-react";
+import { AlertCircle, Calendar, Clock, Coins, HandCoins, HardDrive, type LucideIcon, ShieldAlert, Star, Upload, Users, Wallet } from "lucide-react";
 
 export type SettingKey = keyof SystemSettings;
 export type FlatKey = Exclude<SettingKey, "maintenance" | "revenue_share" | "refund_policy">;
@@ -89,6 +89,38 @@ export const FLAT_GROUPS: { [K in FlatKey]: FlatGroup<K> } = {
     icon: HardDrive,
     fields: [{ field: "days", label: "Masa simpan media (hari)" }],
   },
+  booking: {
+    title: "Pengaturan Booking Sesi",
+    icon: Calendar,
+    fields: [
+      { field: "min_hours_before", label: "Minimal sebelum mulai (jam)" },
+      { field: "max_days_ahead", label: "Batas booking ke depan (hari)" },
+      { field: "max_active_per_patient", label: "Maksimal booking aktif per pasien" },
+      { field: "max_per_psikolog_per_day", label: "Maksimal booking per psikolog per hari" },
+      { field: "reschedule_min_hours", label: "Batas waktu pindah jadwal pasien (jam sebelum)" },
+      { field: "psikolog_cancel_free_hours", label: "Batas pembatalan bebas penalti psikolog (jam sebelum)" },
+      { field: "choice_deadline_hours", label: "Batas pasien menentukan pilihan (jam)" },
+    ],
+  },
+  strike: {
+    title: "Penalti & Strike Psikolog",
+    icon: ShieldAlert,
+    fields: [
+      { field: "per_late_cancel", label: "Poin strike pembatalan mendadak" },
+      { field: "per_noshow", label: "Poin strike tidak hadir (no-show)" },
+      { field: "threshold", label: "Batas akumulasi poin strike suspensi" },
+      { field: "window_days", label: "Masa berlaku poin strike (hari)" },
+      { field: "suspend_days", label: "Durasi suspensi akun (hari)" },
+    ],
+  },
+  rating: {
+    title: "Rating & Ulasan Sesi",
+    icon: Star,
+    fields: [
+      { field: "window_days", label: "Batas waktu pemberian rating (hari)" },
+      { field: "min_count_to_show", label: "Minimal ulasan untuk ditampilkan ke publik" },
+    ],
+  },
 };
 
 // Spec §3 order; maintenance always first.
@@ -98,6 +130,9 @@ export const ORDER: SettingKey[] = [
   "tip",
   "holding",
   "payout",
+  "booking",
+  "strike",
+  "rating",
   "refund_policy",
   "psikolog_late",
   "patient_noshow",

@@ -32,13 +32,41 @@ export type SystemSettings = {
     voice_note_max_seconds: number;
   };
   media_retention: { days: number };
+  booking: {
+    min_hours_before: number;
+    max_days_ahead: number;
+    max_active_per_patient: number;
+    max_per_psikolog_per_day: number;
+    reschedule_min_hours: number;
+    psikolog_cancel_free_hours: number;
+    choice_deadline_hours: number;
+  };
+  strike: {
+    per_late_cancel: number;
+    per_noshow: number;
+    threshold: number;
+    window_days: number;
+    suspend_days: number;
+  };
+  rating: {
+    window_days: number;
+    min_count_to_show: number;
+  };
 };
 
 export type MaintenancePhase = 'none' | 'scheduled' | 'draining' | 'active';
 
 export type PublicSettings = Pick<
   SystemSettings,
-  'topup' | 'tip' | 'payout' | 'extension_price' | 'relawan' | 'upload' | 'refund_policy'
+  | 'topup'
+  | 'tip'
+  | 'payout'
+  | 'extension_price'
+  | 'relawan'
+  | 'upload'
+  | 'refund_policy'
+  | 'booking'
+  | 'rating'
 > & {
   maintenance: MaintenanceSetting & { phase: MaintenancePhase };
   revenue_share: { mitra_bps: number };

@@ -50,6 +50,8 @@ export class SystemSettingsService {
       upload: settings.upload,
       refund_policy: settings.refund_policy,
       revenue_share: settings.revenue_share,
+      booking: settings.booking,
+      rating: settings.rating,
       maintenance: {
         ...settings.maintenance,
         phase: await this.calculateMaintenancePhase(settings.maintenance.scheduled_start),
