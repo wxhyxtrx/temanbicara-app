@@ -38,6 +38,7 @@ export interface MeUser {
 export interface PasienProfile {
   user_id: string;
   nama_lengkap: string;
+  nama_panggilan?: string | null;
   kontak_darurat_nama?: string | null;
   kontak_darurat_wa?: string | null;
   is_anonim_default?: boolean;
