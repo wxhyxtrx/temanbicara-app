@@ -518,6 +518,8 @@ export default function PatientBerandaPage() {
       <BookingModal
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
+        psychologist={selectedPsychologist}
+        slotIso={selectedSlotIso}
         initialConsultantId={bookingConsultantId}
       />
     </div>
