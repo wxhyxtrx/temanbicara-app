@@ -210,6 +210,21 @@ export interface MitraPayoutSummary {
   paid_requests_count: number;
 }
 
+export interface StrikeSummaryItem {
+  id: string;
+  booking_id: string;
+  points: number;
+  reason: 'late_cancel' | 'noshow';
+  created_at: string;
+}
+
+export interface PsikologStrikeSummary {
+  total_points_30d: number;
+  strikes_count_30d: number;
+  suspended_until: string | null;
+  items: StrikeSummaryItem[];
+}
+
 export interface AdminDashboardStatsData {
   users: {
     total: number;
@@ -306,6 +321,7 @@ export type AdminUserDetailResponse =
         wallet?: UserWalletSummary;
         topup_summary?: PatientTopupSummary | null;
         payout_summary?: MitraPayoutSummary | null;
+        strike_summary?: PsikologStrikeSummary | null;
         dokumen_signed_url?: string | null;
       };
     }

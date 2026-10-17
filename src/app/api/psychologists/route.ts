@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fail, pageParams } from '@/lib/auth/session';
-import { activeProfiles, toPublicPsychologist } from '@/lib/public-profiles';
+import { activeProfiles, getPsychologistsAttendance, toPublicPsychologist } from '@/lib/public-profiles';
 
 export async function GET(req: Request) {
   try {
@@ -10,9 +10,13 @@ export async function GET(req: Request) {
       .range(from, to);
     if (error) return fail(500, 'QUERY_FAILED', error.message);
 
+    const rows = data ?? [];
+    const psychologistIds = rows.map((r) => r.user_id);
+    const attendanceMap = await getPsychologistsAttendance(psychologistIds);
+
     return NextResponse.json({
       success: true,
-      data: (data ?? []).map(toPublicPsychologist),
+      data: rows.map((r) => toPublicPsychologist(r, attendanceMap[r.user_id] ?? null)),
       meta: { page, limit, total: count ?? 0 },
     });
   } catch (err: unknown) {

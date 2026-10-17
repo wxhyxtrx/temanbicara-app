@@ -169,6 +169,45 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       };
     }
 
+    // 7. Khusus psikolog: ringkasan strike 30 hari terakhir (Task B5)
+    let strikeSummary: {
+      total_points_30d: number;
+      strikes_count_30d: number;
+      suspended_until: string | null;
+      items: Array<{
+        id: string;
+        booking_id: string;
+        points: number;
+        reason: 'late_cancel' | 'noshow';
+        created_at: string;
+      }>;
+    } | null = null;
+
+    if (user.role === 'psikolog') {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: strikeRows, error: strikeError } = await supabaseAdmin
+        .from('psikolog_strikes')
+        .select('id, booking_id, points, reason, created_at')
+        .eq('psikolog_id', id)
+        .gte('created_at', thirtyDaysAgo)
+        .order('created_at', { ascending: false });
+
+      const strikes = (!strikeError && strikeRows ? strikeRows : []) as Array<{
+        id: string;
+        booking_id: string;
+        points: number;
+        reason: 'late_cancel' | 'noshow';
+        created_at: string;
+      }>;
+
+      strikeSummary = {
+        total_points_30d: strikes.reduce((acc, row) => acc + Number(row.points || 0), 0),
+        strikes_count_30d: strikes.length,
+        suspended_until: (profile?.suspended_until as string | undefined) ?? null,
+        items: strikes,
+      };
+    }
+
     const fullName = displayName(user, profile);
 
     return NextResponse.json({
@@ -192,6 +231,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         wallet,
         topup_summary: topupSummary,
         payout_summary: payoutSummary,
+        strike_summary: strikeSummary,
         dokumen_signed_url: dokumenSignedUrl,
       },
     });

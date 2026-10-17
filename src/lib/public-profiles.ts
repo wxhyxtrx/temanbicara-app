@@ -25,14 +25,59 @@ export interface PublicVolunteerRow {
   } | null;
 }
 
-export const toPublicPsychologist = (r: PublicPsychologistRow) => ({
+export const toPublicPsychologist = (r: PublicPsychologistRow, attendancePct: number | null = null) => ({
   id: r.user_id,
   nama_lengkap_gelar: r.nama_lengkap_gelar,
   spesialisasi: r.spesialisasi ?? [],
   tahun_pengalaman: r.tahun_pengalaman ?? 0,
   tarif_sesi: Number(r.tarif_sesi ?? 0),
   avatar_url: r.users?.avatar_url ?? null,
+  attendance_pct: attendancePct,
 });
+
+/**
+ * Menghitung tingkat kehadiran (attendance_pct) untuk daftar psikolog.
+ * Formula: completed / (completed + cancelled_by_psikolog + auto_cancelled_late) * 100, null jika penyebut 0.
+ */
+export async function getPsychologistsAttendance(
+  psychologistIds: string[]
+): Promise<Record<string, number | null>> {
+  if (!psychologistIds.length || !supabaseAdmin) return {};
+
+  const { data: bookings, error } = await supabaseAdmin
+    .from('bookings')
+    .select('psikolog_id, status')
+    .in('psikolog_id', psychologistIds)
+    .in('status', ['completed', 'cancelled_by_psikolog', 'auto_cancelled_late']);
+
+  const counts: Record<string, { completed: number; denominator: number }> = {};
+  for (const id of psychologistIds) {
+    counts[id] = { completed: 0, denominator: 0 };
+  }
+
+  if (!error && bookings) {
+    for (const b of bookings) {
+      if (!counts[b.psikolog_id]) {
+        counts[b.psikolog_id] = { completed: 0, denominator: 0 };
+      }
+      counts[b.psikolog_id].denominator += 1;
+      if (b.status === 'completed') {
+        counts[b.psikolog_id].completed += 1;
+      }
+    }
+  }
+
+  const result: Record<string, number | null> = {};
+  for (const id of psychologistIds) {
+    const c = counts[id];
+    if (!c || c.denominator === 0) {
+      result[id] = null;
+    } else {
+      result[id] = Math.round((c.completed / c.denominator) * 100);
+    }
+  }
+  return result;
+}
 
 export const toPublicVolunteer = (r: PublicVolunteerRow) => ({
   id: r.user_id,

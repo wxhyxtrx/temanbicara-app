@@ -89,12 +89,26 @@ export const bookingClient = {
   },
 
   /**
-   * Membatalkan booking (oleh pasien)
+   * Membatalkan booking (oleh pasien atau psikolog)
    */
   async cancelBooking(
     id: string
-  ): Promise<{ success: boolean; data: BookingEntity }> {
+  ): Promise<{ success: boolean; data: BookingEntity | PsikologBookingView }> {
     const res = await fetch(`/api/bookings/${id}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: BookingEntity | PsikologBookingView }>(res);
+  },
+
+  /**
+   * Memilih opsi refund 100% setelah pembatalan oleh psikolog (oleh pasien)
+   */
+  async chooseRefund(
+    id: string
+  ): Promise<{ success: boolean; data: BookingEntity }> {
+    const res = await fetch(`/api/bookings/${id}/choose-refund`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

@@ -68,6 +68,7 @@ export interface PsychologistSummary {
   tahun_pengalaman: number;
   avatar_url: string | null;
   tarif_sesi: number;
+  attendance_pct?: number | null;
 }
 
 export interface PatientBookingView extends BookingEntity {
