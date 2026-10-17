@@ -5,6 +5,7 @@ import { Calendar, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WeeklyPatternEditor } from "@/components/views/counselor/schedule/weekly-pattern-editor";
 import { TimeOffManager } from "@/components/views/counselor/schedule/time-off-manager";
+import { ScheduleStatusBanner } from "@/components/views/counselor/schedule/schedule-status-banner";
 import {
   scheduleClient,
   type CounselorScheduleData,
@@ -46,6 +47,12 @@ export default function CounselorSchedulePage() {
   const handleTimeOffChanged = (updatedTimeOff: TimeOffItem[]) => {
     if (data) {
       setData({ ...data, time_off: updatedTimeOff });
+    }
+  };
+
+  const handleBookingPausedChange = (paused: boolean) => {
+    if (data) {
+      setData({ ...data, booking_paused: paused });
     }
   };
 
@@ -98,6 +105,13 @@ export default function CounselorSchedulePage() {
       {/* 4. Konten Utama Jadwal */}
       {!loading && data && (
         <div className="space-y-6">
+          {/* Poin 3: Banner Suspensi & Toggle Jeda Terima Booking */}
+          <ScheduleStatusBanner
+            bookingPaused={data.booking_paused}
+            suspendedUntil={data.suspended_until}
+            onBookingPausedChange={handleBookingPausedChange}
+          />
+
           {/* Poin 1: Editor Pola Mingguan */}
           <WeeklyPatternEditor
             initialWeekly={data.weekly}
