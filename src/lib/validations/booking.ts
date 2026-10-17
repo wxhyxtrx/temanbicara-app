@@ -33,3 +33,89 @@ export const bookingQuerySchema = z.object({
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 export type RescheduleBookingInput = z.infer<typeof rescheduleBookingSchema>;
 export type BookingQueryInput = z.infer<typeof bookingQuerySchema>;
+
+const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_VOICE_MIME_TYPES = [
+  'audio/webm',
+  'audio/ogg',
+  'audio/mp4',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/m4a',
+  'audio/x-m4a',
+];
+
+export const sendSessionMessageSchema = z
+  .object({
+    kind: z.enum(['text', 'image', 'voice'], {
+      message: 'Jenis pesan harus text, image, atau voice',
+    }),
+    body: z
+      .string()
+      .max(4000, 'Pesan teks maksimal 4000 karakter')
+      .optional()
+      .nullable(),
+    media_path: z
+      .string()
+      .max(500, 'Path media maksimal 500 karakter')
+      .optional()
+      .nullable(),
+    duration_seconds: z
+      .number()
+      .int('Durasi harus berupa bilangan bulat')
+      .min(0, 'Durasi tidak boleh negatif')
+      .optional()
+      .nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.kind === 'text') {
+      if (!data.body || data.body.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Pesan teks tidak boleh kosong',
+          path: ['body'],
+        });
+      }
+    } else {
+      if (!data.media_path || data.media_path.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Path berkas media wajib diisi untuk pesan media',
+          path: ['media_path'],
+        });
+      }
+    }
+  });
+
+export const sessionMediaUploadSchema = z
+  .object({
+    file_name: z.string().min(1, 'Nama file wajib diisi').max(255),
+    file_type: z.string().min(1, 'Tipe file wajib diisi'),
+    kind: z.enum(['image', 'voice'], {
+      message: 'Kategori media harus image atau voice',
+    }),
+  })
+  .superRefine((data, ctx) => {
+    const mime = data.file_type.toLowerCase();
+    if (data.kind === 'image') {
+      if (!ALLOWED_IMAGE_MIME_TYPES.includes(mime)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Format gambar hanya boleh JPG, PNG, atau WebP',
+          path: ['file_type'],
+        });
+      }
+    } else if (data.kind === 'voice') {
+      if (!ALLOWED_VOICE_MIME_TYPES.includes(mime)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Format rekaman suara tidak didukung (harus webm, ogg, mp4, mpeg, wav, atau m4a)',
+          path: ['file_type'],
+        });
+      }
+    }
+  });
+
+export type SendSessionMessageInput = z.infer<typeof sendSessionMessageSchema>;
+export type SessionMediaUploadInput = z.infer<typeof sessionMediaUploadSchema>;
+

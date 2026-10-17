@@ -90,3 +90,56 @@ export interface BookingListQuery {
   page?: number;
   limit?: number;
 }
+
+export type SessionMessageKind = 'text' | 'image' | 'voice';
+
+export interface SessionMessageEntity {
+  id: string;
+  booking_id: string;
+  sender_id: string;
+  kind: SessionMessageKind;
+  body: string | null;
+  media_path: string | null;
+  duration_seconds: number | null;
+  created_at: string;
+}
+
+export interface SessionMessageView {
+  id: string;
+  booking_id: string;
+  sender_id: string;
+  sender_role: 'pasien' | 'psikolog';
+  sender_name: string;
+  is_mine: boolean;
+  kind: SessionMessageKind;
+  body: string | null;
+  media_path: string | null;
+  duration_seconds: number | null;
+  created_at: string;
+}
+
+export interface SendSessionMessagePayload {
+  kind: SessionMessageKind;
+  body?: string | null;
+  media_path?: string | null;
+  duration_seconds?: number | null;
+}
+
+export interface SessionMediaUploadPayload {
+  file_name: string;
+  file_type: string;
+  kind: 'image' | 'voice';
+}
+
+export interface SessionMediaUploadResponse {
+  upload_url: string;
+  token?: string;
+  file_path: string;
+  bucket: string;
+}
+
+export interface SessionMediaUrlResponse {
+  signed_url: string;
+  expires_in: number;
+}
+
