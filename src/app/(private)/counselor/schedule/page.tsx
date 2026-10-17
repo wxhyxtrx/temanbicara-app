@@ -4,10 +4,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Calendar, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WeeklyPatternEditor } from "@/components/views/counselor/schedule/weekly-pattern-editor";
+import { TimeOffManager } from "@/components/views/counselor/schedule/time-off-manager";
 import {
   scheduleClient,
   type CounselorScheduleData,
   type ScheduleWeeklyItem,
+  type TimeOffItem,
 } from "@/services/schedule.client";
 
 export default function CounselorSchedulePage() {
@@ -38,6 +40,12 @@ export default function CounselorSchedulePage() {
   const handleWeeklySaved = (updatedWeekly: ScheduleWeeklyItem[]) => {
     if (data) {
       setData({ ...data, weekly: updatedWeekly });
+    }
+  };
+
+  const handleTimeOffChanged = (updatedTimeOff: TimeOffItem[]) => {
+    if (data) {
+      setData({ ...data, time_off: updatedTimeOff });
     }
   };
 
@@ -94,6 +102,12 @@ export default function CounselorSchedulePage() {
           <WeeklyPatternEditor
             initialWeekly={data.weekly}
             onSaveSuccess={handleWeeklySaved}
+          />
+
+          {/* Poin 2: Waktu Libur / Time Off */}
+          <TimeOffManager
+            initialTimeOff={data.time_off}
+            onTimeOffChange={handleTimeOffChanged}
           />
         </div>
       )}
