@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Consultant } from "@/constant/beranda";
+import type { PublicPsychologist } from "@/types/user-profile";
+import { getInitials, tarifToCoins, formatRupiah } from "@/lib/booking-utils";
 import {
   ShieldCheck,
   Star,
@@ -28,19 +30,67 @@ import {
 import { MdVerified } from "react-icons/md";
 
 interface PsychologistProfileModalProps {
-  consultant: Consultant | null;
+  consultant?: Consultant | null;
+  psychologist?: PublicPsychologist | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onBookSession: (consultant: Consultant) => void;
+  onBookSession?: (consultant: Consultant) => void;
 }
 
 export function PsychologistProfileModal({
   consultant,
+  psychologist,
   open,
   onOpenChange,
   onBookSession,
 }: PsychologistProfileModalProps) {
-  if (!consultant) return null;
+  const profile = psychologist
+    ? {
+        id: psychologist.id,
+        name: psychologist.nama_lengkap_gelar,
+        title: `Psikolog Klinis (${psychologist.tahun_pengalaman} Thn Pengalaman)`,
+        specialty: psychologist.spesialisasi.join(", ") || "Konseling Klinis",
+        licenseNumber: "SIPPK Terverifikasi (HIMPSI)",
+        experienceYears: psychologist.tahun_pengalaman,
+        rating: null,
+        reviews: 0,
+        initials: getInitials(psychologist.nama_lengkap_gelar),
+        available: true,
+        nextSlot: "Jadwal Tersedia",
+        almamater: "Magister Profesi Psikologi Klinis",
+        bio: `Psikolog klinis berlisensi resmi dengan keahlian di bidang ${
+          psychologist.spesialisasi.join(", ") || "kesehatan mental dan terapi perilaku"
+        }.`,
+        approaches: ["Cognitive Behavioral Therapy (CBT)", "Mindfulness", "Solution-Focused Brief Therapy"],
+        handledTopics: psychologist.spesialisasi,
+        hourlyRateCoins: tarifToCoins(psychologist.tarif_sesi),
+        tarifSesi: Number(psychologist.tarif_sesi),
+        avatarUrl: psychologist.avatar_url,
+      }
+    : consultant
+    ? {
+        id: String(consultant.id),
+        name: consultant.name,
+        title: consultant.title,
+        specialty: consultant.specialty,
+        licenseNumber: consultant.licenseNumber,
+        experienceYears: consultant.experienceYears,
+        rating: consultant.rating,
+        reviews: consultant.reviews,
+        initials: consultant.initials,
+        available: consultant.available,
+        nextSlot: consultant.nextSlot,
+        almamater: consultant.almamater,
+        bio: consultant.bio,
+        approaches: consultant.approaches,
+        handledTopics: consultant.handledTopics,
+        hourlyRateCoins: consultant.hourlyRateCoins || 15,
+        tarifSesi: (consultant.hourlyRateCoins || 15) * 10000,
+        avatarUrl: null,
+      }
+    : null;
+
+  if (!profile) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -51,9 +101,9 @@ export function PsychologistProfileModal({
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-600 to-teal-800 text-white font-bold text-xl flex items-center justify-center font-heading shadow-md">
-                  {consultant.initials}
+                  {profile.initials}
                 </div>
-                {consultant.available && (
+                {profile.available && (
                   <span
                     className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 shadow-xs"
                     title="Tersedia untuk reservasi"
@@ -64,39 +114,48 @@ export function PsychologistProfileModal({
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <DialogTitle className="text-lg sm:text-xl font-bold font-heading text-slate-900 dark:text-white leading-tight">
-                    {consultant.name}
+                    {profile.name}
                   </DialogTitle>
                   <MdVerified className="text-sky-500 text-base shrink-0" title="Terverifikasi SIPPK HIMPSI" />
                 </div>
                 <p className="text-xs sm:text-sm text-teal-700 dark:text-teal-400 font-medium">
-                  {consultant.title}
+                  {profile.title}
                 </p>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-800 dark:text-teal-300 text-[11px] font-bold">
                   <ShieldCheck size={13} className="text-teal-600 dark:text-teal-400" />
-                  <span>{consultant.licenseNumber} (HIMPSI)</span>
+                  <span>{profile.licenseNumber} (HIMPSI)</span>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-1.5 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-slate-800">
               <div className="flex items-center gap-1 text-amber-500 font-bold text-sm">
-                <Star size={16} className="fill-amber-400 text-amber-400" />
-                <span>{consultant.rating}</span>
-                <span className="text-xs text-slate-400 font-normal">({consultant.reviews} ulasan)</span>
+                {profile.rating ? (
+                  <>
+                    <Star size={16} className="fill-amber-400 text-amber-400" />
+                    <span>{profile.rating}</span>
+                    <span className="text-xs text-slate-400 font-normal">({profile.reviews} ulasan)</span>
+                  </>
+                ) : (
+                  <Badge variant="outline" className="text-xs px-2.5 py-0.5 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200/80 font-semibold gap-1">
+                    <Sparkles size={12} className="text-amber-500" />
+                    <span>Psikolog baru</span>
+                  </Badge>
+                )}
               </div>
               <Badge
                 className={`text-[10px] px-2 py-0.5 border font-semibold ${
-                  consultant.available
+                  profile.available
                     ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300"
                 }`}
               >
-                {consultant.available ? `Slot: ${consultant.nextSlot}` : "Jadwal Penuh Pekan Ini"}
+                {profile.available ? `Slot: ${profile.nextSlot}` : "Jadwal Penuh Pekan Ini"}
               </Badge>
             </div>
           </div>
           <DialogDescription className="sr-only">
-            Detail profil kredensial psikolog klinis {consultant.name}
+            Detail profil kredensial psikolog klinis {profile.name}
           </DialogDescription>
         </div>
 
@@ -109,7 +168,7 @@ export function PsychologistProfileModal({
                 Pengalaman
               </span>
               <span className="text-sm sm:text-base font-extrabold font-heading text-slate-900 dark:text-white">
-                {consultant.experienceYears}+ Tahun
+                {profile.experienceYears}+ Tahun
               </span>
             </div>
             <div className="space-y-0.5 border-x border-slate-200/80 dark:border-slate-700">
@@ -117,7 +176,7 @@ export function PsychologistProfileModal({
                 Sesi Sukses
               </span>
               <span className="text-sm sm:text-base font-extrabold font-heading text-teal-700 dark:text-teal-400">
-                {consultant.reviews}+ Pasien
+                {profile.reviews}+ Pasien
               </span>
             </div>
             <div className="space-y-0.5">
@@ -125,7 +184,7 @@ export function PsychologistProfileModal({
                 Biaya Sesi
               </span>
               <span className="text-sm sm:text-base font-extrabold font-heading text-slate-900 dark:text-white">
-                {consultant.hourlyRateCoins || 15} Koin / Jam
+                {profile.hourlyRateCoins || 15} Koin / Jam
               </span>
             </div>
           </div>
@@ -137,7 +196,7 @@ export function PsychologistProfileModal({
               <span>Tentang Psikolog</span>
             </h4>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
-              {consultant.bio ||
+              {profile.bio ||
                 "Psikolog klinis berlisensi HIMPSI yang mengkhususkan diri dalam pendampingan kesehatan mental dewasa dengan pendekatan berbasis bukti ilmiah."}
             </p>
           </div>
@@ -151,7 +210,7 @@ export function PsychologistProfileModal({
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 space-y-1.5">
               <p className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
-                <span>{consultant.almamater || "Magister Profesi Psikologi Klinis"}</span>
+                <span>{profile.almamater || "Magister Profesi Psikologi Klinis"}</span>
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-5">
                 Surat Izin Praktik Psikolog Klinis (SIPPK) aktif terdaftar pada Sistem Registrasi Nasional Tenaga Kesehatan RI.
@@ -160,14 +219,14 @@ export function PsychologistProfileModal({
           </div>
 
           {/* 3. Pendekatan Terapi Klinis */}
-          {consultant.approaches && consultant.approaches.length > 0 && (
+          {profile.approaches && profile.approaches.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
                 <span>Metode & Pendekatan Terapi</span>
               </h4>
               <div className="flex flex-wrap gap-2">
-                {consultant.approaches.map((approach, i) => (
+                {profile.approaches.map((approach, i) => (
                   <span
                     key={i}
                     className="text-xs px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/80 dark:border-teal-800 text-teal-800 dark:text-teal-300 font-semibold"
@@ -180,14 +239,14 @@ export function PsychologistProfileModal({
           )}
 
           {/* 4. Topik / Masalah yang Ditangani */}
-          {consultant.handledTopics && consultant.handledTopics.length > 0 && (
+          {profile.handledTopics && profile.handledTopics.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <HeartHandshake size={14} className="text-pink-600 dark:text-pink-400" />
                 <span>Fokus Isu & Keluhan yang Didampingi</span>
               </h4>
               <div className="flex flex-wrap gap-1.5">
-                {consultant.handledTopics.map((topic, i) => (
+                {profile.handledTopics.map((topic, i) => (
                   <span
                     key={i}
                     className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-medium"
@@ -242,7 +301,7 @@ export function PsychologistProfileModal({
             type="button"
             onClick={() => {
               onOpenChange(false);
-              onBookSession(consultant);
+              onBookSession && consultant && onBookSession(consultant);
             }}
             className="text-xs bg-teal-600 hover:bg-teal-700 text-white h-10 px-6 rounded-xl font-bold cursor-pointer shadow-sm gap-2"
           >
