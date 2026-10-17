@@ -148,13 +148,14 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         description: "Ruang penerimaan teman bicara",
         url: "/listener/beranda",
         icon: Headphones,
-        badge: "Siaga",
+        badge: "Segera",
       },
       {
         title: "Ruang Dengar",
         description: "Sesi percakapan aktif anonim",
         url: "/listener/queue",
         icon: MessageCircle,
+        badge: "Segera",
       },
     ],
     utilityItems: [
