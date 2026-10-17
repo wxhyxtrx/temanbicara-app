@@ -29,6 +29,7 @@ import {
   getInitials,
   formatRupiah,
   BOOKING_STATUS_CONFIG,
+  checkRescheduleEligibility,
 } from "@/lib/booking-utils";
 
 interface PatientBookingDetailModalProps {
@@ -199,21 +200,39 @@ export function PatientBookingDetailModal({
             <div className="flex items-center gap-2">
               {booking.status === "booked" && (
                 <>
-                  {onOpenReschedule && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        onClose();
-                        onOpenReschedule(booking);
-                      }}
-                      className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl h-8 px-3 gap-1.5"
-                    >
-                      <RotateCcw size={13} />
-                      <span>Pindah Jadwal</span>
-                    </Button>
-                  )}
+                  {onOpenReschedule && (() => {
+                    const eligibility = checkRescheduleEligibility(
+                      booking.start_at,
+                      booking.reschedule_count
+                    );
+                    return eligibility.eligible ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          onClose();
+                          onOpenReschedule(booking);
+                        }}
+                        className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl h-8 px-3 gap-1.5"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Pindah Jadwal</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        title={eligibility.reason}
+                        className="text-xs border-slate-200/60 dark:border-slate-800 text-slate-400 dark:text-slate-600 rounded-xl h-8 px-3 gap-1.5 cursor-not-allowed opacity-60"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Pindah Jadwal</span>
+                      </Button>
+                    );
+                  })()}
                   {onOpenCancel && (
                     <Button
                       type="button"
