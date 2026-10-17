@@ -16,6 +16,20 @@ import {
   VolunteerListResponse,
 } from '@/types/user-profile';
 
+export class UserApiError extends Error {
+  status: number;
+  code?: string;
+  details?: Record<string, string[]>;
+
+  constructor(status: number, message: string, code?: string, details?: Record<string, string[]>) {
+    super(message);
+    this.name = 'UserApiError';
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
+
 async function handleResponse<T>(res: Response): Promise<T> {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -23,7 +37,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
       handleUnauthorized(data.message || 'Sesi tidak valid atau kedaluwarsa');
     }
     const errorMsg = data.message || data.error || 'Terjadi kesalahan pada server';
-    throw new Error(errorMsg);
+    throw new UserApiError(res.status, errorMsg, data.error, data.details);
   }
   return data as T;
 }

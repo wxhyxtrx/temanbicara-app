@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -17,84 +16,168 @@ import {
   Bell,
   Lock,
   Camera,
-  Smartphone,
   Download,
   AlertTriangle,
-  KeyRound,
-  EyeOff,
   HeartPulse,
   Save,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
 import { useNotificationStore } from "@/store/notification-store";
 import { notify } from "@/lib/toast";
+import { userService, UserApiError } from "@/services/user.service";
+import type { PasienProfile, UpdateMePasienPayload } from "@/types/user-profile";
 
 export default function PatientSettingsPage() {
   const user = useUserStore((state) => state.user);
-  const updateProfile = useUserStore((state) => state.updateProfile);
 
   const [mounted, setMounted] = useState(false);
-  const [fullName, setFullName] = useState(user.fullName);
-  const [alias, setAlias] = useState(user.alias);
-  const [email, setEmail] = useState(user.email);
-  const [phone, setPhone] = useState(user.phone);
-  const [emergencyContact, setEmergencyContact] = useState(user.emergencyContact);
-  const [mentalNotes, setMentalNotes] = useState(user.mentalNotes);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [isAnonymousDefault, setIsAnonymousDefault] = useState(user.isAnonymousDefault || false);
+  // Form states
+  const [fullName, setFullName] = useState("");
+  const [alias, setAlias] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [kontakDaruratNama, setKontakDaruratNama] = useState("");
+  const [kontakDaruratWa, setKontakDaruratWa] = useState("");
+  const [mentalNotes, setMentalNotes] = useState("");
+  const [isAnonymousDefault, setIsAnonymousDefault] = useState(false);
+
+  // Preferences & Security states
   const [sessionReminder, setSessionReminder] = useState(true);
   const [psychologistMessageAlert, setPsychologistMessageAlert] = useState(true);
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  React.useEffect(() => {
+  // Status feedback
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
     setMounted(true);
-    const initialName = user.fullName || (user.email ? user.email.split("@")[0] : "");
-    const initialAlias = user.alias || (initialName ? initialName.trim().split(" ")[0] : "");
-    setFullName(initialName);
-    setAlias(initialAlias);
-    setEmail(user.email || "");
-    setPhone(user.phone || "");
-    setEmergencyContact(user.emergencyContact || "");
-    setMentalNotes(user.mentalNotes || "");
-    setIsAnonymousDefault(user.isAnonymousDefault || false);
-  }, [user]);
+    let isSubscribed = true;
+
+    async function loadMe() {
+      try {
+        setLoadingProfile(true);
+        const res = await userService.getMe();
+        if (!isSubscribed) return;
+
+        if (res.success && res.data) {
+          const u = res.data.user;
+          const p = res.data.profile as PasienProfile | null;
+
+          setFullName(p?.nama_lengkap || u.fullName || "");
+          setAlias(p?.nama_panggilan || "");
+          setEmail(u.email || "");
+          setPhone(u.no_wa || "");
+          setKontakDaruratNama(p?.kontak_darurat_nama || "");
+          setKontakDaruratWa(p?.kontak_darurat_wa || "");
+          setIsAnonymousDefault(Boolean(p?.is_anonim_default));
+        }
+      } catch (err) {
+        console.error("Gagal memuat profil pasien dari API:", err);
+      } finally {
+        if (isSubscribed) setLoadingProfile(false);
+      }
+    }
+
+    loadMe();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
 
   const handleFullNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setFullName(val);
-    const firstName = val.trim().split(" ")[0] || "";
-    if (!alias || alias === fullName.trim().split(" ")[0]) {
-      setAlias(firstName);
+    if (!alias) {
+      setAlias(val.trim().split(" ")[0] || "");
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const resolvedAlias = alias.trim() || (fullName.trim().split(" ")[0] || "");
-    updateProfile({
-      fullName: fullName.trim(),
-      alias: resolvedAlias,
-      email: email.trim(),
-      phone: phone.trim(),
-      emergencyContact: emergencyContact.trim(),
-      mentalNotes: mentalNotes.trim(),
-      isAnonymousDefault,
-    });
+    setIsSubmitting(true);
+    setErrors({});
 
-    useNotificationStore.getState().addNotification({
-      title: "Profil Diperbarui",
-      message: "Data identitas pasien dan preferensi akun berhasil disimpan.",
-      type: "sistem",
-      actionUrl: "/patient/settings",
-    });
+    const payload: UpdateMePasienPayload = {
+      nama_lengkap: fullName.trim(),
+      nama_panggilan: alias.trim() ? alias.trim() : null,
+      is_anonim_default: isAnonymousDefault,
+    };
 
-    notify.success("Profil Diperbarui", "Data identitas pasien dan preferensi akun berhasil disimpan.");
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    if (phone.trim()) {
+      payload.no_wa = phone.trim();
+    }
+    if (kontakDaruratNama.trim()) {
+      payload.kontak_darurat_nama = kontakDaruratNama.trim();
+    }
+    if (kontakDaruratWa.trim()) {
+      payload.kontak_darurat_wa = kontakDaruratWa.trim();
+    }
+
+    try {
+      const res = await userService.updateMe(payload);
+      if (res.success && res.data) {
+        useUserStore.getState().setAuthSession(res.data.user, undefined, res.data.profile);
+        await useUserStore.getState().syncSession();
+
+        useNotificationStore.getState().addNotification({
+          title: "Profil Diperbarui",
+          message: "Data identitas pasien dan preferensi akun berhasil disimpan.",
+          type: "sistem",
+          actionUrl: "/patient/settings",
+        });
+
+        notify.success("Profil Diperbarui", "Data identitas pasien dan preferensi akun berhasil disimpan.");
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    } catch (err: unknown) {
+      if (err instanceof UserApiError) {
+        if (err.status === 409 || err.code === "PHONE_ALREADY_EXISTS") {
+          setErrors({ no_wa: err.message });
+        } else if (err.status === 422 && err.details) {
+          const fieldErrors: Record<string, string> = {};
+          for (const [key, msgs] of Object.entries(err.details)) {
+            if (Array.isArray(msgs) && msgs.length > 0) {
+              fieldErrors[key] = msgs[0];
+            }
+          }
+          setErrors(fieldErrors);
+        }
+        notify.error("Gagal Menyimpan", err.message);
+      } else {
+        notify.error("Kesalahan Sistem", err instanceof Error ? err.message : "Gagal memperbarui profil.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const handleToggleAnonymous = async (checked: boolean) => {
+    setIsAnonymousDefault(checked);
+    try {
+      const res = await userService.updateMe({ is_anonim_default: checked });
+      if (res.success && res.data) {
+        useUserStore.getState().setAuthSession(res.data.user, undefined, res.data.profile);
+        notify.success(
+          "Mode Anonim Diperbarui",
+          checked ? "Mode anonim otomatis diaktifkan untuk konsultasi." : "Mode anonim otomatis dinonaktifkan."
+        );
+      }
+    } catch (err: unknown) {
+      setIsAnonymousDefault(!checked);
+      notify.error("Gagal Mengubah Mode Anonim", err instanceof Error ? err.message : "Terjadi kesalahan.");
+    }
+  };
+
+  const isEmergencyEmpty = !loadingProfile && (!kontakDaruratNama.trim() || !kontakDaruratWa.trim());
 
   return (
     <div className="flex flex-col gap-6 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -104,9 +187,24 @@ export default function PatientSettingsPage() {
           Pengaturan & Privasi Pasien
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Kelola identitas klinis, tingkat kerahasiaan konseling, notifikasi sesi, dan keamanan akunmu
+          Kelola identitas klinis, tingkat kerahasiaan konseling, kontak darurat, dan keamanan akunmu
         </p>
       </div>
+
+      {/* Banner Peringatan Kontak Darurat Kosong */}
+      {isEmergencyEmpty && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs sm:text-sm animate-in fade-in">
+          <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold font-heading text-sm text-amber-950 dark:text-amber-100">
+              Lengkapi kontak darurat demi keselamatanmu
+            </p>
+            <p className="text-xs text-amber-800 dark:text-amber-300 font-nunito leading-relaxed">
+              Informasi kontak darurat Anda belum lengkap. Kontak ini wajib sesuai SOP telekonseling klinis untuk penanganan cepat saat kondisi krisis.
+            </p>
+          </div>
+        </div>
+      )}
 
       {saveSuccess && (
         <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in duration-200">
@@ -165,7 +263,7 @@ export default function PatientSettingsPage() {
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
                 <div className="relative shrink-0">
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900 border-2 border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 font-bold text-xl flex items-center justify-center font-heading shadow-xs">
-                    {user.avatarInitials || "TB"}
+                    {user.avatarInitials || (fullName ? fullName.slice(0, 2).toUpperCase() : "TB")}
                   </div>
                   <Button
                     size="icon"
@@ -182,13 +280,13 @@ export default function PatientSettingsPage() {
                 <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                     <h3 className="font-heading font-bold text-base sm:text-lg text-slate-900 dark:text-white">
-                      {user.fullName}
+                      {loadingProfile ? "Memuat profil..." : fullName || user.fullName}
                     </h3>
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       <MdVerified className="text-sky-500 text-xs" /> Pasien Terverifikasi
                     </span>
                     <Badge variant="outline" className="text-[10px] text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700">
-                      ID: {user.patientId}
+                      ID: {user.patientId || user.id.slice(0, 8)}
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito max-w-lg leading-relaxed">
@@ -206,13 +304,14 @@ export default function PatientSettingsPage() {
                 Data Pribadi & Kontak
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                Data pendukung untuk penyesuaian asesmen usia dan kebutuhan konseling
+                Data profil tersimpan langsung ke sistem TemanBicara
               </CardDescription>
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6">
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Nama Lengkap */}
                   <div className="space-y-1.5">
                     <Label htmlFor="fullName" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Nama Lengkap (Sesuai KTP/Paspor)
@@ -222,10 +321,15 @@ export default function PatientSettingsPage() {
                       value={fullName}
                       onChange={handleFullNameChange}
                       required
+                      placeholder="Masukkan nama lengkap"
                       className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-teal-600"
                     />
+                    {errors.nama_lengkap && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400">{errors.nama_lengkap}</p>
+                    )}
                   </div>
 
+                  {/* Nama Panggilan */}
                   <div className="space-y-1.5">
                     <Label htmlFor="alias" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Nama Panggilan / Alias di Chat
@@ -234,24 +338,32 @@ export default function PatientSettingsPage() {
                       id="alias"
                       value={alias}
                       onChange={(e) => setAlias(e.target.value)}
+                      placeholder="Contoh: Wahyu"
                       className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-teal-600"
                     />
+                    {errors.nama_panggilan && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400">{errors.nama_panggilan}</p>
+                    )}
                   </div>
 
+                  {/* Email (Read-Only) */}
                   <div className="space-y-1.5">
                     <Label htmlFor="email" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Alamat Email
+                      Alamat Email (Akun)
                     </Label>
                     <Input
                       id="email"
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-teal-600"
+                      disabled
+                      className="h-9 text-xs sm:text-sm bg-slate-100 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed"
                     />
+                    <span className="text-[10px] text-slate-400 block font-nunito">
+                      Email terikat akun autentikasi dan tidak dapat diubah di sini.
+                    </span>
                   </div>
 
+                  {/* Nomor WhatsApp */}
                   <div className="space-y-1.5">
                     <Label htmlFor="phone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Nomor WhatsApp (Pengingat Sesi)
@@ -263,25 +375,47 @@ export default function PatientSettingsPage() {
                       placeholder="812 3456 7890"
                       className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-within:ring-teal-600"
                     />
+                    {errors.no_wa && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.no_wa}</p>
+                    )}
                   </div>
 
-                  <div className="space-y-1.5 md:col-span-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="emergencyContact" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <HeartPulse size={14} className="text-rose-600 dark:text-rose-400" />
-                        Kontak Darurat (SOP Keamanan Kesehatan Mental)
-                      </Label>
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500">Hanya dihubungi saat situasi darurat keselamatan jiwa</span>
-                    </div>
+                  {/* Nama Kontak Darurat */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="kontakDaruratNama" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <HeartPulse size={14} className="text-rose-600 dark:text-rose-400" />
+                      Nama Kontak Darurat
+                    </Label>
                     <Input
-                      id="emergencyContact"
-                      placeholder="Nama Kerabat - Hubungan - No. Telepon (Contoh: Sarah - Pasangan - 0811223344)"
-                      value={emergencyContact}
-                      onChange={(e) => setEmergencyContact(e.target.value)}
+                      id="kontakDaruratNama"
+                      placeholder="Contoh: Sarah (Pasangan / Keluarga)"
+                      value={kontakDaruratNama}
+                      onChange={(e) => setKontakDaruratNama(e.target.value)}
                       className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-visible:ring-teal-600"
                     />
+                    {errors.kontak_darurat_nama && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400">{errors.kontak_darurat_nama}</p>
+                    )}
                   </div>
 
+                  {/* Nomor WhatsApp Kontak Darurat */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="kontakDaruratWa" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Nomor WhatsApp Kontak Darurat
+                    </Label>
+                    <PhoneInput
+                      id="kontakDaruratWa"
+                      value={kontakDaruratWa}
+                      onChange={(e) => setKontakDaruratWa(e.target.value)}
+                      placeholder="812 3456 7890"
+                      className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-within:ring-teal-600"
+                    />
+                    {errors.kontak_darurat_wa && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400">{errors.kontak_darurat_wa}</p>
+                    )}
+                  </div>
+
+                  {/* Catatan Singkat (Lokal) */}
                   <div className="space-y-1.5 md:col-span-2">
                     <Label htmlFor="mentalNotes" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Catatan Singkat untuk Psikolog (Opsional)
@@ -300,10 +434,20 @@ export default function PatientSettingsPage() {
                 <div className="flex justify-end pt-2">
                   <Button
                     type="submit"
-                    className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-5 py-2 cursor-pointer shadow-xs gap-1.5"
+                    disabled={isSubmitting}
+                    className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-5 py-2 cursor-pointer shadow-xs gap-1.5 disabled:opacity-50"
                   >
-                    <Save size={14} />
-                    Simpan Perubahan
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Menyimpan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save size={14} />
+                        <span>Simpan Perubahan</span>
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>
@@ -331,12 +475,12 @@ export default function PatientSettingsPage() {
                     Mode Anonim Otomatis
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
-                    Selalu gunakan inisial acak ("Pengguna Anonim") setiap kali memulai percakapan baru dengan AI maupun psikolog.
+                    Selalu gunakan inisial acak (&quot;Pengguna Anonim&quot;) setiap kali memulai percakapan baru dengan AI maupun psikolog.
                   </p>
                 </div>
                 <Switch
                   checked={isAnonymousDefault}
-                  onCheckedChange={setIsAnonymousDefault}
+                  onCheckedChange={handleToggleAnonymous}
                   className="cursor-pointer"
                 />
               </div>
@@ -374,25 +518,6 @@ export default function PatientSettingsPage() {
                   Ekspor PDF
                 </Button>
               </div>
-
-              <div className="flex items-center justify-between gap-4 pt-4 text-rose-900 dark:text-rose-200">
-                <div className="space-y-0.5 min-w-0">
-                  <p className="text-xs sm:text-sm font-bold font-heading text-rose-800 dark:text-rose-300">
-                    Hapus Seluruh Riwayat Konsultasi
-                  </p>
-                  <p className="text-xs text-rose-600/80 dark:text-rose-400 font-nunito leading-relaxed">
-                    Menghapus permanen semua transkrip chat dan rekaman sesi dari server TemanBicara. Tindakan ini tidak dapat dibatalkan.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl px-3 h-8 font-semibold shrink-0"
-                  onClick={() => confirm("Apakah Anda yakin ingin menghapus permanen semua riwayat konseling?")}
-                >
-                  Hapus Data
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -403,48 +528,41 @@ export default function PatientSettingsPage() {
             <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
               <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Bell size={18} className="text-teal-600 dark:text-teal-400" />
-                Preferensi Notifikasi & Pengingat Sesi
+                Preferensi Pengingat Sesi
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                Pastikan Anda tidak melewatkan sesi konseling penting bersama psikolog
-              </CardDescription>
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-4 divide-y divide-slate-100 dark:divide-slate-800">
               <div className="flex items-center justify-between gap-4 pt-1 first:pt-0">
-                <div className="space-y-0.5 min-w-0">
+                <div className="space-y-0.5">
                   <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Pengingat Sesi Konseling (WhatsApp & Email)
+                    Pengingat Janji Temu Sesi
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Kirimkan notifikasi pengingat 1 jam dan 15 menit sebelum sesi dimulai.
+                    Kirim notifikasi WhatsApp 30 menit sebelum sesi konseling dimulai.
                   </p>
                 </div>
-                <Switch checked={sessionReminder} onCheckedChange={setSessionReminder} className="cursor-pointer" />
+                <Switch
+                  checked={sessionReminder}
+                  onCheckedChange={setSessionReminder}
+                  className="cursor-pointer"
+                />
               </div>
 
               <div className="flex items-center justify-between gap-4 pt-4">
-                <div className="space-y-0.5 min-w-0">
+                <div className="space-y-0.5">
                   <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Pesan Masuk dari Psikolog
+                    Pemberitahuan Pesan Psikolog
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Pemberitahuan saat psikolog mengirimkan lembar refleksi atau membalas chat.
+                    Notifikasi ketika psikolog meninggalkan catatan evaluasi atau tugas latihan mandiri.
                   </p>
                 </div>
-                <Switch checked={psychologistMessageAlert} onCheckedChange={setPsychologistMessageAlert} className="cursor-pointer" />
-              </div>
-
-              <div className="flex items-center justify-between gap-4 pt-4">
-                <div className="space-y-0.5 min-w-0">
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Pengingat Check-in Emosi Harian
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Pengingat lembut setiap sore untuk mengisi catatan suasana hati dan relaksasi napas.
-                  </p>
-                </div>
-                <Switch defaultChecked className="cursor-pointer" />
+                <Switch
+                  checked={psychologistMessageAlert}
+                  onCheckedChange={setPsychologistMessageAlert}
+                  className="cursor-pointer"
+                />
               </div>
             </CardContent>
           </Card>
@@ -455,65 +573,50 @@ export default function PatientSettingsPage() {
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
             <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
               <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <KeyRound size={18} className="text-teal-600 dark:text-teal-400" />
-                Ubah Kata Sandi
+                <Lock size={18} className="text-teal-600 dark:text-teal-400" />
+                Keamanan & Autentikasi
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                Gunakan kombinasi minimal 8 karakter dengan huruf besar, angka, dan simbol
-              </CardDescription>
             </CardHeader>
 
-            <CardContent className="p-4 sm:p-6">
-              <form onSubmit={handleSave} className="space-y-3.5 max-w-md">
-                <div className="space-y-1.5">
-                  <Label htmlFor="currentPassword" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Kata Sandi Saat Ini
-                  </Label>
-                  <PasswordInput id="currentPassword" placeholder="••••••••" className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="newPassword" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Kata Sandi Baru
-                  </Label>
-                  <PasswordInput id="newPassword" placeholder="••••••••" className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Konfirmasi Kata Sandi Baru
-                  </Label>
-                  <PasswordInput id="confirmPassword" placeholder="••••••••" className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" />
-                </div>
-                <div className="pt-2">
-                  <Button type="submit" className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-5 py-2 cursor-pointer shadow-xs">
-                    Perbarui Kata Sandi
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-            <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Smartphone size={18} className="text-teal-600 dark:text-teal-400" />
-                Autentikasi Dua Faktor (2FA)
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                Tambahkan verifikasi OTP via WhatsApp atau aplikasi autentikator untuk keamanan ekstra
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between gap-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="space-y-0.5">
                   <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Verifikasi OTP saat Login
+                    Autentikasi Dua Langkah (2FA)
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Kirim kode 6 digit ke nomor ponsel setiap login dari perangkat baru.
+                    Amankan akunmu dengan kode OTP WhatsApp saat login dari perangkat baru.
                   </p>
                 </div>
-                <Switch checked={twoFactorAuth} onCheckedChange={setTwoFactorAuth} className="cursor-pointer" />
+                <Switch
+                  checked={twoFactorAuth}
+                  onCheckedChange={setTwoFactorAuth}
+                  className="cursor-pointer"
+                />
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
+                  Ganti Kata Sandi Akun
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
+                  <PasswordInput
+                    placeholder="Kata Sandi Lama"
+                    className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 rounded-xl"
+                  />
+                  <PasswordInput
+                    placeholder="Kata Sandi Baru"
+                    className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 rounded-xl"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs rounded-xl mt-2"
+                  onClick={() => notify.info("Ganti Kata Sandi", "Fitur ubah kata sandi melalui email verifikasi segera aktif.")}
+                >
+                  Perbarui Kata Sandi
+                </Button>
               </div>
             </CardContent>
           </Card>
