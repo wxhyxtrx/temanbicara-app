@@ -381,12 +381,6 @@ function PatientScheduleContent() {
                 <RefreshCw size={12} className={loadingBookings ? "animate-spin" : ""} />
                 <span className="ml-1.5 hidden sm:inline">Segarkan</span>
               </Button>
-              <Badge
-                variant="outline"
-                className="border-amber-300 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 text-[10px] font-medium"
-              >
-                Detail lengkap/batal menyusul di F3
-              </Badge>
             </div>
           </div>
         </CardHeader>

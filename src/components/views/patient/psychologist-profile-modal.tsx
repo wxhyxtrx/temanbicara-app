@@ -64,7 +64,7 @@ export function PsychologistProfileModal({
         name: psychologist.nama_lengkap_gelar,
         title: `Psikolog Klinis (${psychologist.tahun_pengalaman} Thn Pengalaman)`,
         specialty: psychologist.spesialisasi.join(", ") || "Konseling Klinis",
-        licenseNumber: "SIPPK Terverifikasi (HIMPSI)",
+        licenseNumber: "SIPPK Terverifikasi",
         experienceYears: psychologist.tahun_pengalaman,
         rating: null,
         reviews: 0,
@@ -222,7 +222,11 @@ export function PsychologistProfileModal({
                 </p>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-800 dark:text-teal-300 text-[11px] font-bold">
                   <ShieldCheck size={13} className="text-teal-600 dark:text-teal-400" />
-                  <span>{profile.licenseNumber} (HIMPSI)</span>
+                  <span>
+                    {profile.licenseNumber?.includes("HIMPSI")
+                      ? profile.licenseNumber
+                      : `${profile.licenseNumber || "SIPPK Terverifikasi"} (HIMPSI)`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -330,7 +334,7 @@ export function PsychologistProfileModal({
                       setSelectedDate(d.dateStr);
                       setSelectedSlotIso(null);
                     }}
-                    className={`shrink-0 flex flex-col items-center justify-center px-3 py-2 rounded-xl text-center border transition-all cursor-pointer min-w-[72px] ${
+                    className={`shrink-0 flex flex-col items-center justify-center px-3 py-2 rounded-xl text-center border transition-all cursor-pointer min-w-[78px] ${
                       isSelected
                         ? "bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/40"
                         : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-700"
@@ -339,7 +343,7 @@ export function PsychologistProfileModal({
                     <span className="text-[11px] font-semibold">{d.dayLabel}</span>
                     <span className="text-xs font-bold font-heading">{d.formattedDate}</span>
                     <span
-                      className={`text-[9px] mt-1 px-1.5 py-0.2 rounded-full font-semibold ${
+                      className={`text-[9px] mt-1 px-1.5 py-0.5 rounded-full font-semibold whitespace-nowrap ${
                         isSelected
                           ? "bg-white/20 text-white"
                           : slotCount > 0
@@ -347,7 +351,7 @@ export function PsychologistProfileModal({
                           : "bg-slate-100 dark:bg-slate-700 text-slate-400"
                       }`}
                     >
-                      {slotCount > 0 ? `${slotCount} slot` : "Penuh"}
+                      {slotCount > 0 ? `${slotCount} slot` : "Tidak tersedia"}
                     </span>
                   </button>
                 );
@@ -422,7 +426,7 @@ export function PsychologistProfileModal({
                         Jadwal Terpilih: {formatWibDateFull(selectedSlotIso)}, {formatWibTime(selectedSlotIso)}
                       </p>
                       <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
-                        Durasi sesi: 60 Menit • Biaya: {profile.hourlyRateCoins} Koin
+                        Durasi sesi: 45 menit (bisa +10 menit ekstensi) • Biaya: {profile.hourlyRateCoins} Koin
                       </p>
                     </div>
                   </div>

@@ -485,7 +485,7 @@ export function BookingModal({
                   </span>
                 </p>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Durasi konsultasi: 60 Menit
+                  Durasi sesi: 45 menit (bisa +10 menit ekstensi)
                 </span>
               </div>
             ) : (
