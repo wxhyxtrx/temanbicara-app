@@ -10,7 +10,6 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import {
   ShieldCheck,
   Building2,
-  Bell,
   Save,
   CheckCircle2,
   Coins,
@@ -18,12 +17,11 @@ import {
   Plus,
   X,
   Loader2,
-  AlertTriangle,
 } from "lucide-react";
-import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
 import { userService, UserApiError } from "@/services/user.service";
+import { usePublicSettings } from "@/hooks/use-public-settings";
 import type { PsikologProfile, UpdateMePsikologPayload } from "@/types/user-profile";
 
 const SUGGESTED_SPECIALIZATIONS = [
@@ -38,9 +36,10 @@ const SUGGESTED_SPECIALIZATIONS = [
 ];
 
 export default function CounselorSettingsPage() {
-  const user = useUserStore((state) => state.user);
+  const { settings: publicSettings } = usePublicSettings();
+  const minExtCoins = publicSettings?.extension_price?.min_coins ?? 1;
+  const maxExtCoins = publicSettings?.extension_price?.max_coins ?? 10;
 
-  const [mounted, setMounted] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -54,6 +53,7 @@ export default function CounselorSettingsPage() {
   const [newTagInput, setNewTagInput] = useState("");
   const [experienceYears, setExperienceYears] = useState<number>(0);
   const [sessionRate, setSessionRate] = useState<number>(150000);
+  const [extensionPriceCoins, setExtensionPriceCoins] = useState<number>(2);
 
   // Bank Info (payout reference)
   const [bankAccount, setBankAccount] = useState("8820491823");
@@ -64,7 +64,6 @@ export default function CounselorSettingsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setMounted(true);
     let isSubscribed = true;
 
     async function loadMe() {
@@ -90,6 +89,12 @@ export default function CounselorSettingsPage() {
           setExperienceYears(p?.tahun_pengalaman ?? 0);
           const rawTarif = Number(p?.tarif_sesi) || 150000;
           setSessionRate(rawTarif > 0 ? rawTarif : 150000);
+
+          if (typeof p?.extension_price_coins === "number") {
+            setExtensionPriceCoins(p.extension_price_coins);
+          } else {
+            setExtensionPriceCoins(minExtCoins || 2);
+          }
         }
       } catch (err) {
         console.error("Gagal memuat profil psikolog dari API:", err);
@@ -103,7 +108,7 @@ export default function CounselorSettingsPage() {
     return () => {
       isSubscribed = false;
     };
-  }, []);
+  }, [minExtCoins]);
 
   const handleAddTag = (tagToAdd: string) => {
     const trimmed = tagToAdd.trim();
@@ -140,10 +145,19 @@ export default function CounselorSettingsPage() {
       return;
     }
 
+    if (extensionPriceCoins < minExtCoins || extensionPriceCoins > maxExtCoins) {
+      setErrors({
+        extension_price_coins: `Tarif perpanjangan sesi harus berada dalam rentang ${minExtCoins} - ${maxExtCoins} koin`,
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     const payload: UpdateMePsikologPayload = {
       spesialisasi: specializations,
       tahun_pengalaman: Number(experienceYears),
       tarif_sesi: Number(sessionRate),
+      extension_price_coins: Number(extensionPriceCoins),
     };
 
     if (phone.trim()) {
@@ -190,7 +204,7 @@ export default function CounselorSettingsPage() {
           Pengaturan Praktik & Lisensi SIPPK
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Kelola kontak WhatsApp, tarif per sesi, spesialisasi klinis, dan kredensial praktik psikolog
+          Kelola kontak WhatsApp, tarif per sesi, tarif ekstensi, spesialisasi klinis, dan kredensial praktik psikolog
         </p>
       </div>
 
@@ -203,7 +217,7 @@ export default function CounselorSettingsPage() {
 
       {/* 2. Main Form */}
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Card 1: Identitas & Lisensi (Read-Only dengan Ikon Gembok) */}
+        {/* Card 1: Identitas & Lisensi (Read-Only) */}
         <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -217,7 +231,6 @@ export default function CounselorSettingsPage() {
 
           <CardContent className="p-4 sm:p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Nama Lengkap & Gelar (Read-only) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
@@ -238,7 +251,6 @@ export default function CounselorSettingsPage() {
                 </div>
               </div>
 
-              {/* Nomor SIPPK Resmi (Read-only) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
@@ -265,7 +277,7 @@ export default function CounselorSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Card 2: Pengaturan Sesi & Kontak Praktik (Dapat Diedit) */}
+        {/* Card 2: Pengaturan Sesi & Kontak Praktik */}
         <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -273,7 +285,7 @@ export default function CounselorSettingsPage() {
               Kontak, Tarif Sesi & Pengalaman Praktik
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-              Tentukan tarif sesi konsultasi yang ditampilkan kepada calon klien
+              Tentukan tarif sesi konsultasi dan perpanjangan sesi yang ditampilkan kepada calon klien
             </CardDescription>
           </CardHeader>
 
@@ -307,7 +319,7 @@ export default function CounselorSettingsPage() {
                   min={0}
                   max={60}
                   value={experienceYears}
-                  onChange={(e) => setExperienceYears(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setExperienceYears(Math.max(0, parseInt(e.target.value, 10) || 0))}
                   className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl"
                   required
                 />
@@ -320,7 +332,7 @@ export default function CounselorSettingsPage() {
               <div className="space-y-1.5 md:col-span-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="sessionRate" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Tarif per Sesi Konseling (Rp)
+                    Tarif per Sesi Konseling 45 Menit (Rp)
                   </Label>
                   <span className="text-xs font-bold font-mono text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/70 px-2.5 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
                     = {calculatedCoins.toLocaleString("id-ID")} koin
@@ -337,7 +349,7 @@ export default function CounselorSettingsPage() {
                     min={50000}
                     max={5000000}
                     value={sessionRate}
-                    onChange={(e) => setSessionRate(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setSessionRate(parseInt(e.target.value, 10) || 0)}
                     className="h-9 text-xs sm:text-sm pl-9 font-mono font-bold bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl"
                     required
                   />
@@ -352,6 +364,47 @@ export default function CounselorSettingsPage() {
                   <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.tarif_sesi}</p>
                 )}
               </div>
+
+              {/* Poin 4: Tarif Perpanjangan Sesi (Ekstensi 10 Menit, Koin) */}
+              <div className="space-y-1.5 md:col-span-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="extensionPriceCoins" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Tarif Perpanjangan Sesi (+10 Menit)
+                  </Label>
+                  <span className="text-xs font-bold font-mono text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/70 px-2.5 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
+                    = Rp {((Number(extensionPriceCoins) || 0) * 10000).toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="extensionPriceCoins"
+                    type="number"
+                    min={minExtCoins}
+                    max={maxExtCoins}
+                    step={1}
+                    value={extensionPriceCoins}
+                    onChange={(e) => setExtensionPriceCoins(parseInt(e.target.value, 10) || 0)}
+                    className="h-9 text-xs sm:text-sm pl-3 pr-16 font-mono font-bold bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl"
+                    required
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    Koin
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-nunito">
+                  <span>
+                    Rentang pengaturan sistem: {minExtCoins} s/d {maxExtCoins} Koin
+                  </span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    1 Koin = Rp 10.000
+                  </span>
+                </div>
+                {errors.extension_price_coins && (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">
+                    {errors.extension_price_coins}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Bidang Spesialisasi Klinis */}
@@ -359,7 +412,7 @@ export default function CounselorSettingsPage() {
               <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Bidang Spesialisasi & Keahlian Konseling ({specializations.length}/10)
               </Label>
-              
+
               {/* Selected Tags */}
               <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
                 {specializations.length === 0 ? (
