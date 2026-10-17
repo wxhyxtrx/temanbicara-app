@@ -75,7 +75,7 @@ CREATE OR REPLACE FUNCTION public.session_message_after_insert_fn()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_catalog
+SET search_path = ''
 AS $$
 DECLARE
     v_booking public.bookings%ROWTYPE;
