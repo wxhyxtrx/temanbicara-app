@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, Suspense } from "react";
+import React, { useState, useMemo, useEffect, useCallback, Suspense } from "react";
 import { Tables, TablePaginationFooter } from "@/components/shared/atoms/Table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,14 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Calendar as CalendarIcon,
   PlusCircle,
@@ -22,6 +30,11 @@ import {
   CalendarCheck,
   Eye,
   Star,
+  RefreshCw,
+  Coins,
+  ShieldCheck,
+  Info,
+  CheckCircle2,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import Link from "next/link";
@@ -31,6 +44,14 @@ import { useReviewStore } from "@/store/review-store";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
 import { SessionDetailModal } from "@/components/views/schedule/session-detail-modal";
 import { notify } from "@/lib/toast";
+import { bookingClient } from "@/services/booking.client";
+import type { PatientBookingView } from "@/types/booking";
+import {
+  formatWibDateFull,
+  formatWibTime,
+  getInitials,
+  formatRupiah,
+} from "@/lib/booking-utils";
 
 function PatientScheduleContent() {
   const searchParams = useSearchParams();
@@ -43,27 +64,50 @@ function PatientScheduleContent() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // Live upcoming bookings from GET /api/bookings?scope=upcoming
+  const [upcomingBookings, setUpcomingBookings] = useState<PatientBookingView[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState<boolean>(true);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
+
   // Modal states
   const [isBookingOpen, setIsBookingOpen] = useState<boolean>(false);
-  const [selectedSession, setSelectedSession] = useState<ScheduleItem | null>(
-    null,
-  );
+  const [selectedSession, setSelectedSession] = useState<ScheduleItem | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
+
+  // Upcoming booking preview modal
+  const [selectedUpcoming, setSelectedUpcoming] = useState<PatientBookingView | null>(null);
+  const [isUpcomingDetailOpen, setIsUpcomingDetailOpen] = useState<boolean>(false);
+
+  const loadUpcomingBookings = useCallback(async () => {
+    setLoadingBookings(true);
+    setBookingsError(null);
+    try {
+      const res = await bookingClient.getBookings({ scope: "upcoming", limit: 50 });
+      if (res?.success && Array.isArray(res.data)) {
+        setUpcomingBookings(res.data as PatientBookingView[]);
+      }
+    } catch (err) {
+      console.error("Gagal mengambil daftar booking upcoming:", err);
+      setBookingsError("Gagal memuat jadwal sesi mendatang dari server.");
+    } finally {
+      setLoadingBookings(false);
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
+    loadUpcomingBookings();
     if (searchParams.get("booking") === "true") {
       setIsBookingOpen(true);
     }
-  }, [searchParams]);
+  }, [searchParams, loadUpcomingBookings]);
 
   const scheduleList = mounted ? rawSchedules : [];
 
   // Filter Data
   const filteredData = useMemo(() => {
     return scheduleList.filter((item) => {
-      const matchStatus =
-        statusFilter === "all" || item.status === statusFilter;
+      const matchStatus = statusFilter === "all" || item.status === statusFilter;
       const q = searchQuery.toLowerCase();
       const matchQuery =
         !q ||
@@ -87,6 +131,11 @@ function PatientScheduleContent() {
   const openSessionDetail = (item: ScheduleItem) => {
     setSelectedSession(item);
     setIsDetailOpen(true);
+  };
+
+  const openUpcomingDetail = (b: PatientBookingView) => {
+    setSelectedUpcoming(b);
+    setIsUpcomingDetailOpen(true);
   };
 
   // Helper render status badge
@@ -269,8 +318,7 @@ function PatientScheduleContent() {
             Jadwal Konseling Saya
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Kelola sesi konsultasi privat aktif, janji temu mendatang, dan
-            catatan pemulihanmu
+            Kelola sesi konsultasi privat aktif, janji temu mendatang, dan catatan pemulihanmu
           </p>
         </div>
 
@@ -281,14 +329,11 @@ function PatientScheduleContent() {
             onClick={() =>
               notify.success(
                 "Sinkronisasi Kalender Berhasil",
-                "Jadwal Anda berhasil disinkronkan dengan Google Calendar & Apple Calendar.",
+                "Jadwal Anda berhasil disinkronkan dengan Google Calendar & Apple Calendar."
               )
             }
           >
-            <CalendarCheck
-              size={15}
-              className="text-teal-600 dark:text-teal-400"
-            />
+            <CalendarCheck size={15} className="text-teal-600 dark:text-teal-400" />
             Sinkronkan Kalender
           </Button>
 
@@ -302,7 +347,194 @@ function PatientScheduleContent() {
         </div>
       </div>
 
-      {/* 2. Main Card Container */}
+      {/* 2. LIVE UPCOMING BOOKINGS SECTION (GET /api/bookings?scope=upcoming) */}
+      <Card className="w-full bg-white dark:bg-slate-900 border border-teal-200/90 dark:border-teal-800/80 shadow-xs rounded-2xl overflow-hidden">
+        <CardHeader className="p-4 sm:p-6 pb-4 border-b border-teal-100 dark:border-teal-900/50 bg-gradient-to-r from-teal-50/50 via-white to-emerald-50/30 dark:from-teal-950/30 dark:via-slate-900 dark:to-slate-900 space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <CalendarIcon size={18} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white">
+                    Sesi Konseling Mendatang (Booking Aktif)
+                  </CardTitle>
+                  <Badge className="bg-teal-600 text-white text-[11px] font-mono">
+                    {upcomingBookings.length} Sesi
+                  </Badge>
+                </div>
+                <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+                  Daftar sesi konseling aktif dari pemesanan slot jadwal psikolog klinis
+                </CardDescription>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={loadUpcomingBookings}
+                disabled={loadingBookings}
+                className="text-xs text-teal-700 dark:text-teal-300 hover:bg-teal-100/50 h-8 px-2.5 rounded-xl font-medium"
+              >
+                <RefreshCw size={12} className={loadingBookings ? "animate-spin" : ""} />
+                <span className="ml-1.5 hidden sm:inline">Segarkan</span>
+              </Button>
+              <Badge
+                variant="outline"
+                className="border-amber-300 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 text-[10px] font-medium"
+              >
+                Detail lengkap/batal menyusul di F3
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-4 sm:p-6">
+          {loadingBookings ? (
+            <div className="space-y-3">
+              {[1, 2].map((n) => (
+                <div
+                  key={n}
+                  className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 animate-pulse flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-700" />
+                    <div className="space-y-2">
+                      <Skeleton className="w-48 h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                      <Skeleton className="w-32 h-3 bg-slate-200 dark:bg-slate-700 rounded" />
+                    </div>
+                  </div>
+                  <Skeleton className="w-28 h-8 rounded-xl bg-slate-200 dark:bg-slate-700" />
+                </div>
+              ))}
+            </div>
+          ) : bookingsError ? (
+            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 text-xs flex items-center justify-between">
+              <span>{bookingsError}</span>
+              <Button size="sm" variant="outline" onClick={loadUpcomingBookings} className="h-7 text-xs">
+                Coba Lagi
+              </Button>
+            </div>
+          ) : upcomingBookings.length === 0 ? (
+            <div className="py-8 flex flex-col items-center justify-center text-center gap-2">
+              <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                <CalendarIcon size={24} />
+              </div>
+              <div className="space-y-1">
+                <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                  Belum Ada Sesi Konseling Terjadwal
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito">
+                  Pilih psikolog berlisensi dan reservasi slot konseling pribadimu untuk memulai pendampingan.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setIsBookingOpen(true)}
+                className="mt-2 bg-teal-600 hover:bg-teal-700 text-white text-xs rounded-xl h-8 px-4 font-semibold shadow-xs gap-1.5"
+              >
+                <PlusCircle size={14} />
+                <span>Pesan Sesi Sekarang</span>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {upcomingBookings.map((b) => {
+                const psychName = b.psikolog?.nama_lengkap_gelar || "Psikolog Terverifikasi";
+                const wibDate = formatWibDateFull(b.start_at);
+                const wibTime = formatWibTime(b.start_at);
+                const initials = getInitials(psychName);
+
+                return (
+                  <div
+                    key={b.id}
+                    className="p-4 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-teal-300 dark:hover:border-teal-700 transition-all shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  >
+                    {/* Psikolog Info & Keluhan */}
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <div className="relative shrink-0">
+                        {b.psikolog?.avatar_url ? (
+                          <img
+                            src={b.psikolog.avatar_url}
+                            alt={psychName}
+                            className="w-11 h-11 rounded-xl object-cover border border-teal-200 dark:border-teal-800"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-600 to-teal-800 text-white font-bold text-xs flex items-center justify-center font-heading shadow-xs">
+                            {initials}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold text-slate-900 dark:text-white text-sm font-heading truncate">
+                            {psychName}
+                          </p>
+                          <MdVerified className="text-sky-500 text-xs shrink-0" />
+                          <Badge className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 text-[10px] font-semibold py-0 px-2">
+                            {b.status === "booked" ? "Terkonfirmasi" : b.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-teal-700 dark:text-teal-400 font-medium truncate">
+                          {b.psikolog?.spesialisasi.join(", ") || "Konseling Klinis Dewasa"}
+                        </p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 font-nunito line-clamp-1 italic">
+                          "{b.keluhan}"
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Jadwal & Harga WIB */}
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between md:justify-end gap-4 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
+                      <div className="space-y-0.5 md:text-right">
+                        <div className="flex items-center md:justify-end gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                          <Clock size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
+                          <span>{wibDate}, {wibTime}</span>
+                        </div>
+                        <div className="flex items-center md:justify-end gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                          <span>Durasi 60 Menit</span>
+                          <span>•</span>
+                          <span className="font-bold text-teal-700 dark:text-teal-300 font-mono">
+                            {b.price_coins} Koin ({formatRupiah(b.price_coins * 10000)})
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Aksi */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openUpcomingDetail(b)}
+                          className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl h-8 px-3 font-semibold cursor-pointer"
+                        >
+                          <Eye size={13} className="mr-1" />
+                          <span>Detail</span>
+                        </Button>
+
+                        <Link href="/patient/room">
+                          <Button
+                            size="sm"
+                            className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-8 px-3.5 cursor-pointer shadow-xs gap-1.5"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                            <span>Masuk Sesi</span>
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 3. Main Card Container (Riwayat Konseling) */}
       <Card className="h-full w-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs rounded-2xl overflow-hidden">
         <CardHeader className="p-4 sm:p-6 pb-4 border-b border-slate-100 dark:border-slate-800 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -504,10 +736,16 @@ function PatientScheduleContent() {
         </CardContent>
       </Card>
 
-      {/* 3. Interactive Modals */}
+      {/* 4. Interactive Modals */}
       <BookingModal
         isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
+        onClose={() => {
+          setIsBookingOpen(false);
+          loadUpcomingBookings();
+        }}
+        onSuccess={() => {
+          loadUpcomingBookings();
+        }}
       />
 
       <SessionDetailModal
@@ -515,6 +753,98 @@ function PatientScheduleContent() {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
       />
+
+      {/* 5. Modal Pratinjau Upcoming Booking (Fase 2 -> F3) */}
+      {selectedUpcoming && (
+        <Dialog open={isUpcomingDetailOpen} onOpenChange={setIsUpcomingDetailOpen}>
+          <DialogContent className="max-w-md font-nunito p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
+            <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
+                  <CalendarIcon size={16} />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold font-heading text-slate-900 dark:text-white">
+                    Detail Sesi Konseling Terjadwal
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500">
+                    Informasi reservasi sesi aktif
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-4 pt-2">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Psikolog:</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                    {selectedUpcoming.psikolog?.nama_lengkap_gelar || "Psikolog Terverifikasi"}
+                    <MdVerified className="text-sky-500 text-xs" />
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Jadwal Sesi (WIB):</span>
+                  <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                    {formatWibDateFull(selectedUpcoming.start_at)}, {formatWibTime(selectedUpcoming.start_at)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Status:</span>
+                  <Badge className="bg-emerald-50 text-emerald-800 border-emerald-300 text-[10px]">
+                    {selectedUpcoming.status === "booked" ? "Terkonfirmasi" : selectedUpcoming.status}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Biaya Koin:</span>
+                  <span className="text-xs font-bold text-teal-700 dark:text-teal-400 font-mono">
+                    {selectedUpcoming.price_coins} Koin
+                  </span>
+                </div>
+              </div>
+
+              {/* Keluhan Pasien */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Keluhan yang Dikirimkan:
+                </label>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 text-xs text-slate-700 dark:text-slate-300 leading-relaxed italic">
+                  "{selectedUpcoming.keluhan}"
+                </div>
+              </div>
+
+              {/* Callout F3 */}
+              <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2">
+                <Info size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-[11px] leading-relaxed">
+                  Fitur riwayat rekam medis lengkap dan opsi pembatalan/penjadwalan ulang sesi mandiri menyusul di Fase 3 (F3).
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsUpcomingDetailOpen(false)}
+                  className="text-xs rounded-xl h-8 px-3.5"
+                >
+                  Tutup
+                </Button>
+                <Link href="/patient/room">
+                  <Button
+                    size="sm"
+                    className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl h-8 px-4 font-semibold gap-1.5"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                    <span>Masuk Sesi</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
