@@ -17,6 +17,7 @@ import {
 import { useUserStore } from "@/store/user-store";
 import { userService } from "@/services/user.service";
 import { usePublicSettings } from "@/hooks/use-public-settings";
+import { notify } from "@/lib/toast";
 import type { RelawanProfile } from "@/types/user-profile";
 
 export default function ListenerBerandaPage() {
@@ -26,6 +27,30 @@ export default function ListenerBerandaPage() {
   const [profile, setProfile] = useState<RelawanProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [userMe, setUserMe] = useState<{ fullName?: string; email?: string } | null>(null);
+  const [isTogglingSiaga, setIsTogglingSiaga] = useState(false);
+
+  const handleToggleSiaga = async (checked: boolean) => {
+    try {
+      setIsTogglingSiaga(true);
+      const res = await userService.updateMe({ is_available: checked });
+      if (res.success && res.data) {
+        if (res.data.profile) {
+          setProfile(res.data.profile as RelawanProfile);
+        }
+        useUserStore.getState().setAuthSession(res.data.user, undefined, res.data.profile);
+        notify.success(
+          "Status Siaga Diperbarui",
+          checked
+            ? "Status Anda kini Siaga Menerima Curhat."
+            : "Status Anda kini Sedang Istirahat Emosi."
+        );
+      }
+    } catch (err: unknown) {
+      notify.error("Gagal Memperbarui Status", err instanceof Error ? err.message : "Terjadi kesalahan.");
+    } finally {
+      setIsTogglingSiaga(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -125,16 +150,17 @@ export default function ListenerBerandaPage() {
               </div>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="inline-block cursor-not-allowed">
+                  <span>
                     <Switch
                       checked={isAvailable}
-                      disabled
-                      className="opacity-60 pointer-events-none"
+                      disabled={isTogglingSiaga}
+                      onCheckedChange={handleToggleSiaga}
+                      className="cursor-pointer"
                     />
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Segera bisa diubah</p>
+                  <p>{isAvailable ? "Klik untuk mode istirahat" : "Klik untuk siaga menerima curhat"}</p>
                 </TooltipContent>
               </Tooltip>
             </div>
