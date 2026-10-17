@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Calendar,
   Clock,
@@ -17,13 +18,25 @@ import {
   UserCheck,
   CalendarDays,
   MessageSquare,
+  User,
+  RefreshCw,
+  XCircle,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
 import { userService } from "@/services/user.service";
 import { walletClient } from "@/services/wallet.client";
+import { bookingClient } from "@/services/booking.client";
+import { notify } from "@/lib/toast";
+import {
+  formatWibDateFull,
+  formatWibTime,
+  BOOKING_STATUS_CONFIG,
+} from "@/lib/booking-utils";
+import { CounselorCancelBookingModal } from "@/components/views/counselor/counselor-cancel-booking-modal";
 import type { WalletInfoResponse } from "@/types/wallet";
 import type { PsikologProfile } from "@/types/user-profile";
+import type { PsikologBookingView } from "@/types/booking";
 
 export default function CounselorBerandaPage() {
   const user = useUserStore((state) => state.user);
@@ -33,6 +46,26 @@ export default function CounselorBerandaPage() {
   const [profile, setProfile] = useState<PsikologProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [userMe, setUserMe] = useState<{ fullName?: string; email?: string } | null>(null);
+
+  // Live upcoming bookings for counselor (GET /api/bookings?scope=upcoming)
+  const [upcomingBookings, setUpcomingBookings] = useState<PsikologBookingView[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState<boolean>(true);
+  const [cancelTarget, setCancelTarget] = useState<PsikologBookingView | null>(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
+
+  const loadUpcomingBookings = useCallback(async () => {
+    setLoadingBookings(true);
+    try {
+      const res = await bookingClient.getBookings({ scope: "upcoming", limit: 50 });
+      if (res?.success && Array.isArray(res.data)) {
+        setUpcomingBookings(res.data as PsikologBookingView[]);
+      }
+    } catch (err) {
+      console.error("Gagal memuat booking upcoming psikolog:", err);
+    } finally {
+      setLoadingBookings(false);
+    }
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -66,11 +99,12 @@ export default function CounselorBerandaPage() {
     }
 
     loadData();
+    loadUpcomingBookings();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadUpcomingBookings]);
 
   const counselorName =
     profile?.nama_lengkap_gelar || userMe?.fullName || user.fullName || "Psikolog Mitra";
@@ -166,10 +200,10 @@ export default function CounselorBerandaPage() {
             </span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white">
-            0 <span className="text-xs font-semibold text-slate-500">Klien</span>
+            {upcomingBookings.length} <span className="text-xs font-semibold text-slate-500">Sesi Aktif</span>
           </p>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
-            Tersedia setelah fitur booking aktif
+            {upcomingBookings.length > 0 ? "Memiliki janji temu terjadwal" : "Belum ada sesi terjadwal"}
           </span>
         </div>
 
@@ -236,39 +270,154 @@ export default function CounselorBerandaPage() {
         <div className="lg:col-span-8 space-y-6">
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
             <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <CardTitle className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <Clock size={18} className="text-teal-600 dark:text-teal-400" />
                     Permintaan Janji Temu Masuk
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Konfirmasi atau jadwalkan ulang permintaan konsultasi dari klien
+                    Daftar reservasi sesi konseling terjadwal dari klien (bebas data pribadi sensitif)
                   </CardDescription>
                 </div>
-                <Badge variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 text-xs self-start sm:self-center">
-                  0 Menunggu Konfirmasi
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 text-xs self-start sm:self-center font-mono">
+                    {upcomingBookings.length} Sesi Terjadwal
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={loadUpcomingBookings}
+                    disabled={loadingBookings}
+                    className="h-8 px-2 text-xs text-teal-700 dark:text-teal-300"
+                    title="Segarkan daftar janji temu"
+                  >
+                    <RefreshCw size={12} className={loadingBookings ? "animate-spin" : ""} />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
-            <CardContent className="p-6">
-              <div className="py-12 flex flex-col items-center justify-center text-center gap-2.5">
-                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                  <CalendarDays size={24} />
+            <CardContent className="p-4 sm:p-6">
+              {loadingBookings ? (
+                <div className="space-y-3">
+                  {[1, 2].map((n) => (
+                    <div
+                      key={n}
+                      className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 animate-pulse space-y-2"
+                    >
+                      <Skeleton className="w-48 h-4 bg-slate-200 dark:bg-slate-800" />
+                      <Skeleton className="w-full h-10 bg-slate-200 dark:bg-slate-800" />
+                    </div>
+                  ))}
                 </div>
-                <div className="space-y-1">
-                  <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                    Belum Ada Permintaan Janji Temu
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito">
-                    Permintaan konsultasi dari klien akan masuk ke daftar ini secara langsung.
-                  </p>
+              ) : upcomingBookings.length === 0 ? (
+                <div className="py-12 flex flex-col items-center justify-center text-center gap-2.5">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                    <CalendarDays size={24} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                      Belum Ada Janji Temu Masuk
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito">
+                      Reservasi jadwal dari pasien akan otomatis tercantum di sini secara langsung.
+                    </p>
+                  </div>
                 </div>
-                <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-800">
-                  Tersedia setelah fitur booking aktif
-                </span>
-              </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {upcomingBookings.map((b) => {
+                    const statusConfig = BOOKING_STATUS_CONFIG[b.status] || {
+                      label: b.status,
+                      badgeClass: "bg-slate-100 text-slate-700",
+                    };
+                    const dateFull = formatWibDateFull(b.start_at);
+                    const timeWib = formatWibTime(b.start_at);
+
+                    return (
+                      <div
+                        key={b.id}
+                        className="p-4 sm:p-5 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-teal-300 dark:hover:border-teal-700 transition-all shadow-2xs space-y-3"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
+                              <User size={16} />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-bold text-sm text-slate-900 dark:text-white font-heading">
+                                  {b.patient_display_name}
+                                </p>
+                                <Badge className={`${statusConfig.badgeClass} text-[10px] font-semibold py-0 px-2`}>
+                                  {statusConfig.label}
+                                </Badge>
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                Sesi Konseling Privat 45 Menit • Biaya Sesi {b.price_coins} Koin
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                            <Clock size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
+                            <span>{dateFull}, {timeWib}</span>
+                          </div>
+                        </div>
+
+                        {/* Keluhan Pasien (Sesuai Review Focus #5: Bebas data pribadi pasien) */}
+                        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 text-xs text-slate-700 dark:text-slate-300">
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-0.5">
+                            Keluhan yang Dikirim Klien:
+                          </span>
+                          <p className="italic leading-relaxed">"{b.keluhan}"</p>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {b.status === "booked" ? (
+                              <span className="text-teal-700 dark:text-teal-400 font-medium">Terkonfirmasi</span>
+                            ) : b.status === "awaiting_patient_choice" ? (
+                              <span className="text-amber-600 font-medium">Dibatalkan psikolog (menunggu keputusan klien)</span>
+                            ) : (
+                              <span>{b.status}</span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {b.status === "booked" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setCancelTarget(b);
+                                  setIsCancelModalOpen(true);
+                                }}
+                                className="text-xs border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl h-8 px-3 gap-1"
+                              >
+                                <XCircle size={12} />
+                                <span>Batalkan</span>
+                              </Button>
+                            )}
+
+                            <Link href="/counselor/room">
+                              <Button
+                                size="sm"
+                                className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-8 px-3.5 gap-1.5 shadow-xs"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                                <span>Masuk Sesi</span>
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -283,17 +432,39 @@ export default function CounselorBerandaPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-5 space-y-4">
-              <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-center py-6 space-y-2">
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Belum ada sesi terjadwal
-                </p>
-                <p className="text-[11px] text-slate-400 font-nunito">
-                  Sesi konseling yang disetujui akan muncul di sini saat jadwal tiba.
-                </p>
-                <span className="inline-block text-[10px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-800">
-                  Tersedia setelah fitur booking aktif
-                </span>
-              </div>
+              {upcomingBookings.length > 0 ? (
+                <div className="p-4 rounded-xl border border-teal-200/80 dark:border-teal-800 bg-teal-50/40 dark:bg-teal-950/30 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <Badge className="bg-teal-600 text-white text-[10px]">Terdekat</Badge>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {formatWibTime(upcomingBookings[0].start_at)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      {upcomingBookings[0].patient_display_name}
+                    </p>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                      {formatWibDateFull(upcomingBookings[0].start_at)}
+                    </p>
+                  </div>
+                  <Link href="/counselor/room" className="block pt-1">
+                    <Button size="sm" className="w-full text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-8 gap-1.5 shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                      <span>Masuk Ruang Sesi</span>
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-center py-6 space-y-2">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Belum ada sesi terjadwal
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-nunito">
+                    Sesi konseling yang disetujui akan muncul di sini saat jadwal tiba.
+                  </p>
+                </div>
+              )}
 
               <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2 text-xs">
                 <p className="font-bold text-slate-800 dark:text-slate-200">Protokol Krisis Darurat Klien</p>
@@ -348,6 +519,20 @@ export default function CounselorBerandaPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal Batalkan Booking (Psikolog) */}
+      <CounselorCancelBookingModal
+        booking={cancelTarget}
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSuccess={() => {
+          notify.success(
+            "Janji Temu Dibatalkan",
+            "Sesi telah dibatalkan. Klien akan diarahkan untuk memilih jadwal pengganti atau refund."
+          );
+          loadUpcomingBookings();
+        }}
+      />
     </div>
   );
 }
