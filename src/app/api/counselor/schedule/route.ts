@@ -106,31 +106,14 @@ export async function PUT(req: Request) {
 
     const { weekly } = parsed.data;
 
-    // Ganti seluruh baris jadwal pola milik psikolog ini
-    const { error: deleteError } = await supabaseAdmin
-      .from('psikolog_schedules')
-      .delete()
-      .eq('psikolog_id', session.user.id);
+    // Ganti seluruh baris jadwal pola secara atomik via RPC function
+    const { error: rpcError } = await supabaseAdmin.rpc('psikolog_schedule_replace', {
+      p_psikolog_id: session.user.id,
+      p_weekly: weekly,
+    });
 
-    if (deleteError) {
-      return fail(500, 'UPDATE_SCHEDULE_FAILED', deleteError.message);
-    }
-
-    if (weekly.length > 0) {
-      const recordsToInsert = weekly.map((slot) => ({
-        psikolog_id: session.user.id,
-        weekday: slot.weekday,
-        start_hour: slot.start_hour,
-        end_hour: slot.end_hour,
-      }));
-
-      const { error: insertError } = await supabaseAdmin
-        .from('psikolog_schedules')
-        .insert(recordsToInsert);
-
-      if (insertError) {
-        return fail(500, 'UPDATE_SCHEDULE_FAILED', insertError.message);
-      }
+    if (rpcError) {
+      return fail(500, 'UPDATE_SCHEDULE_FAILED', rpcError.message);
     }
 
     // Ambil hasil tersimpan terbaru

@@ -10,6 +10,8 @@
 -- 6. Assert insert weekday di luar 0-6 gagal (CHECK)
 -- 7. Assert insert time_off valid dan end_at <= start_at gagal (CHECK)
 -- 8. Assert RLS aktif di kedua tabel
+-- 9. Assert RPC psikolog_schedule_replace 2 rentang -> 2 baris
+-- 10. Assert RPC psikolog_schedule_replace invalid -> exception & baris lama tetap utuh (atomik)
 -- SELURUH UJI BERJALAN DALAM SATU TRANSAKSI DAN OTOMATIS DI-ROLLBACK
 -- ========================================================
 
@@ -121,6 +123,42 @@ COMMENT ON COLUMN public.psikolog_profiles.suspended_until IS 'Batas waktu penal
 -- 4. ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.psikolog_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.psikolog_time_off ENABLE ROW LEVEL SECURITY;
+
+-- 5. RPC FUNCTION: ATOMIC REPLACE JADWAL MINGGUAN PSIKOLOG
+CREATE OR REPLACE FUNCTION public.psikolog_schedule_replace(
+    p_psikolog_id UUID,
+    p_weekly JSONB
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    -- 1. Hapus jadwal pola mingguan milik psikolog ini
+    DELETE FROM public.psikolog_schedules
+    WHERE psikolog_id = p_psikolog_id;
+
+    -- 2. Insert baris baru jika p_weekly berupa jsonb array yang tidak kosong
+    IF p_weekly IS NOT NULL AND pg_catalog.jsonb_typeof(p_weekly) = 'array' AND pg_catalog.jsonb_array_length(p_weekly) > 0 THEN
+        INSERT INTO public.psikolog_schedules (
+            psikolog_id,
+            weekday,
+            start_hour,
+            end_hour
+        )
+        SELECT
+            p_psikolog_id,
+            (elem->>'weekday')::SMALLINT,
+            (elem->>'start_hour')::SMALLINT,
+            (elem->>'end_hour')::SMALLINT
+        FROM pg_catalog.jsonb_array_elements(p_weekly) AS elem;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.psikolog_schedule_replace(UUID, JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.psikolog_schedule_replace(UUID, JSONB) TO service_role;
 
 -- ========================================================
 -- ASSERTIONS & VERIFIKASI
@@ -266,6 +304,44 @@ BEGIN
 
     IF NOT (v_rls_schedules AND v_rls_time_off) THEN
         RAISE EXCEPTION 'TEST 9 GAGAL: RLS belum aktif pada salah satu atau kedua tabel schedule/time_off';
+    END IF;
+
+    -- J. Assert RPC psikolog_schedule_replace dengan 2 rentang -> menghasilkan 2 baris
+    PERFORM public.psikolog_schedule_replace(
+        v_test_user_id,
+        '[{"weekday": 1, "start_hour": 9, "end_hour": 12}, {"weekday": 2, "start_hour": 13, "end_hour": 17}]'::jsonb
+    );
+
+    SELECT count(*) INTO v_schedule_count
+    FROM public.psikolog_schedules
+    WHERE psikolog_id = v_test_user_id;
+
+    IF v_schedule_count <> 2 THEN
+        RAISE EXCEPTION 'TEST 10 GAGAL: psikolog_schedule_replace dengan 2 rentang harus menghasilkan 2 baris (dapat %)', v_schedule_count;
+    END IF;
+
+    -- K. Assert RPC psikolog_schedule_replace data invalid (start_hour=21, end_hour=19)
+    --    harus raise exception DAN baris lama tetap ada (atomik / rollback)
+    v_caught_check := false;
+    BEGIN
+        PERFORM public.psikolog_schedule_replace(
+            v_test_user_id,
+            '[{"weekday": 3, "start_hour": 21, "end_hour": 19}]'::jsonb
+        );
+    EXCEPTION WHEN check_violation THEN
+        v_caught_check := true;
+    END;
+
+    IF NOT v_caught_check THEN
+        RAISE EXCEPTION 'TEST 11 GAGAL: psikolog_schedule_replace dengan data invalid harus raise exception';
+    END IF;
+
+    SELECT count(*) INTO v_schedule_count
+    FROM public.psikolog_schedules
+    WHERE psikolog_id = v_test_user_id;
+
+    IF v_schedule_count <> 2 THEN
+        RAISE EXCEPTION 'TEST 12 GAGAL: Atomisitas gagal, baris lama terhapus setelah replace gagal (dapat % baris, ekspektasi tetap 2)', v_schedule_count;
     END IF;
 END;
 $$;

@@ -45,3 +45,40 @@ COMMENT ON COLUMN public.psikolog_profiles.suspended_until IS 'Batas waktu penal
 -- Diaktifkan tanpa policy untuk anon/authenticated; akses hanya via service_role API
 ALTER TABLE public.psikolog_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.psikolog_time_off ENABLE ROW LEVEL SECURITY;
+
+-- 5. RPC FUNCTION: ATOMIC REPLACE JADWAL MINGGUAN PSIKOLOG
+CREATE OR REPLACE FUNCTION public.psikolog_schedule_replace(
+    p_psikolog_id UUID,
+    p_weekly JSONB
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    -- 1. Hapus jadwal pola mingguan milik psikolog ini
+    DELETE FROM public.psikolog_schedules
+    WHERE psikolog_id = p_psikolog_id;
+
+    -- 2. Insert baris baru jika p_weekly berupa jsonb array yang tidak kosong
+    IF p_weekly IS NOT NULL AND pg_catalog.jsonb_typeof(p_weekly) = 'array' AND pg_catalog.jsonb_array_length(p_weekly) > 0 THEN
+        INSERT INTO public.psikolog_schedules (
+            psikolog_id,
+            weekday,
+            start_hour,
+            end_hour
+        )
+        SELECT
+            p_psikolog_id,
+            (elem->>'weekday')::SMALLINT,
+            (elem->>'start_hour')::SMALLINT,
+            (elem->>'end_hour')::SMALLINT
+        FROM pg_catalog.jsonb_array_elements(p_weekly) AS elem;
+    END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.psikolog_schedule_replace(UUID, JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.psikolog_schedule_replace(UUID, JSONB) TO service_role;
+
