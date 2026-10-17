@@ -2,14 +2,17 @@
 -- TEMAN BICARA: DRY-RUN TEST MIGRATION 000014 (SESSION MESSAGES & REALTIME)
 -- Path: supabase/tests/session_messages_dryrun.sql
 -- Scope:
--- 1. Setup user test: 1 psikolog, 1 pasien, 1 user lain (unauthorized)
--- 2. DDL Salinan persis dari 20261017000014_session_messages.sql
+-- 1. Setup user test: 1 psikolog, 1 pasien, 1 user lain (unauthorized), 1 admin
+-- 2. DDL Salinan persis dari 20261017000014_session_messages.sql (is_admin, RLS fix, session_messages, trigger)
 -- 3. Assert pesan pertama psikolog -> status 'in_progress' & psikolog_first_msg_at terisi
 -- 4. Assert pesan kedua psikolog tidak mengubah timestamp psikolog_first_msg_at
 -- 5. Assert psikolog telat (first message > start_at) -> psikolog_late = true
 -- 6. Assert pesan pertama pasien -> patient_first_msg_at terisi
--- 7. Assert RLS SELECT: user lain melihat 0 baris via request.jwt.claims & SET LOCAL ROLE authenticated
--- 8. Assert RLS SELECT: pasien dan psikolog melihat pesan booking miliknya
+-- 7. Assert RLS: user lain SELECT session_messages -> 0 baris (tanpa error rekursi)
+-- 8. Assert RLS: pasien peserta & psikolog peserta melihat pesan booking miliknya
+-- 9. Assert RLS: pasien biasa SELECT users -> hanya baris dirinya (1)
+-- 10. Assert RLS: admin SELECT users -> lebih dari 1 baris
+-- 11. Assert RLS: authenticated INSERT langsung ke session_messages -> ditolak
 -- SELURUH UJI BERJALAN DALAM SATU TRANSAKSI DAN OTOMATIS DI-ROLLBACK
 -- ========================================================
 
@@ -20,7 +23,8 @@ INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, e
 VALUES
     ('b6000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'b6_psikolog@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
     ('b6000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'b6_pasien@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
-    ('b6000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'b6_other@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb)
+    ('b6000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'b6_other@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
+    ('b6000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'b6_admin@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. SETUP USER TEST: public.users
@@ -28,7 +32,8 @@ INSERT INTO public.users (id, email, no_wa, role, status)
 VALUES
     ('b6000000-0000-0000-0000-000000000001', 'b6_psikolog@temanbicara.test', '081299990061', 'psikolog'::public.user_role, 'active'::public.account_status),
     ('b6000000-0000-0000-0000-000000000002', 'b6_pasien@temanbicara.test', '081299990062', 'pasien'::public.user_role, 'active'::public.account_status),
-    ('b6000000-0000-0000-0000-000000000003', 'b6_other@temanbicara.test', '081299990063', 'pasien'::public.user_role, 'active'::public.account_status)
+    ('b6000000-0000-0000-0000-000000000003', 'b6_other@temanbicara.test', '081299990063', 'pasien'::public.user_role, 'active'::public.account_status),
+    ('b6000000-0000-0000-0000-000000000004', 'b6_admin@temanbicara.test', '081299990064', 'admin'::public.user_role, 'active'::public.account_status)
 ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, status = EXCLUDED.status;
 
 -- 3. SETUP PROFIL PSIKOLOG
@@ -52,10 +57,58 @@ ON CONFLICT (user_id) DO UPDATE SET
     nama_lengkap = EXCLUDED.nama_lengkap,
     nama_panggilan = EXCLUDED.nama_panggilan;
 
+-- 5. SETUP PROFIL ADMIN
+INSERT INTO public.admin_profiles (user_id, nama_lengkap, level)
+VALUES
+    ('b6000000-0000-0000-0000-000000000004', 'Admin Pengujian B6', 'superadmin')
+ON CONFLICT (user_id) DO UPDATE SET
+    nama_lengkap = EXCLUDED.nama_lengkap;
+
 -- ========================================================
 -- SALINAN DDL DARI MIGRATION 20261017000014_session_messages.sql
 -- ========================================================
 
+-- 1. HELPER RLS NON-REKURSIF: is_admin()
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.users
+        WHERE id = auth.uid() AND role = 'admin'::public.user_role
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated, service_role;
+
+-- 2. PERBAIKAN RLS NON-REKURSIF: USERS, BOOKINGS, & PSIKOLOG_STRIKES
+DROP POLICY IF EXISTS "Admin can read all users" ON public.users;
+CREATE POLICY "Admin can read all users" ON public.users
+    FOR ALL TO authenticated
+    USING (public.is_admin());
+
+DROP POLICY IF EXISTS bookings_select_participant ON public.bookings;
+CREATE POLICY bookings_select_participant ON public.bookings
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = patient_id OR
+        auth.uid() = psikolog_id OR
+        public.is_admin()
+    );
+
+DROP POLICY IF EXISTS psikolog_strikes_select_policy ON public.psikolog_strikes;
+CREATE POLICY psikolog_strikes_select_policy ON public.psikolog_strikes
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = psikolog_id OR
+        public.is_admin()
+    );
+
+-- 3. TABEL SESSION_MESSAGES
 CREATE TABLE IF NOT EXISTS public.session_messages (
     id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     booking_id UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
@@ -291,15 +344,13 @@ BEGIN
 END $$;
 
 -- ----------------------------------------------------
--- 6. UJI RLS: SELECT HANYA PESERTA BOOKING
+-- 6. UJI RLS LENGKAP & NON-REKURSIF
 -- ----------------------------------------------------
 
--- Uji sebagai USER LAIN (b6000000-0000-0000-0000-000000000003) -> 0 baris
+-- UJI 1: User lain SELECT session_messages -> 0 baris (tanpa error rekursi)
 DO $$
-DECLARE
-    v_count INTEGER;
 BEGIN
-    PERFORM set_config('request.jwt.claims', json_build_object('sub', 'b6000000-0000-0000-0000-000000000003', 'role', 'authenticated')::text, true);
+    PERFORM set_config('request.jwt.claims', '{"sub":"b6000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
 END $$;
 
 SET LOCAL ROLE authenticated;
@@ -315,10 +366,10 @@ END $$;
 
 RESET ROLE;
 
--- Uji sebagai PASIEN (b6000000-0000-0000-0000-000000000002) -> 4 baris
+-- UJI 2: Pasien peserta SELECT session_messages -> melihat pesannya (4 baris)
 DO $$
 BEGIN
-    PERFORM set_config('request.jwt.claims', json_build_object('sub', 'b6000000-0000-0000-0000-000000000002', 'role', 'authenticated')::text, true);
+    PERFORM set_config('request.jwt.claims', '{"sub":"b6000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 END $$;
 
 SET LOCAL ROLE authenticated;
@@ -329,15 +380,15 @@ DECLARE
 BEGIN
     SELECT count(*) INTO v_count FROM public.session_messages;
     ASSERT v_count = 4,
-        format('UJI RLS 2 GAGAL: Pasien melihat %s baris pesan (seharusnya 4)', v_count);
+        format('UJI RLS 2 GAGAL: Pasien peserta melihat %s baris pesan (seharusnya 4)', v_count);
 END $$;
 
 RESET ROLE;
 
--- Uji sebagai PSIKOLOG (b6000000-0000-0000-0000-000000000001) -> 4 baris
+-- UJI 2b: Psikolog peserta SELECT session_messages -> melihat pesannya (4 baris)
 DO $$
 BEGIN
-    PERFORM set_config('request.jwt.claims', json_build_object('sub', 'b6000000-0000-0000-0000-000000000001', 'role', 'authenticated')::text, true);
+    PERFORM set_config('request.jwt.claims', '{"sub":"b6000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 END $$;
 
 SET LOCAL ROLE authenticated;
@@ -348,14 +399,98 @@ DECLARE
 BEGIN
     SELECT count(*) INTO v_count FROM public.session_messages;
     ASSERT v_count = 4,
-        format('UJI RLS 3 GAGAL: Psikolog melihat %s baris pesan (seharusnya 4)', v_count);
+        format('UJI RLS 2b GAGAL: Psikolog peserta melihat %s baris pesan (seharusnya 4)', v_count);
+END $$;
+
+RESET ROLE;
+
+-- UJI 3: Pasien biasa SELECT users -> hanya baris dirinya (1 baris)
+DO $$
+BEGIN
+    PERFORM set_config('request.jwt.claims', '{"sub":"b6000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
+END $$;
+
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+    v_count INTEGER;
+    v_id UUID;
+BEGIN
+    SELECT count(*), max(id) INTO v_count, v_id FROM public.users;
+    ASSERT v_count = 1,
+        format('UJI RLS 3 GAGAL: Pasien biasa melihat %s baris users (seharusnya 1)', v_count);
+    ASSERT v_id = 'b6000000-0000-0000-0000-000000000002'::uuid,
+        format('UJI RLS 3 GAGAL: Pasien biasa melihat user id lain (%s)', v_id);
+END $$;
+
+RESET ROLE;
+
+-- UJI 4: Admin SELECT users -> lebih dari 1 baris
+DO $$
+BEGIN
+    PERFORM set_config('request.jwt.claims', '{"sub":"b6000000-0000-0000-0000-000000000004","role":"authenticated"}', true);
+END $$;
+
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    SELECT count(*) INTO v_count FROM public.users;
+    ASSERT v_count > 1,
+        format('UJI RLS 4 GAGAL: Admin melihat %s baris users (seharusnya > 1)', v_count);
+END $$;
+
+RESET ROLE;
+
+-- UJI 5: Authenticated INSERT langsung ke session_messages -> ditolak
+DO $$
+BEGIN
+    PERFORM set_config('request.jwt.claims', '{"sub":"b6000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
+END $$;
+
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+    v_booking_id UUID;
+    v_rejected BOOLEAN := false;
+BEGIN
+    SELECT id INTO v_booking_id FROM public.bookings LIMIT 1;
+
+    BEGIN
+        INSERT INTO public.session_messages (
+            booking_id, sender_id, kind, body
+        ) VALUES (
+            v_booking_id,
+            'b6000000-0000-0000-0000-000000000002'::uuid,
+            'text',
+            'Pesan tidak sah via role authenticated langsung'
+        );
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            v_rejected := true;
+        WHEN OTHERS THEN
+            IF SQLSTATE = '42501' THEN
+                v_rejected := true;
+            ELSE
+                RAISE;
+            END IF;
+    END;
+
+    ASSERT v_rejected = true,
+        'UJI RLS 5 GAGAL: Role authenticated berhasil INSERT langsung ke session_messages (seharusnya ditolak)';
 END $$;
 
 RESET ROLE;
 
 DO $$
 BEGIN
-    RAISE NOTICE 'B6a DRY-RUN TESTS PASSED: Trigger logic, psikolog_late, and RLS verified.';
+    RAISE NOTICE 'B6a DRY-RUN TESTS PASSED: Trigger logic, psikolog_late, is_admin(), users RLS, bookings RLS, and session_messages RLS verified.';
 END $$;
+
+RESET ROLE;
 
 ROLLBACK;

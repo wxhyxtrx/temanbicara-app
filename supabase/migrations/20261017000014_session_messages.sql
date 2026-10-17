@@ -3,7 +3,52 @@
 -- Migration: 20261017000014_session_messages.sql
 -- ========================================================
 
--- 1. TABEL SESSION_MESSAGES
+-- 1. HELPER RLS NON-REKURSIF: is_admin()
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.users
+        WHERE id = auth.uid() AND role = 'admin'::public.user_role
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated, service_role;
+
+COMMENT ON FUNCTION public.is_admin() IS 'Helper RLS non-rekursif untuk verifikasi apakah pemanggil memiliki role admin';
+
+-- 2. PERBAIKAN RLS NON-REKURSIF: USERS, BOOKINGS, & PSIKOLOG_STRIKES
+-- a. public.users: mengganti recursive EXISTS() dengan is_admin()
+DROP POLICY IF EXISTS "Admin can read all users" ON public.users;
+CREATE POLICY "Admin can read all users" ON public.users
+    FOR ALL TO authenticated
+    USING (public.is_admin());
+
+-- b. public.bookings: mengganti recursive EXISTS() dengan is_admin()
+DROP POLICY IF EXISTS bookings_select_participant ON public.bookings;
+CREATE POLICY bookings_select_participant ON public.bookings
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = patient_id OR
+        auth.uid() = psikolog_id OR
+        public.is_admin()
+    );
+
+-- c. public.psikolog_strikes: mengganti recursive EXISTS() dengan is_admin()
+DROP POLICY IF EXISTS psikolog_strikes_select_policy ON public.psikolog_strikes;
+CREATE POLICY psikolog_strikes_select_policy ON public.psikolog_strikes
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = psikolog_id OR
+        public.is_admin()
+    );
+
+-- 3. TABEL SESSION_MESSAGES
 CREATE TABLE IF NOT EXISTS public.session_messages (
     id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
     booking_id UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
@@ -27,14 +72,14 @@ COMMENT ON COLUMN public.session_messages.body IS 'Isi pesan teks atau keteranga
 COMMENT ON COLUMN public.session_messages.media_path IS 'Path berkas di bucket private storage session-media';
 COMMENT ON COLUMN public.session_messages.duration_seconds IS 'Durasi rekaman suara dalam detik (khusus pesan suara)';
 
--- 2. INDEX PENCARIAN & REALTIME
+-- 4. INDEX PENCARIAN & REALTIME
 CREATE INDEX IF NOT EXISTS idx_session_messages_booking_created
     ON public.session_messages (booking_id, created_at ASC);
 
 CREATE INDEX IF NOT EXISTS idx_session_messages_sender_id
     ON public.session_messages (sender_id);
 
--- 3. PUBLICATION SUPABASE_REALTIME
+-- 5. PUBLICATION SUPABASE_REALTIME
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
@@ -47,7 +92,7 @@ EXCEPTION
         NULL;
 END $$;
 
--- 4. ROW LEVEL SECURITY
+-- 6. ROW LEVEL SECURITY (SESSION_MESSAGES)
 ALTER TABLE public.session_messages ENABLE ROW LEVEL SECURITY;
 
 -- SELECT: Hanya peserta booking terkait (auth.uid() = patient_id atau auth.uid() = psikolog_id)
@@ -65,7 +110,7 @@ CREATE POLICY session_messages_select_participant ON public.session_messages
 -- INSERT: Hanya via API (service role membypass RLS, role authenticated tidak memiliki policy INSERT)
 DROP POLICY IF EXISTS session_messages_insert_service_only ON public.session_messages;
 
--- 5. TRIGGER AFTER INSERT: session_message_after_insert
+-- 7. TRIGGER AFTER INSERT: session_message_after_insert
 -- Logika:
 -- - Isi psikolog_first_msg_at / patient_first_msg_at bila null
 -- - Status booked -> in_progress pada pesan pertama psikolog
@@ -123,7 +168,7 @@ CREATE TRIGGER trg_session_message_after_insert
     FOR EACH ROW
     EXECUTE FUNCTION public.session_message_after_insert_fn();
 
--- 6. REGISTRASI STORAGE BUCKET 'session-media' (PRIVATE)
+-- 8. REGISTRASI STORAGE BUCKET 'session-media' (PRIVATE)
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
     'session-media',
