@@ -102,14 +102,14 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         description: "Sesi privat & catatan SOAP",
         url: "/counselor/room",
         icon: MessageCircle,
-        badge: "Live",
+        badge: "Segera",
       },
       {
         title: "Jadwal Konseling",
         description: "Konfirmasi & kalender sesi",
         url: "/counselor/schedule",
         icon: Calendar,
-        badge: "Baru",
+        badge: "Segera",
       },
       {
         title: "Catatan Klien",
