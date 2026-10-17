@@ -28,6 +28,7 @@ import { BookingCard } from "@/components/views/schedule/booking-card";
 import { PatientBookingDetailModal } from "@/components/views/schedule/patient-booking-detail-modal";
 import { CancelBookingModal } from "@/components/views/schedule/cancel-booking-modal";
 import { RescheduleBookingModal } from "@/components/views/schedule/reschedule-booking-modal";
+import { ChooseRefundModal } from "@/components/views/schedule/choose-refund-modal";
 import { notify } from "@/lib/toast";
 import { bookingClient } from "@/services/booking.client";
 import type { PatientBookingView, BookingStatus } from "@/types/booking";
@@ -60,6 +61,10 @@ function PatientScheduleContent() {
   // Reschedule Modal State (Point 3 & 4)
   const [rescheduleBookingTarget, setRescheduleBookingTarget] = useState<PatientBookingView | null>(null);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState<boolean>(false);
+
+  // Choose Refund Modal State (Point 4)
+  const [refundBookingTarget, setRefundBookingTarget] = useState<PatientBookingView | null>(null);
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState<boolean>(false);
 
   // Fetch bookings from API
   const loadBookings = useCallback(async (scope: ScheduleTab) => {
@@ -182,6 +187,11 @@ function PatientScheduleContent() {
   const handleOpenReschedule = (booking: PatientBookingView) => {
     setRescheduleBookingTarget(booking);
     setIsRescheduleModalOpen(true);
+  };
+
+  const handleOpenChooseRefund = (booking: PatientBookingView) => {
+    setRefundBookingTarget(booking);
+    setIsRefundModalOpen(true);
   };
 
   return (
@@ -397,6 +407,7 @@ function PatientScheduleContent() {
                   onViewDetail={handleOpenDetail}
                   onCancel={handleOpenCancel}
                   onReschedule={handleOpenReschedule}
+                  onChooseRefund={handleOpenChooseRefund}
                 />
               ))}
             </div>
@@ -423,6 +434,7 @@ function PatientScheduleContent() {
         onClose={() => setIsDetailOpen(false)}
         onOpenCancel={handleOpenCancel}
         onOpenReschedule={handleOpenReschedule}
+        onOpenChooseRefund={handleOpenChooseRefund}
       />
 
       {/* 5. Cancel Booking Modal (Point 2) */}
@@ -447,10 +459,25 @@ function PatientScheduleContent() {
         booking={rescheduleBookingTarget}
         isOpen={isRescheduleModalOpen}
         onClose={() => setIsRescheduleModalOpen(false)}
-        onSuccess={(newStartAt) => {
+        onSuccess={() => {
           notify.success(
             "Jadwal Berhasil Dipindahkan",
             "Sesi konseling Anda telah dijadwalkan ulang ke slot waktu baru."
+          );
+          loadBookings("upcoming");
+          loadBookings("history");
+        }}
+      />
+
+      {/* 7. Choose Refund Modal (Point 4) */}
+      <ChooseRefundModal
+        booking={refundBookingTarget}
+        isOpen={isRefundModalOpen}
+        onClose={() => setIsRefundModalOpen(false)}
+        onSuccess={(refundCoins) => {
+          notify.success(
+            "Refund 100% Berhasil",
+            `${refundCoins} Koin telah dikembalikan penuh ke saldo dompet Anda.`
           );
           loadBookings("upcoming");
           loadBookings("history");

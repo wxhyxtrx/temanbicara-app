@@ -38,6 +38,7 @@ interface PatientBookingDetailModalProps {
   onClose: () => void;
   onOpenCancel?: (booking: PatientBookingView) => void;
   onOpenReschedule?: (booking: PatientBookingView) => void;
+  onOpenChooseRefund?: (booking: PatientBookingView) => void;
 }
 
 export function PatientBookingDetailModal({
@@ -46,6 +47,7 @@ export function PatientBookingDetailModal({
   onClose,
   onOpenCancel,
   onOpenReschedule,
+  onOpenChooseRefund,
 }: PatientBookingDetailModalProps) {
   if (!booking) return null;
 
@@ -183,21 +185,62 @@ export function PatientBookingDetailModal({
           )}
 
           {/* Choice Deadline if Awaiting Choice */}
-          {booking.status === "awaiting_patient_choice" && booking.choice_deadline_at && (
-            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2">
-              <AlertCircle size={16} className="text-amber-600 shrink-0" />
-              <div>
-                <p className="font-bold">Batas Waktu Pengambilan Pilihan:</p>
-                <p className="text-[11px]">
-                  {formatWibDateFull(booking.choice_deadline_at)}, {formatWibTime(booking.choice_deadline_at)}
-                </p>
+          {booking.status === "awaiting_patient_choice" && (
+            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-200 space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold text-xs">Psikolog Membatalkan Sesi</p>
+                  <p className="text-[11px] leading-relaxed text-amber-900/80 dark:text-amber-300/80">
+                    Sesi konseling ini dibatalkan oleh pihak psikolog. Anda berhak memindahkan jadwal ke slot lain tanpa biaya atau mengambil pengembalian penuh 100% koin.
+                  </p>
+                  {booking.choice_deadline_at && (
+                    <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 pt-0.5">
+                      Batas waktu pilihan: {formatWibDateFull(booking.choice_deadline_at)}, {formatWibTime(booking.choice_deadline_at)}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {/* Footer Actions */}
           <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {booking.status === "awaiting_patient_choice" && (
+                <>
+                  {onOpenReschedule && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        onClose();
+                        onOpenReschedule(booking);
+                      }}
+                      className="text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-8 px-3 font-semibold gap-1.5 shadow-2xs"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Pindah Jadwal (Gratis)</span>
+                    </Button>
+                  )}
+                  {onOpenChooseRefund && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onClose();
+                        onOpenChooseRefund(booking);
+                      }}
+                      className="text-xs border-amber-400 text-amber-900 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 rounded-xl h-8 px-3 font-semibold gap-1.5"
+                    >
+                      <Coins size={13} />
+                      <span>Refund 100%</span>
+                    </Button>
+                  )}
+                </>
+              )}
+
               {booking.status === "booked" && (
                 <>
                   {onOpenReschedule && (() => {
