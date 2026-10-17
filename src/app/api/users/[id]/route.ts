@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail, displayName } from '@/lib/auth/session';
+import { normalizePhone } from '@/lib/validations/phone';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = [
@@ -250,7 +251,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       updated_at: new Date().toISOString(),
     };
     if (body.status) userUpdates.status = body.status;
-    if (body.no_wa !== undefined) userUpdates.no_wa = body.no_wa ? String(body.no_wa).trim() : null;
+    if (body.no_wa !== undefined) userUpdates.no_wa = body.no_wa ? normalizePhone(String(body.no_wa)) : null;
     if (body.role && ['pasien', 'relawan', 'psikolog', 'admin'].includes(body.role)) {
       userUpdates.role = body.role;
     }

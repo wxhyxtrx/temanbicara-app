@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { registerRelawanSchema } from '@/lib/validations/auth';
+import { normalizePhone } from '@/lib/validations/phone';
 
 export async function POST(req: Request) {
   try {
@@ -71,12 +72,13 @@ export async function POST(req: Request) {
     }
 
     const userId = authData.user.id;
+    const normalizedNoWa = normalizePhone(no_wa);
 
     // 3. Insert entitas public.users dengan status pending_approval
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: userId,
       email,
-      no_wa,
+      no_wa: normalizedNoWa,
       role: 'relawan',
       status: 'pending_approval',
       is_email_verified: true,

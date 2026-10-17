@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail, pageParams, sanitizeSearch } from '@/lib/auth/session';
+import { normalizePhone } from '@/lib/validations/phone';
 import {
   adminCreatePsikologSchema,
   adminCreateRelawanSchema,
@@ -329,7 +330,7 @@ export async function POST(req: Request) {
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: userId,
       email: validatedEmail,
-      no_wa: validatedNoWa,
+      no_wa: validatedNoWa ? normalizePhone(validatedNoWa) : null,
       role,
       status,
       is_email_verified: true,

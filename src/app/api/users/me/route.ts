@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, getRoleProfile, displayName, fail } from '@/lib/auth/session';
 import { ROLE_UPDATE_SCHEMAS } from '@/lib/validations/user';
+import { normalizePhone } from '@/lib/validations/phone';
 import type { UserEntity } from '@/types/database';
 
 export { GET } from '@/app/api/auth/me/route';
@@ -66,7 +67,7 @@ export async function PATCH(req: Request) {
 
     // 4. Update no_wa pada tabel users (jika disertakan)
     if (validatedData.no_wa !== undefined) {
-      const cleanNoWa = String(validatedData.no_wa).trim();
+      const cleanNoWa = normalizePhone(String(validatedData.no_wa));
 
       // Cek bentrok unik nomor WhatsApp dengan akun lain
       const { data: existingPhoneUser } = await supabaseAdmin
@@ -112,7 +113,7 @@ export async function PATCH(req: Request) {
         profileUpdates.kontak_darurat_nama = String(validatedData.kontak_darurat_nama).trim();
       }
       if (validatedData.kontak_darurat_wa !== undefined) {
-        profileUpdates.kontak_darurat_wa = String(validatedData.kontak_darurat_wa).trim();
+        profileUpdates.kontak_darurat_wa = normalizePhone(String(validatedData.kontak_darurat_wa));
       }
       if (validatedData.is_anonim_default !== undefined) {
         profileUpdates.is_anonim_default = Boolean(validatedData.is_anonim_default);

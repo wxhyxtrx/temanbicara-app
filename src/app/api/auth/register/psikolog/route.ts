@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { registerPsikologSchema } from '@/lib/validations/auth';
+import { normalizePhone } from '@/lib/validations/phone';
 
 export async function POST(req: Request) {
   try {
@@ -90,12 +91,13 @@ export async function POST(req: Request) {
     }
 
     const userId = authData.user.id;
+    const normalizedNoWa = normalizePhone(no_wa);
 
     // 4. Insert public.users dengan status pending_verification
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: userId,
       email,
-      no_wa,
+      no_wa: normalizedNoWa,
       role: 'psikolog',
       status: 'pending_verification',
       is_email_verified: true,

@@ -10,16 +10,19 @@ export const updateMePasienSchema = z
       .optional(),
     nama_lengkap: z
       .string()
+      .trim()
       .min(2, 'Nama lengkap minimal 2 karakter')
       .max(100, 'Nama lengkap maksimal 100 karakter')
       .optional(),
     nama_panggilan: z
       .string()
+      .trim()
       .max(30, 'Nama panggilan maksimal 30 karakter')
       .nullable()
       .optional(),
     kontak_darurat_nama: z
       .string()
+      .trim()
       .min(2, 'Nama kontak darurat minimal 2 karakter')
       .optional(),
     kontak_darurat_wa: z
@@ -40,7 +43,13 @@ export const updateMePsikologSchema = z
       .regex(phoneRegex, 'Format nomor WhatsApp tidak valid (contoh: 08123456789)')
       .optional(),
     spesialisasi: z
-      .array(z.string().min(1, 'Spesialisasi tidak boleh kosong'))
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1, 'Item spesialisasi tidak boleh kosong')
+          .max(60, 'Item spesialisasi maksimal 60 karakter')
+      )
       .min(1, 'Minimal pilih 1 bidang spesialisasi')
       .max(10, 'Maksimal 10 bidang spesialisasi')
       .optional(),
@@ -73,11 +82,18 @@ export const updateMeRelawanSchema = z
       .optional(),
     alias_name: z
       .string()
+      .trim()
       .min(2, 'Nama samaran minimal 2 karakter')
       .max(30, 'Nama samaran maksimal 30 karakter')
       .optional(),
     topik_keahlian: z
-      .array(z.string().min(1, 'Topik keahlian tidak boleh kosong'))
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1, 'Item topik keahlian tidak boleh kosong')
+          .max(60, 'Item topik keahlian maksimal 60 karakter')
+      )
       .max(10, 'Maksimal 10 topik keahlian')
       .optional(),
     is_available: z.boolean().optional(),
