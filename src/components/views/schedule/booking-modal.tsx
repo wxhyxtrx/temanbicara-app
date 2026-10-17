@@ -36,6 +36,7 @@ import {
   RefreshCw,
   User,
   ArrowRight,
+  ExternalLink,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import Link from "next/link";
@@ -50,6 +51,19 @@ interface BookingModalProps {
   initialConsultantId?: number;
   onSuccess?: () => void;
   onReloadSlots?: () => void;
+}
+
+export type BookingErrorCode =
+  | "SLOT_UNAVAILABLE"
+  | "INSUFFICIENT_COINS"
+  | "LIMIT_ACTIVE"
+  | "LIMIT_DAILY"
+  | "VALIDATION_ERROR"
+  | "GENERAL";
+
+export interface BookingErrorState {
+  code: BookingErrorCode;
+  message: string;
 }
 
 export function BookingModal({
@@ -80,9 +94,9 @@ export function BookingModal({
   const [wallet, setWallet] = useState<WalletInfoResponse | null>(null);
   const [loadingWallet, setLoadingWallet] = useState<boolean>(true);
 
-  // Submission & feedback state
+  // Submission & structured error feedback state
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [bookingError, setBookingError] = useState<BookingErrorState | null>(null);
 
   // Sync props when modal opens or props change
   useEffect(() => {
@@ -99,7 +113,7 @@ export function BookingModal({
     if (!isOpen) return;
 
     setKeluhan("");
-    setErrorMessage(null);
+    setBookingError(null);
     setLoadingWallet(true);
 
     walletClient
@@ -133,7 +147,7 @@ export function BookingModal({
     }
   }, [isOpen, psychologist, activePsychologist]);
 
-  // Fallback: If psychologist chosen but no slotIso, load slots
+  // Load available slots
   const loadAvailableSlots = useCallback(
     async (psychId: string) => {
       setLoadingSlots(true);
@@ -145,16 +159,15 @@ export function BookingModal({
         });
         const slots = res.data?.slots || res.slots || [];
         setAvailableSlots(slots);
-        if (slots.length > 0 && !activeSlotIso) {
-          setActiveSlotIso(slots[0]);
-        }
+        return slots;
       } catch (err) {
         console.error("Gagal memuat slot psikolog:", err);
+        return [];
       } finally {
         setLoadingSlots(false);
       }
     },
-    [activeSlotIso]
+    []
   );
 
   useEffect(() => {
@@ -162,6 +175,21 @@ export function BookingModal({
       loadAvailableSlots(activePsychologist.id);
     }
   }, [isOpen, activePsychologist?.id, slotIso, loadAvailableSlots]);
+
+  // Manual reload slots handler for 409 SLOT_UNAVAILABLE
+  const handleReloadSlotsAction = async () => {
+    setActiveSlotIso(null);
+    setBookingError(null);
+    if (activePsychologist?.id) {
+      const refreshedSlots = await loadAvailableSlots(activePsychologist.id);
+      if (refreshedSlots.length > 0) {
+        setActiveSlotIso(refreshedSlots[0]);
+      }
+    }
+    if (onReloadSlots) {
+      onReloadSlots();
+    }
+  };
 
   // Keluhan counter & validation (20 - 1000 chars)
   const keluhanTrimmed = keluhan.trim();
@@ -180,20 +208,29 @@ export function BookingModal({
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activePsychologist?.id) {
-      setErrorMessage("Silakan pilih psikolog terlebih dahulu.");
+      setBookingError({
+        code: "VALIDATION_ERROR",
+        message: "Silakan pilih psikolog terlebih dahulu.",
+      });
       return;
     }
     if (!activeSlotIso) {
-      setErrorMessage("Silakan pilih tanggal dan jam slot konseling.");
+      setBookingError({
+        code: "VALIDATION_ERROR",
+        message: "Silakan pilih tanggal dan jam slot konseling yang tersedia.",
+      });
       return;
     }
     if (!isKeluhanValid) {
-      setErrorMessage("Keluhan wajib diisi minimal 20 karakter dan maksimal 1000 karakter.");
+      setBookingError({
+        code: "VALIDATION_ERROR",
+        message: "Keluhan wajib diisi minimal 20 karakter dan maksimal 1000 karakter.",
+      });
       return;
     }
 
     setSubmitting(true);
-    setErrorMessage(null);
+    setBookingError(null);
 
     try {
       const res = await bookingClient.createBooking({
@@ -215,11 +252,96 @@ export function BookingModal({
       }
     } catch (err: unknown) {
       if (err instanceof BookingApiError) {
-        setErrorMessage(err.message || "Gagal memproses booking.");
+        const msg = err.message || "";
+        const code = err.code || "";
+
+        // 409 SLOT_UNAVAILABLE -> pesan "Slot baru saja dipesan orang lain" + muat ulang slot
+        if (
+          err.status === 409 &&
+          (code === "SLOT_UNAVAILABLE" ||
+            msg.includes("SLOT_UNAVAILABLE") ||
+            msg.includes("sudah tidak tersedia") ||
+            msg.includes("dipesan orang lain"))
+        ) {
+          setBookingError({
+            code: "SLOT_UNAVAILABLE",
+            message: "Slot baru saja dipesan orang lain",
+          });
+          // Muat ulang slot otomatis
+          if (activePsychologist?.id) {
+            loadAvailableSlots(activePsychologist.id);
+          }
+          if (onReloadSlots) {
+            onReloadSlots();
+          }
+        }
+        // 402 INSUFFICIENT_COINS -> tombol ke /patient/top-up
+        else if (
+          err.status === 402 ||
+          code === "INSUFFICIENT_COINS" ||
+          msg.includes("INSUFFICIENT_COINS") ||
+          msg.includes("Saldo koin tidak mencukupi")
+        ) {
+          setBookingError({
+            code: "INSUFFICIENT_COINS",
+            message:
+              msg ||
+              "Saldo koin tidak mencukupi untuk memesan sesi konseling ini. Silakan lakukan isi ulang koin terlebih dahulu.",
+          });
+        }
+        // 409 LIMIT_ACTIVE -> pesan jelas
+        else if (
+          err.status === 409 &&
+          (code === "LIMIT_ACTIVE" ||
+            msg.includes("LIMIT_ACTIVE") ||
+            msg.includes("maksimum 3 sesi"))
+        ) {
+          setBookingError({
+            code: "LIMIT_ACTIVE",
+            message:
+              "Anda telah mencapai batas maksimum 3 sesi booking aktif. Selesaikan atau batalkan sesi sebelumnya terlebih dahulu sebelum memesan jadwal baru.",
+          });
+        }
+        // 409 LIMIT_DAILY -> pesan jelas
+        else if (
+          err.status === 409 &&
+          (code === "LIMIT_DAILY" ||
+            msg.includes("LIMIT_DAILY") ||
+            msg.includes("hari kalender yang sama"))
+        ) {
+          setBookingError({
+            code: "LIMIT_DAILY",
+            message:
+              "Anda sudah memiliki jadwal sesi dengan psikolog ini di hari kalender yang sama. Silakan pilih tanggal atau hari yang berbeda.",
+          });
+        }
+        // 422 -> tampilkan pesan server
+        else if (
+          err.status === 422 ||
+          code === "VALIDATION_ERROR" ||
+          code === "INVALID_KELUHAN"
+        ) {
+          setBookingError({
+            code: "VALIDATION_ERROR",
+            message:
+              msg || "Data input tidak valid. Pastikan keluhan terdiri dari 20 hingga 1000 karakter.",
+          });
+        }
+        // Generic Booking Error
+        else {
+          setBookingError({
+            code: "GENERAL",
+            message: msg || "Terjadi kesalahan saat memproses booking.",
+          });
+        }
       } else {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Terjadi kesalahan saat memproses booking."
-        );
+        setBookingError({
+          code: "GENERAL",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Terjadi kesalahan sistem saat memproses booking.",
+        });
       }
     } finally {
       setSubmitting(false);
@@ -246,12 +368,72 @@ export function BookingModal({
         </DialogHeader>
 
         <form onSubmit={handleBookingSubmit} className="space-y-5 pt-2">
-          {/* Error Banner */}
-          {errorMessage && (
-            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
-              <div className="flex items-center gap-2">
-                <AlertCircle size={16} className="text-rose-600 dark:text-rose-400 shrink-0" />
-                <span>{errorMessage}</span>
+          {/* Structured Error State Banner */}
+          {bookingError && (
+            <div
+              className={`p-4 rounded-2xl border text-xs space-y-2.5 animate-in fade-in duration-200 ${
+                bookingError.code === "INSUFFICIENT_COINS"
+                  ? "bg-amber-50/90 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200"
+                  : "bg-rose-50/90 dark:bg-rose-950/60 border-rose-300 dark:border-rose-900 text-rose-900 dark:text-rose-200"
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle
+                    size={18}
+                    className={`shrink-0 mt-0.5 ${
+                      bookingError.code === "INSUFFICIENT_COINS"
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-rose-600 dark:text-rose-400"
+                    }`}
+                  />
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-xs sm:text-sm">
+                      {bookingError.code === "SLOT_UNAVAILABLE"
+                        ? "Slot baru saja dipesan orang lain"
+                        : bookingError.code === "INSUFFICIENT_COINS"
+                        ? "Saldo Koin Tidak Mencukupi"
+                        : bookingError.code === "LIMIT_ACTIVE"
+                        ? "Batas Maksimum 3 Sesi Booking Aktif"
+                        : bookingError.code === "LIMIT_DAILY"
+                        ? "Jadwal Ganda di Hari yang Sama"
+                        : bookingError.code === "VALIDATION_ERROR"
+                        ? "Pesan Validasi Server"
+                        : "Gagal Memproses Booking"}
+                    </p>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      {bookingError.message}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tombol Khusus per Error */}
+                {bookingError.code === "SLOT_UNAVAILABLE" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleReloadSlotsAction}
+                    disabled={loadingSlots}
+                    className="shrink-0 text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-xl h-8 px-3.5 font-semibold gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <RefreshCw size={12} className={loadingSlots ? "animate-spin" : ""} />
+                    <span>Muat Ulang Slot</span>
+                  </Button>
+                )}
+
+                {bookingError.code === "INSUFFICIENT_COINS" && (
+                  <Link href="/patient/top-up" onClick={onClose} className="shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-8 px-4 font-bold gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Coins size={13} />
+                      <span>Top Up Koin</span>
+                      <ExternalLink size={12} />
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
           )}
@@ -291,7 +473,7 @@ export function BookingModal({
             </div>
 
             {/* Jadwal Terpilih Info */}
-            {activeSlotIso && (
+            {activeSlotIso ? (
               <div className="sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-teal-200/50 dark:border-teal-800/50">
                 <span className="text-[10px] uppercase font-bold text-teal-800 dark:text-teal-300 tracking-wider block">
                   Jadwal Sesi Konseling (WIB)
@@ -306,38 +488,71 @@ export function BookingModal({
                   Durasi konsultasi: 60 Menit
                 </span>
               </div>
+            ) : (
+              <div className="sm:text-right">
+                <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-400 text-xs">
+                  Pilih slot waktu di bawah
+                </Badge>
+              </div>
             )}
           </div>
 
-          {/* Fallback Slot Selector if not preselected */}
-          {!slotIso && availableSlots.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center justify-between">
-                <span>Pilih Slot Waktu Tersedia</span>
-                <span className="text-[11px] text-teal-600 dark:text-teal-400 font-normal">
-                  {availableSlots.length} slot
-                </span>
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-1">
-                {availableSlots.map((slot) => {
-                  const isSel = activeSlotIso === slot;
-                  return (
-                    <button
-                      type="button"
-                      key={slot}
-                      onClick={() => setActiveSlotIso(slot)}
-                      className={`p-2 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                        isSel
-                          ? "bg-teal-600 text-white border-teal-600 font-semibold shadow-2xs"
-                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      <Clock size={12} className={isSel ? "text-white" : "text-teal-600"} />
-                      <span>{formatWibTime(slot)}</span>
-                    </button>
-                  );
-                })}
+          {/* Slot Picker Display (ketika slot belum dipilih atau setelah reload slot) */}
+          {(!activeSlotIso || bookingError?.code === "SLOT_UNAVAILABLE") && (
+            <div className="p-3.5 rounded-2xl border border-teal-200/80 dark:border-teal-800/60 bg-teal-50/20 dark:bg-teal-950/20 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock size={13} className="text-teal-600" />
+                  <span>Pilih Jam Praktik Tersedia (WIB)</span>
+                </label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReloadSlotsAction}
+                  disabled={loadingSlots}
+                  className="h-7 px-2 text-[11px] text-teal-700 dark:text-teal-300 hover:bg-teal-100/50"
+                >
+                  <RefreshCw size={11} className={loadingSlots ? "animate-spin" : ""} />
+                  <span className="ml-1">Segarkan Slot</span>
+                </Button>
               </div>
+
+              {loadingSlots ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[1, 2, 3, 4].map((n) => (
+                    <Skeleton key={n} className="h-9 rounded-xl bg-slate-200 dark:bg-slate-800" />
+                  ))}
+                </div>
+              ) : availableSlots.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center text-xs text-slate-500">
+                  Tidak ada slot jadwal yang tersedia dalam 14 hari ke depan untuk psikolog ini.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-0.5">
+                  {availableSlots.map((slot) => {
+                    const isSel = activeSlotIso === slot;
+                    return (
+                      <button
+                        type="button"
+                        key={slot}
+                        onClick={() => {
+                          setActiveSlotIso(slot);
+                          setBookingError(null);
+                        }}
+                        className={`p-2 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                          isSel
+                            ? "bg-teal-600 text-white border-teal-600 font-semibold shadow-2xs"
+                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        <Clock size={12} className={isSel ? "text-white" : "text-teal-600 dark:text-teal-400"} />
+                        <span>{formatWibTime(slot)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -368,7 +583,12 @@ export function BookingModal({
               rows={4}
               maxLength={1000}
               value={keluhan}
-              onChange={(e) => setKeluhan(e.target.value)}
+              onChange={(e) => {
+                setKeluhan(e.target.value);
+                if (bookingError?.code === "VALIDATION_ERROR") {
+                  setBookingError(null);
+                }
+              }}
               placeholder="Ceritakan keluhan, beban emosi, atau hal spesifik yang ingin kamu bahas bersama psikolog (minimal 20 karakter)..."
               className={`w-full text-xs sm:text-sm p-3.5 rounded-xl border bg-slate-50/50 dark:bg-slate-800/60 focus:outline-hidden focus:ring-2 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 resize-none leading-relaxed transition-all ${
                 keluhanLength > 0 && keluhanTrimmed.length < 20
@@ -444,9 +664,16 @@ export function BookingModal({
                     {remainingCoins} Koin
                   </span>
                 ) : (
-                  <span className="font-mono text-rose-600 dark:text-rose-400 font-bold">
-                    Kurang {sessionFeeCoins - currentCoinBalance} Koin
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-rose-600 dark:text-rose-400 font-bold">
+                      Kurang {sessionFeeCoins - currentCoinBalance} Koin
+                    </span>
+                    <Link href="/patient/top-up" onClick={onClose}>
+                      <span className="text-[11px] underline text-teal-600 hover:text-teal-700 font-semibold cursor-pointer">
+                        Isi Ulang
+                      </span>
+                    </Link>
+                  </div>
                 )}
               </div>
             </div>
