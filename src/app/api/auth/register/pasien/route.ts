@@ -19,7 +19,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const { nama_lengkap, email, no_wa, password } = parsed.data;
+    const {
+      nama_lengkap,
+      nama_panggilan,
+      kontak_darurat_nama,
+      kontak_darurat_wa,
+      email,
+      no_wa,
+      password,
+    } = parsed.data;
 
     // 1. Cek apakah email sudah terdaftar di public.users
     const { data: existingUser } = await supabaseAdmin
@@ -47,6 +55,7 @@ export async function POST(req: Request) {
       user_metadata: {
         role: 'pasien',
         nama_lengkap,
+        nama_panggilan: nama_panggilan?.trim() || null,
       },
     });
 
@@ -90,6 +99,9 @@ export async function POST(req: Request) {
     const { error: profileError } = await supabaseAdmin.from('pasien_profiles').insert({
       user_id: userId,
       nama_lengkap,
+      nama_panggilan: nama_panggilan?.trim() || null,
+      kontak_darurat_nama: kontak_darurat_nama.trim(),
+      kontak_darurat_wa,
     });
 
     if (profileError) {
@@ -120,12 +132,12 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
       {
         success: false,
         error: 'INTERNAL_SERVER_ERROR',
-        message: err.message || 'Terjadi kesalahan sistem',
+        message: err instanceof Error ? err.message : 'Terjadi kesalahan sistem',
       },
       { status: 500 }
     );

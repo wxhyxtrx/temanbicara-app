@@ -129,9 +129,9 @@ export default function Register() {
       return;
     }
 
-    if (!emergencyName.trim()) {
-      setStepError("Nama kontak darurat wajib diisi untuk keselamatan pasien.");
-      notify.warning("Kontak Darurat Kosong", "Nama kontak darurat wajib diisi untuk keselamatan pasien.");
+    if (!emergencyName.trim() || emergencyName.trim().length < 2) {
+      setStepError("Nama kontak darurat minimal 2 karakter.");
+      notify.warning("Kontak Darurat Tidak Valid", "Nama kontak darurat minimal 2 karakter.");
       return;
     }
     if (!emergencyPhone.trim() || emergencyPhone.length < 8) {
@@ -165,8 +165,15 @@ export default function Register() {
       if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.substring(1);
       if (cleanPhone.startsWith("8")) cleanPhone = "0" + cleanPhone;
 
+      let cleanEmergencyPhone = emergencyPhone.trim().replace(/[\s-]/g, "");
+      if (cleanEmergencyPhone.startsWith("+")) cleanEmergencyPhone = cleanEmergencyPhone.substring(1);
+      if (cleanEmergencyPhone.startsWith("8")) cleanEmergencyPhone = "0" + cleanEmergencyPhone;
+
       const res = await authService.registerPasien({
         nama_lengkap: fullName.trim(),
+        nama_panggilan: alias.trim() || undefined,
+        kontak_darurat_nama: emergencyName.trim(),
+        kontak_darurat_wa: cleanEmergencyPhone,
         email: email.trim().toLowerCase(),
         no_wa: cleanPhone,
         password,

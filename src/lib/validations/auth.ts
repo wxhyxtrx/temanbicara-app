@@ -6,6 +6,9 @@ export const phoneRegex = /^(\+62|62|0)8[1-9][0-9]{6,11}$/;
 export const registerPasienSchema = z
   .object({
     nama_lengkap: z.string().min(2, 'Nama lengkap minimal 2 karakter'),
+    nama_panggilan: z.string().max(30, 'Nama panggilan maksimal 30 karakter').optional().nullable(),
+    kontak_darurat_nama: z.string().min(2, 'Nama kontak darurat minimal 2 karakter'),
+    kontak_darurat_wa: z.string().regex(phoneRegex, 'Format nomor WhatsApp kontak darurat tidak valid (contoh: 08123456789)'),
     email: z.string().email('Format email tidak valid'),
     no_wa: z.string().regex(phoneRegex, 'Format nomor WhatsApp tidak valid (contoh: 08123456789)'),
     password: z.string().min(8, 'Password minimal 8 karakter'),
