@@ -101,4 +101,19 @@ export const scheduleClient = {
     });
     return handleResponse<{ success: boolean; message: string }>(res);
   },
+
+  async getAvailableSlots(
+    psychologistId: string,
+    params?: { from?: string; days?: number }
+  ): Promise<{ success: boolean; data: { slots: string[] }; slots: string[] }> {
+    const searchParams = new URLSearchParams();
+    if (params?.from) searchParams.set('from', params.from);
+    if (params?.days) searchParams.set('days', String(params.days));
+    const qs = searchParams.toString();
+    const url = `/api/psychologists/${psychologistId}/slots${qs ? `?${qs}` : ''}`;
+    const res = await fetch(url, {
+      method: 'GET',
+    });
+    return handleResponse<{ success: boolean; data: { slots: string[] }; slots: string[] }>(res);
+  },
 };
