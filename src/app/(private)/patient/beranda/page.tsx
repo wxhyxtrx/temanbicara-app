@@ -6,9 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  recentConversations,
   Consultant,
-  RecentConversationItem,
 } from "@/constant/beranda";
 import { userService } from "@/services/user.service";
 import type { PublicPsychologist } from "@/types/user-profile";
@@ -17,19 +15,15 @@ import {
   ChevronRight,
   MessageCircle,
   ShieldCheck,
-  Phone,
-  MessageSquare,
   Clock,
   Sparkles,
   AlertCircle,
-  ArrowRight,
   Star,
   HeartHandshake,
   Users,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
-import { useScheduleStore } from "@/store/schedule-store";
 import { usePeerVentStore } from "@/store/peer-vent-store";
 import { VentingModalForm } from "@/components/views/patient/venting-modal-form";
 import { PsychologistProfileModal } from "@/components/views/patient/psychologist-profile-modal";
@@ -40,7 +34,6 @@ export default function PatientBerandaPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const user = useUserStore((state) => state.user);
   const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
-  const rawSchedules = useScheduleStore((state) => state.schedules);
   const [ventingModalOpen, setVentingModalOpen] = useState(false);
   const myActivePost = usePeerVentStore((state) => state.myActivePost);
 
@@ -103,10 +96,6 @@ export default function PatientBerandaPage() {
       consultationMethods: ["Chat Eksklusif", "Voice Call"],
     };
   };
-
-  const activeSessions = mounted
-    ? rawSchedules.filter((s) => s.status === "terjadwal" || s.status === "menunggu")
-    : [];
 
   const getGreetingName = () => {
     if (!mounted) return "";
@@ -179,10 +168,8 @@ export default function PatientBerandaPage() {
               Semua sesi konseling dan catatan refleksi berada di bawah perlindungan kode etik kerahasiaan psikolog.
             </p>
             <div className="pt-1 flex items-center justify-between border-t border-teal-800/80 text-[11px] text-teal-300 font-medium">
-              <span>Sesi Terjadwal: {activeSessions.length} Sesi</span>
-              <Link href="/patient/schedule" className="text-emerald-400 hover:underline">
-                Lihat Jadwal →
-              </Link>
+              <span>Sesi Terjadwal: 0 Sesi</span>
+              <span className="text-[10px] text-emerald-400 font-semibold">Fitur booking hadir di Fase 3</span>
             </div>
           </div>
         </div>
@@ -300,111 +287,29 @@ export default function PatientBerandaPage() {
                   </div>
                 </div>
 
-                <Link href="/patient/schedule" className="shrink-0">
-                  <span className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 flex items-center gap-0.5">
-                    Lihat Semua <ChevronRight size={14} />
-                  </span>
-                </Link>
+                <Badge variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs shrink-0">
+                  0 Terjadwal
+                </Badge>
               </div>
             </CardHeader>
 
-            <CardContent className="p-4 sm:p-6">
-              {activeSessions.length > 0 ? (
-                <div className="space-y-3.5">
-                  {activeSessions.slice(0, 2).map((session) => (
-                    <div
-                      key={session.id}
-                      className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 hover:bg-slate-50/80 dark:hover:bg-slate-800/70 transition-colors space-y-3"
-                    >
-                      {/* Baris Atas: Info Psikolog & Badge Status */}
-                      <div className="flex items-start justify-between gap-2.5">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200/60 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0 mt-0.5">
-                            {session.type === "Voice Call" ? (
-                              <Phone size={17} />
-                            ) : (
-                              <MessageSquare size={17} />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-900 dark:text-white text-sm font-heading leading-tight truncate">
-                              {session.consultant}
-                            </p>
-                            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-0.5 line-clamp-1">
-                              {session.topic || session.title}
-                            </p>
-                          </div>
-                        </div>
-
-                        <Badge
-                          className={`text-[10px] font-semibold shrink-0 border py-0.5 px-2 ${
-                            session.status === "terjadwal"
-                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                              : "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                          }`}
-                        >
-                          {session.status === "terjadwal" ? "Terkonfirmasi" : "Menunggu"}
-                        </Badge>
-                      </div>
-
-                      {/* Baris Tengah: Strip Jadwal Waktu & Metode */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white dark:bg-slate-900/90 border border-slate-200/70 dark:border-slate-800 text-xs">
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-slate-600 dark:text-slate-400">
-                          <span className="flex items-center gap-1.5 font-medium text-slate-800 dark:text-slate-200">
-                            <Calendar size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
-                            {session.date}
-                          </span>
-                          <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
-                          <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
-                            <Clock size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
-                            {session.time}
-                          </span>
-                        </div>
-
-                        <span className="text-[11px] font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/70 border border-teal-200/70 dark:border-teal-800 px-2 py-0.5 rounded-md">
-                          {session.type}
-                        </span>
-                      </div>
-
-                      {/* Baris Bawah: Tombol Aksi Responsif */}
-                      <div className="flex items-center justify-end pt-0.5">
-                        {session.status === "terjadwal" ? (
-                          <Link href="/patient/room" className="w-full sm:w-auto">
-                            <Button
-                              size="sm"
-                              className="w-full sm:w-auto text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg px-4 py-2 cursor-pointer shadow-xs gap-1.5"
-                            >
-                              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-                              Masuk Ruang Sesi
-                            </Button>
-                          </Link>
-                        ) : (
-                          <Link href="/patient/schedule" className="w-full sm:w-auto">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full sm:w-auto text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg px-4 py-2 font-semibold"
-                            >
-                              Lihat Detail Jadwal
-                            </Button>
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+            <CardContent className="p-6">
+              <div className="py-10 flex flex-col items-center justify-center text-center gap-2.5">
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                  <Calendar size={24} />
                 </div>
-              ) : (
-                <div className="text-center py-8 space-y-2">
-                  <p className="text-sm text-slate-500 dark:text-slate-400 font-nunito">
-                    Belum ada jadwal sesi terapi yang akan datang.
+                <div className="space-y-1">
+                  <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                    Belum Ada Jadwal Sesi
                   </p>
-                  <Link href="/patient/schedule?booking=true">
-                    <Button variant="outline" className="border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-slate-800 text-xs">
-                      Pilih Psikolog & Jadwal
-                    </Button>
-                  </Link>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito">
+                    Sesi konseling klinis terjadwal bersama psikolog akan tampil di sini saat jadwal tiba.
+                  </p>
                 </div>
-              )}
+                <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-800">
+                  Fitur booking hadir di Fase 3
+                </span>
+              </div>
             </CardContent>
           </Card>
 
@@ -578,51 +483,25 @@ export default function PatientBerandaPage() {
                   Catatan ruang chat amanmu
                 </CardDescription>
               </div>
-              <Link href="/patient/room">
-                <Button variant="ghost" size="sm" className="text-xs text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800 px-2 py-1 h-auto font-semibold cursor-pointer">
-                  Semua <ChevronRight size={14} />
-                </Button>
-              </Link>
             </CardHeader>
 
-            <CardContent className="p-4 sm:p-5 space-y-3">
-              {recentConversations.map((conv: RecentConversationItem) => (
-                <div
-                  key={conv.id}
-                  className="p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors space-y-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-[11px] flex items-center justify-center flex-shrink-0">
-                        {conv.initials}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-xs text-slate-900 dark:text-white font-heading truncate">
-                          {conv.with}
-                        </p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">{conv.role}</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 flex-shrink-0">{conv.time}</span>
-                  </div>
-
-                  <p className="text-xs text-slate-600 dark:text-slate-400 font-nunito line-clamp-2 leading-relaxed">
-                    "{conv.lastMessage}"
-                  </p>
-
-                  <div className="pt-1 flex justify-end">
-                    <Link href="/patient/room">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-800 px-2 py-0.5 h-7 font-semibold gap-1 cursor-pointer"
-                      >
-                        Buka Percakapan <ArrowRight size={12} />
-                      </Button>
-                    </Link>
-                  </div>
+            <CardContent className="p-6">
+              <div className="py-8 flex flex-col items-center justify-center text-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+                  <MessageCircle size={20} />
                 </div>
-              ))}
+                <div className="space-y-0.5">
+                  <p className="font-heading font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
+                    Belum Ada Percakapan Sesi
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito max-w-xs">
+                    Riwayat percakapan telekonseling Anda akan dicatat otomatis setelah sesi berlangsung.
+                  </p>
+                </div>
+                <span className="text-[10px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 mt-1">
+                  Fitur booking hadir di Fase 3
+                </span>
+              </div>
             </CardContent>
           </Card>
 
