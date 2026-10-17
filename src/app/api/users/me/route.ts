@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, getRoleProfile, displayName, fail } from '@/lib/auth/session';
 import { ROLE_UPDATE_SCHEMAS } from '@/lib/validations/user';
 import { normalizePhone } from '@/lib/validations/phone';
+import { SystemSettingsService } from '@/services/system-settings.service';
 import type { UserEntity } from '@/types/database';
 
 export { GET } from '@/app/api/auth/me/route';
@@ -127,6 +128,26 @@ export async function PATCH(req: Request) {
       }
       if (validatedData.tarif_sesi !== undefined) {
         profileUpdates.tarif_sesi = Number(validatedData.tarif_sesi);
+      }
+      if (validatedData.booking_paused !== undefined) {
+        profileUpdates.booking_paused = Boolean(validatedData.booking_paused);
+      }
+      if (validatedData.extension_price_coins !== undefined) {
+        if (validatedData.extension_price_coins !== null) {
+          const extCoins = Number(validatedData.extension_price_coins);
+          const publicSettings = await SystemSettingsService.getPublicSettings();
+          const { min_coins, max_coins } = publicSettings.extension_price;
+          if (extCoins < min_coins || extCoins > max_coins) {
+            return fail(
+              422,
+              'VALIDATION_ERROR',
+              `Harga perpanjangan sesi harus berada dalam rentang ${min_coins} - ${max_coins} koin`
+            );
+          }
+          profileUpdates.extension_price_coins = extCoins;
+        } else {
+          profileUpdates.extension_price_coins = null;
+        }
       }
     } else if (userRole === 'relawan') {
       if (validatedData.alias_name !== undefined) {

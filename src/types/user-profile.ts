@@ -72,6 +72,9 @@ export interface PsikologProfile {
   saldo: number | string;
   verified_at: string | null;
   rejection_reason: string | null;
+  booking_paused?: boolean;
+  extension_price_coins?: number | null;
+  suspended_until?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -111,6 +114,8 @@ export interface UpdateMePsikologPayload {
   spesialisasi?: string[];
   tahun_pengalaman?: number;
   tarif_sesi?: number;
+  booking_paused?: boolean;
+  extension_price_coins?: number | null;
 }
 
 export interface UpdateMeRelawanPayload {

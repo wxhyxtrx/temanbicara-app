@@ -68,6 +68,13 @@ export const updateMePsikologSchema = z
         message: 'Tarif sesi harus merupakan kelipatan Rp10.000',
       })
       .optional(),
+    booking_paused: z.boolean().optional(),
+    extension_price_coins: z
+      .number()
+      .int('Harga ekstensi harus berupa bilangan bulat')
+      .positive('Harga ekstensi harus lebih besar dari 0')
+      .nullable()
+      .optional(),
   })
   .strict();
 
