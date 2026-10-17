@@ -1,45 +1,72 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   Headphones,
   Heart,
-  MessageCircle,
-  Clock,
-  ShieldCheck,
   Star,
   BookOpen,
-  ArrowRight,
   AlertCircle,
-  Sparkles,
-  CheckCircle2,
-  Users,
 } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
-import { usePeerVentStore } from "@/store/peer-vent-store";
+import { userService } from "@/services/user.service";
+import { usePublicSettings } from "@/hooks/use-public-settings";
+import type { RelawanProfile } from "@/types/user-profile";
 
 export default function ListenerBerandaPage() {
   const user = useUserStore((state) => state.user);
-  const posts = usePeerVentStore((state) => state.posts);
-  const dailySessionsCompleted = usePeerVentStore((state) => state.dailySessionsCompleted);
-  const maxDailySessions = usePeerVentStore((state) => state.maxDailySessions);
-  const isOnBreak = usePeerVentStore((state) => state.isOnBreak);
-  const toggleBreakMode = usePeerVentStore((state) => state.toggleBreakMode);
+  const { settings } = usePublicSettings();
 
-  const waitingPosts = React.useMemo(() => posts.filter((p) => p.status === "menunggu"), [posts]);
+  const [profile, setProfile] = useState<RelawanProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [userMe, setUserMe] = useState<{ fullName?: string; email?: string } | null>(null);
 
-  const listenerData = {
-    listenerBadge: user.listenerData?.listenerBadge || "Pendengar Empatik Terlatih",
-    sessionsCompleted: user.listenerData?.sessionsCompleted ?? 0,
-    rating: user.listenerData?.rating ?? 5.0,
-  };
+  useEffect(() => {
+    let isMounted = true;
 
-  const displayName = user.fullName || user.alias || "Sahabat Pendengar";
+    async function loadData() {
+      try {
+        const res = await userService.getMe();
+        if (!isMounted) return;
+        if (res.success && res.data) {
+          setUserMe(res.data.user);
+          if (res.data.profile) {
+            setProfile(res.data.profile as RelawanProfile);
+          }
+        }
+      } catch (err) {
+        console.error("Gagal memuat profil relawan:", err);
+      } finally {
+        if (isMounted) setLoadingProfile(false);
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const dailyQuota = settings?.relawan?.daily_ticket_quota ?? 3;
+  const isAvailable = Boolean(profile?.is_available);
+  const ratingValue = profile?.rating_rata_rata != null ? Number(profile.rating_rata_rata) : null;
+  const ratingDisplay = ratingValue != null && !isNaN(ratingValue) ? ratingValue.toFixed(1) : "-";
+  const totalSesi = profile?.total_sesi ?? user.listenerData?.sessionsCompleted ?? 0;
+
+  const displayName =
+    profile?.alias_name ||
+    profile?.nama_lengkap ||
+    userMe?.fullName ||
+    user.alias ||
+    user.fullName ||
+    "Sahabat Pendengar";
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -51,8 +78,16 @@ export default function ListenerBerandaPage() {
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
           <div className="space-y-3.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/60 border border-teal-700/60 text-teal-200 text-xs font-semibold backdrop-blur-md">
-              <span className={`w-2 h-2 rounded-full ${!isOnBreak ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
-              <span>{!isOnBreak ? "Status: Siaga Menerima Curhat" : "Status: Sedang Istirahat Emosi (Break)"}</span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isAvailable ? "bg-emerald-400 animate-pulse" : "bg-slate-400"
+                }`}
+              />
+              <span>
+                {isAvailable
+                  ? "Status: Siaga Menerima Curhat"
+                  : "Status: Istirahat / Belum Aktif"}
+              </span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white tracking-tight leading-snug">
@@ -85,23 +120,37 @@ export default function ListenerBerandaPage() {
               <div className="space-y-0.5">
                 <p className="text-xs font-bold text-emerald-300">Burnout Guard Relawan</p>
                 <p className="text-[11px] text-teal-100/70 font-nunito">
-                  {isOnBreak ? "Sedang istirahat sejenak" : `Beban: ${dailySessionsCompleted}/${maxDailySessions} sesi hari ini`}
+                  {`Beban: 0/${dailyQuota} sesi hari ini`}
                 </p>
               </div>
-              <Switch checked={!isOnBreak} onCheckedChange={(checked) => toggleBreakMode(!checked)} className="cursor-pointer" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-block cursor-not-allowed">
+                    <Switch
+                      checked={isAvailable}
+                      disabled
+                      className="opacity-60 pointer-events-none"
+                    />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Segera bisa diubah</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div className="pt-2 border-t border-teal-800/80 flex items-center justify-between text-[11px] text-teal-300">
-              <span>Batas Aman: {maxDailySessions} Sesi/Hari</span>
+              <span>Batas Aman: {dailyQuota} Sesi/Hari</span>
               <span className="flex items-center gap-1 text-amber-300 font-bold">
-                <Star size={12} className="fill-amber-300" /> {listenerData.rating}
+                <Star size={12} className="fill-amber-300" /> {ratingDisplay}
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. KPI Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* 2. KPI Stat Cards (2 Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        {/* Card 1: Jiwa Didampingi */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Jiwa Didampingi</span>
@@ -110,11 +159,20 @@ export default function ListenerBerandaPage() {
             </span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-heading text-teal-900 dark:text-teal-300">
-            {listenerData.sessionsCompleted} <span className="text-xs font-semibold text-teal-600">Teman</span>
+            {loadingProfile ? (
+              <span className="text-base text-slate-400 font-normal">Memuat...</span>
+            ) : (
+              <>
+                {totalSesi} <span className="text-xs font-semibold text-teal-600">Teman</span>
+              </>
+            )}
           </p>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">Percakapan empatik selesai</span>
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
+            Percakapan empatik selesai
+          </span>
         </div>
 
+        {/* Card 2: Skor Kehangatan (Rating) */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Skor Kehangatan</span>
@@ -123,36 +181,19 @@ export default function ListenerBerandaPage() {
             </span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-heading text-amber-700 dark:text-amber-400">
-            {listenerData.rating} <span className="text-xs font-semibold text-slate-500">/ 5.0</span>
+            {loadingProfile ? (
+              <span className="text-base text-slate-400 font-normal">Memuat...</span>
+            ) : ratingDisplay === "-" ? (
+              <span className="text-slate-900 dark:text-white">-</span>
+            ) : (
+              <>
+                {ratingDisplay}{" "}
+                <span className="text-xs font-semibold text-slate-500">/ 5.0</span>
+              </>
+            )}
           </p>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">Evaluasi apresiasi anonim</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Waktu Mendengar</span>
-            <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400">
-              <Clock size={15} />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-emerald-700 dark:text-emerald-400">
-            124 <span className="text-xs font-semibold">Jam</span>
-          </p>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">Dedikasi kerelawanan aktif</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Sertifikasi</span>
-            <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-400">
-              <ShieldCheck size={15} />
-            </span>
-          </div>
-          <p className="text-sm sm:text-base font-bold font-heading text-slate-900 dark:text-white truncate">
-            PFA Certified
-          </p>
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block font-nunito font-semibold">
-            Standar Pertolongan Pertama
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
+            Evaluasi apresiasi anonim
           </span>
         </div>
       </div>
@@ -173,58 +214,32 @@ export default function ListenerBerandaPage() {
                     Pilih percakapan yang sesuai dengan kapasitas emosional Anda saat ini
                   </CardDescription>
                 </div>
-                <Badge variant="outline" className="border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 text-xs">
-                  {waitingPosts.length} Menunggu
+                <Badge
+                  variant="outline"
+                  className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 text-xs"
+                >
+                  Segera Hadir
                 </Badge>
               </div>
             </CardHeader>
 
-            <CardContent className="p-4 sm:p-6 space-y-4">
-              {waitingPosts.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 font-bold text-xs flex items-center justify-center">
-                        {item.patientAlias.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white font-heading">
-                          {item.patientAlias}
-                        </p>
-                        <span className="text-[10px] text-slate-400 font-nunito">{item.createdAt}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${item.emotionColor}`}>
-                        {item.emotion}
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                        {item.topic}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-nunito bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-100 dark:border-slate-800 italic leading-relaxed">
-                    "{item.content}"
-                  </p>
-
-                  <div className="flex justify-end pt-1">
-                    <Link href="/listener/queue">
-                      <Button
-                        size="sm"
-                        className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg px-4 py-1.5 h-8 gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <MessageCircle size={14} />
-                        Mulai Dengarkan Sesi Ini
-                      </Button>
-                    </Link>
-                  </div>
+            <CardContent className="p-6">
+              <div className="py-12 flex flex-col items-center justify-center text-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                  <Headphones size={24} />
                 </div>
-              ))}
+                <div className="space-y-1">
+                  <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                    Antrean Curhat Hadir di Fase 5
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito leading-relaxed">
+                    Sistem tiket curhat sebaya sedang dipersiapkan. Relawan pendengar akan dapat menerima teman bicara dan memulai percakapan empatik setelah fitur ini aktif.
+                  </p>
+                </div>
+                <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-800">
+                  Fase 5 • Tiket Curhat Sebaya
+                </span>
+              </div>
             </CardContent>
           </Card>
         </div>
