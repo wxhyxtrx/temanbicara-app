@@ -47,6 +47,7 @@ export default function PatientBerandaPage() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingConsultantId, setBookingConsultantId] = useState<number | undefined>(undefined);
+  const [selectedSlotIso, setSelectedSlotIso] = useState<string | undefined>(undefined);
 
   // Dynamic Psychologists from API
   const [psychologists, setPsychologists] = useState<PublicPsychologist[]>([]);
@@ -502,6 +503,11 @@ export default function PatientBerandaPage() {
         consultant={selectedConsultant}
         open={isProfileModalOpen}
         onOpenChange={setIsProfileModalOpen}
+        onSelectSlot={(psych, slotIso) => {
+          setSelectedPsychologist(psych);
+          setSelectedSlotIso(slotIso);
+          setIsBookingModalOpen(true);
+        }}
         onBookSession={(consultant) => {
           setBookingConsultantId(consultant.id);
           setIsBookingModalOpen(true);
