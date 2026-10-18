@@ -15,7 +15,7 @@ import {
 import { Tables, TablePaginationFooter, Column } from "@/components/shared/atoms/Table";
 import { notify } from "@/lib/toast";
 import { bookingClient, BookingApiError } from "@/services/booking.client";
-import type { AdminReviewItem } from "@/types/booking";
+import type { AdminReviewItem, AdminReviewStats } from "@/types/booking";
 import {
   Star,
   Eye,
@@ -38,6 +38,7 @@ export default function AdminReviewsPage() {
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(20);
   const [total, setTotal] = useState<number>(0);
+  const [stats, setStats] = useState<AdminReviewStats>({ total: 0, reported: 0, hidden: 0 });
   const [filter, setFilter] = useState<ModerationFilter>("reported");
   const [search, setSearch] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -57,6 +58,10 @@ export default function AdminReviewsPage() {
         page: targetPage,
         limit: targetLimit,
       });
+
+      if (res.stats) {
+        setStats(res.stats);
+      }
 
       if (res.success && Array.isArray(res.data)) {
         if (res.data.length === 0 && targetPage > 1 && res.pagination.totalPages < targetPage) {
@@ -112,14 +117,6 @@ export default function AdminReviewsPage() {
       );
     });
   }, [reviews, search]);
-
-  const reportedCount = useMemo(() => {
-    return reviews.filter((r) => !!r.reported_at).length;
-  }, [reviews]);
-
-  const hiddenCount = useMemo(() => {
-    return reviews.filter((r) => r.is_hidden).length;
-  }, [reviews]);
 
   const handleOpenActionModal = (review: AdminReviewItem, nextHidden: boolean) => {
     setSelectedReview(review);
@@ -344,7 +341,7 @@ export default function AdminReviewsPage() {
                 Dilaporkan Psikolog
               </span>
               <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono">
-                {reportedCount} Ulasan
+                {stats.reported} Ulasan
               </p>
               <p className="text-[11px] text-amber-700/80 dark:text-amber-400">
                 Membutuhkan tindakan evaluasi admin
@@ -363,7 +360,7 @@ export default function AdminReviewsPage() {
                 Disembunyikan
               </span>
               <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono">
-                {hiddenCount} Ulasan
+                {stats.hidden} Ulasan
               </p>
               <p className="text-[11px] text-rose-700/80 dark:text-rose-400">
                 Disensor dari tampilan profil publik
@@ -379,10 +376,10 @@ export default function AdminReviewsPage() {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                Total Ulasan ({filter === "reported" ? "Dilaporkan" : filter === "hidden" ? "Disembunyikan" : "Semua"})
+                Total Ulasan
               </span>
               <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono">
-                {total} Ulasan
+                {stats.total} Ulasan
               </p>
               <p className="text-[11px] text-slate-400">Tercatat di sistem platform</p>
             </div>

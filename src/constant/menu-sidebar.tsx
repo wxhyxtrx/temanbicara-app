@@ -200,7 +200,7 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         icon: Users,
       },
       {
-        title: "Moderasi Ulasan",
+        title: "Ulasan",
         description: "Sensor & kurasi ulasan publik",
         url: "/admin/reviews",
         icon: Star,
