@@ -12,6 +12,11 @@ import type {
   ReviewHidePayload,
   SessionReviewEntity,
   PublicReviewItem,
+  SessionMessageView,
+  SendSessionMessagePayload,
+  SessionMediaUploadPayload,
+  SessionMediaUploadResponse,
+  SessionMediaUrlResponse,
 } from '@/types/booking';
 
 export class BookingApiError extends Error {
@@ -273,5 +278,84 @@ export const bookingClient = {
       body: JSON.stringify(payload),
     });
     return handleResponse<{ success: boolean; data: SessionReviewEntity; message: string }>(res);
+  },
+
+  /**
+   * Mengambil riwayat pesan dalam sesi konseling
+   */
+  async getSessionMessages(
+    bookingId: string
+  ): Promise<{ success: boolean; data: SessionMessageView[] }> {
+    const res = await fetch(`/api/bookings/${bookingId}/messages`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: SessionMessageView[] }>(res);
+  },
+
+  /**
+   * Mengirim pesan teks, gambar, atau suara ke sesi konseling
+   */
+  async sendSessionMessage(
+    bookingId: string,
+    payload: SendSessionMessagePayload
+  ): Promise<{ success: boolean; data: SessionMessageView }> {
+    const res = await fetch(`/api/bookings/${bookingId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<{ success: boolean; data: SessionMessageView }>(res);
+  },
+
+  /**
+   * Mendapatkan signed upload URL untuk unggah berkas gambar atau pesan suara
+   */
+  async createSessionMediaUploadUrl(
+    bookingId: string,
+    payload: SessionMediaUploadPayload
+  ): Promise<{ success: boolean; data: SessionMediaUploadResponse }> {
+    const res = await fetch(`/api/bookings/${bookingId}/media-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<{ success: boolean; data: SessionMediaUploadResponse }>(res);
+  },
+
+  /**
+   * Mendapatkan signed download URL untuk berkas media di bucket session-media
+   */
+  async getSessionMediaDownloadUrl(
+    bookingId: string,
+    mediaPath: string
+  ): Promise<{ success: boolean; data: SessionMediaUrlResponse }> {
+    const url = `/api/bookings/${bookingId}/media-url?path=${encodeURIComponent(mediaPath)}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: SessionMediaUrlResponse }>(res);
+  },
+
+  /**
+   * Mengunggah file biner langsung ke signed upload URL (storage Supabase)
+   */
+  async uploadMediaBinary(
+    uploadUrl: string,
+    file: Blob | File
+  ): Promise<void> {
+    const res = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream',
+      },
+      body: file,
+    });
+    if (!res.ok) {
+      throw new Error(`Gagal mengunggah berkas ke penyimpanan (${res.status})`);
+    }
   },
 };
