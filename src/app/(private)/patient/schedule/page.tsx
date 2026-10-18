@@ -25,6 +25,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
 import { PsychologistProfileModal } from "@/components/views/patient/psychologist-profile-modal";
+import { SelectPsychologistModal } from "@/components/views/schedule/select-psychologist-modal";
 import { BookingCard } from "@/components/views/schedule/booking-card";
 import { PatientBookingDetailModal } from "@/components/views/schedule/patient-booking-detail-modal";
 import { CancelBookingModal } from "@/components/views/schedule/cancel-booking-modal";
@@ -60,6 +61,7 @@ function PatientScheduleContent() {
   const [selectedPsychologist, setSelectedPsychologist] = useState<PublicPsychologist | null>(null);
   const [selectedSlotIso, setSelectedSlotIso] = useState<string | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isSelectPsychologistOpen, setIsSelectPsychologistOpen] = useState<boolean>(false);
 
   // Cancel Modal State (Point 2)
   const [cancelBookingTarget, setCancelBookingTarget] = useState<PatientBookingView | null>(null);
@@ -99,7 +101,7 @@ function PatientScheduleContent() {
     loadBookings("upcoming");
     loadBookings("history");
     if (searchParams.get("booking") === "true") {
-      setIsBookingOpen(true);
+      setIsSelectPsychologistOpen(true);
     }
   }, [searchParams, loadBookings]);
 
@@ -253,12 +255,8 @@ function PatientScheduleContent() {
           </Button>
 
           <Button
-            onClick={() => {
-              setSelectedPsychologist(null);
-              setSelectedSlotIso(null);
-              setIsBookingOpen(true);
-            }}
-            className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-4 py-2 h-9 font-semibold shadow-xs gap-1.5"
+            onClick={() => setIsSelectPsychologistOpen(true)}
+            className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-4 py-2 h-9 font-semibold shadow-xs gap-1.5 cursor-pointer"
           >
             <PlusCircle size={15} />
             <span>Jadwalkan Konsultasi Baru</span>
@@ -424,12 +422,8 @@ function PatientScheduleContent() {
               {activeTab === "upcoming" && (
                 <Button
                   size="sm"
-                  onClick={() => {
-                    setSelectedPsychologist(null);
-                    setSelectedSlotIso(null);
-                    setIsBookingOpen(true);
-                  }}
-                  className="mt-2 bg-teal-600 hover:bg-teal-700 text-white text-xs rounded-xl h-8 px-4 font-semibold shadow-xs gap-1.5"
+                  onClick={() => setIsSelectPsychologistOpen(true)}
+                  className="mt-2 bg-teal-600 hover:bg-teal-700 text-white text-xs rounded-xl h-8 px-4 font-semibold shadow-xs gap-1.5 cursor-pointer"
                 >
                   <PlusCircle size={14} />
                   <span>Pesan Sesi Sekarang</span>
@@ -453,6 +447,18 @@ function PatientScheduleContent() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal Pemilihan Psikolog Terlebih Dahulu */}
+      <SelectPsychologistModal
+        isOpen={isSelectPsychologistOpen}
+        onClose={() => setIsSelectPsychologistOpen(false)}
+        onSelectPsychologist={(psych) => {
+          setSelectedPsychologist(psych);
+          setSelectedSlotIso(null);
+          setIsSelectPsychologistOpen(false);
+          setIsProfileModalOpen(true);
+        }}
+      />
 
       {/* Modal Detail Profil & Slot Praktik Psikolog */}
       <PsychologistProfileModal

@@ -347,7 +347,7 @@ export function BookingModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-2xl font-nunito p-4 sm:p-6 rounded-2xl max-h-[92vh] overflow-y-auto overflow-x-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
+      <DialogContent className="w-full max-w-2xl font-nunito p-4 sm:p-6 rounded-2xl max-h-[92vh] overflow-y-auto overflow-x-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl box-border">
         <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800 w-full min-w-0">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
@@ -625,7 +625,7 @@ export function BookingModal({
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-600 dark:text-slate-400">
-                  Biaya Sesi Konseling (60 Menit):
+                  Biaya Sesi Konseling (45 Menit):
                 </span>
                 <div className="text-right">
                   <span className="font-extrabold text-teal-700 dark:text-teal-400 font-mono text-sm">
