@@ -116,16 +116,7 @@ CREATE POLICY client_notes_select_psikolog ON public.client_notes
     FOR SELECT TO authenticated
     USING (auth.uid() = psikolog_id);
 
-DROP POLICY IF EXISTS client_notes_update_psikolog ON public.client_notes;
-CREATE POLICY client_notes_update_psikolog ON public.client_notes
-    FOR UPDATE TO authenticated
-    USING (auth.uid() = psikolog_id)
-    WITH CHECK (auth.uid() = psikolog_id);
-
-DROP POLICY IF EXISTS client_notes_insert_psikolog ON public.client_notes;
-CREATE POLICY client_notes_insert_psikolog ON public.client_notes
-    FOR INSERT TO authenticated
-    WITH CHECK (auth.uid() = psikolog_id);
+REVOKE INSERT, UPDATE, DELETE ON public.client_notes FROM anon, authenticated;
 
 
 CREATE TABLE IF NOT EXISTS public.emergency_contact_access_log (
@@ -148,10 +139,7 @@ CREATE POLICY emergency_contact_log_admin_select ON public.emergency_contact_acc
     FOR SELECT TO authenticated
     USING (public.is_admin());
 
-DROP POLICY IF EXISTS emergency_contact_log_admin_insert ON public.emergency_contact_access_log;
-CREATE POLICY emergency_contact_log_admin_insert ON public.emergency_contact_access_log
-    FOR INSERT TO authenticated
-    WITH CHECK (public.is_admin());
+REVOKE INSERT, UPDATE, DELETE ON public.emergency_contact_access_log FROM anon, authenticated;
 
 
 CREATE OR REPLACE FUNCTION public.client_note_upsert(
@@ -181,7 +169,7 @@ BEGIN
         RAISE EXCEPTION 'FORBIDDEN_NOT_BOOKING_PSIKOLOG' USING ERRCODE = '42501';
     END IF;
 
-    IF v_booking.status NOT IN ('in_progress'::public.booking_status, 'completed'::public.booking_status) THEN
+    IF v_booking.status NOT IN ('in_progress', 'completed') THEN
         RAISE EXCEPTION 'INVALID_BOOKING_STATUS' USING ERRCODE = 'P0001';
     END IF;
 
@@ -226,6 +214,7 @@ DECLARE
     v_booking_id UUID := 'b7000000-0000-0000-0000-000000000101';
     v_note public.client_notes%ROWTYPE;
     v_threw BOOLEAN;
+    v_count INTEGER;
 BEGIN
     -- 1. Buat booking sesi aktif antara Psikolog A dan Pasien
     INSERT INTO public.bookings (
@@ -256,6 +245,20 @@ BEGIN
         'UJI 1 GAGAL: psikolog_id tidak cocok';
     ASSERT v_note.body LIKE 'Observasi awal%',
         'UJI 1 GAGAL: isi body catatan tidak tersimpan dengan benar';
+
+    -- 2b. Psikolog A memanggil kembali client_note_upsert (update pada booking in_progress) -> tetap 1 baris dengan body baru
+    v_note := public.client_note_upsert(
+        v_booking_id,
+        'b7000000-0000-0000-0000-000000000001',
+        'Observasi lanjutan in_progress: Pasien merespons teknik pernapasan dengan baik dan detak jantung stabil.'
+    );
+
+    ASSERT v_note.body = 'Observasi lanjutan in_progress: Pasien merespons teknik pernapasan dengan baik dan detak jantung stabil.',
+        'UJI 1b GAGAL: body catatan baru pada update in_progress tidak sesuai';
+
+    SELECT count(*) INTO v_count FROM public.client_notes WHERE booking_id = v_booking_id;
+    ASSERT v_count = 1,
+        format('UJI 1b GAGAL: catatan setelah dipanggil lagi harus tetap 1 baris (ditemukan %s baris)', v_count);
 
     -- 3. Psikolog B mencoba menulis/mengubah catatan sesi Psikolog A -> WAJIB DITOLAK
     v_threw := false;

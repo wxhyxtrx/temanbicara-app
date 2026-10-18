@@ -32,7 +32,8 @@ CREATE INDEX IF NOT EXISTS idx_client_notes_patient
 CREATE INDEX IF NOT EXISTS idx_client_notes_psikolog
     ON public.client_notes(psikolog_id);
 
--- RLS client_notes: hanya psikolog penulis yang dapat membaca atau mengubah (tanpa akses admin / pasien)
+-- RLS client_notes: hanya psikolog penulis yang dapat membaca (tanpa akses admin / pasien)
+-- Penulisan (INSERT/UPDATE/DELETE) dibatasi hanya via RPC service_role
 ALTER TABLE public.client_notes ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS client_notes_select_psikolog ON public.client_notes;
@@ -40,16 +41,7 @@ CREATE POLICY client_notes_select_psikolog ON public.client_notes
     FOR SELECT TO authenticated
     USING (auth.uid() = psikolog_id);
 
-DROP POLICY IF EXISTS client_notes_update_psikolog ON public.client_notes;
-CREATE POLICY client_notes_update_psikolog ON public.client_notes
-    FOR UPDATE TO authenticated
-    USING (auth.uid() = psikolog_id)
-    WITH CHECK (auth.uid() = psikolog_id);
-
-DROP POLICY IF EXISTS client_notes_insert_psikolog ON public.client_notes;
-CREATE POLICY client_notes_insert_psikolog ON public.client_notes
-    FOR INSERT TO authenticated
-    WITH CHECK (auth.uid() = psikolog_id);
+REVOKE INSERT, UPDATE, DELETE ON public.client_notes FROM anon, authenticated;
 
 
 -- 2. TABEL EMERGENCY_CONTACT_ACCESS_LOG
@@ -71,7 +63,8 @@ CREATE INDEX IF NOT EXISTS idx_emergency_contact_log_patient
 CREATE INDEX IF NOT EXISTS idx_emergency_contact_log_admin
     ON public.emergency_contact_access_log(admin_id, created_at DESC);
 
--- RLS emergency_contact_access_log: hanya admin aktif yang dapat membaca dan mencatat log (menggunakan public.is_admin())
+-- RLS emergency_contact_access_log: hanya admin aktif yang dapat membaca log (menggunakan public.is_admin())
+-- Pencatatan log dilakukan oleh server route via service_role
 ALTER TABLE public.emergency_contact_access_log ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS emergency_contact_log_admin_select ON public.emergency_contact_access_log;
@@ -79,10 +72,7 @@ CREATE POLICY emergency_contact_log_admin_select ON public.emergency_contact_acc
     FOR SELECT TO authenticated
     USING (public.is_admin());
 
-DROP POLICY IF EXISTS emergency_contact_log_admin_insert ON public.emergency_contact_access_log;
-CREATE POLICY emergency_contact_log_admin_insert ON public.emergency_contact_access_log
-    FOR INSERT TO authenticated
-    WITH CHECK (public.is_admin());
+REVOKE INSERT, UPDATE, DELETE ON public.emergency_contact_access_log FROM anon, authenticated;
 
 
 -- 3. RPC: client_note_upsert
@@ -118,7 +108,7 @@ BEGIN
     END IF;
 
     -- 3. Validasi status booking (hanya in_progress atau completed)
-    IF v_booking.status NOT IN ('in_progress'::public.booking_status, 'completed'::public.booking_status) THEN
+    IF v_booking.status NOT IN ('in_progress', 'completed') THEN
         RAISE EXCEPTION 'INVALID_BOOKING_STATUS' USING ERRCODE = 'P0001';
     END IF;
 
