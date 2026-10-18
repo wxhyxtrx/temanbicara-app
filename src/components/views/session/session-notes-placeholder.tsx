@@ -407,7 +407,7 @@ export function SessionNotesPanel({
 
                 <div className="flex items-center gap-1.5 text-[10px] text-slate-400 pt-1">
                   <Shield size={11} className="text-teal-600 dark:text-teal-400 shrink-0" />
-                  <span className="truncate">Tersimpan terenkripsi, hanya dapat diakses oleh Anda.</span>
+                  <span className="truncate">Hanya dapat dibaca oleh Anda</span>
                 </div>
               </div>
             </>

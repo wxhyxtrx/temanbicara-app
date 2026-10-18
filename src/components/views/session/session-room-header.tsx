@@ -64,7 +64,7 @@ export function SessionRoomHeader({
               </Badge>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              Mulai: {formatWibTime(booking.start_at)} WIB
+              Mulai: {formatWibTime(booking.start_at)}
             </p>
           </div>
         </div>

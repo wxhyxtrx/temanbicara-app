@@ -445,7 +445,7 @@ export default function CounselorClientsPage() {
                           <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
                             <div className="flex items-center gap-1">
                               <Shield size={11} className="text-teal-600 dark:text-teal-400" />
-                              <span>Catatan klinis terenkripsi</span>
+                              <span>Hanya dapat dibaca oleh Anda</span>
                             </div>
                             <span>Terakhir disimpan: {formatWibTime(item.updated_at)}</span>
                           </div>

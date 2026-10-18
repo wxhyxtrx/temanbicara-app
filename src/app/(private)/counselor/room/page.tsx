@@ -148,7 +148,7 @@ function CounselorRoomContent() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock size={13} className="text-teal-600" />
-                    <span>{formatWibTime(b.start_at)} WIB</span>
+                    <span>{formatWibTime(b.start_at)}</span>
                   </div>
                 </div>
                 {b.keluhan && (
