@@ -392,12 +392,10 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
   const handleRequestExtension = async () => {
     try {
       setIsRequestingExtension(true);
-      const res = await bookingClient.requestExtension(bookingId);
-      if (res.success) {
-        notify.success("Ekstensi Diajukan", "Permintaan perpanjangan 10 menit dikirim ke psikolog.");
-        setExtensionModalOpen(false);
-        fetchBooking();
-      }
+      await bookingClient.requestExtension(bookingId);
+      setExtensionModalOpen(false);
+      notify.success("Ekstensi Diajukan", "Permintaan perpanjangan 10 menit dikirim ke psikolog.");
+      fetchBooking();
     } catch (err: unknown) {
       notify.error("Pengajuan Gagal", err instanceof Error ? err.message : "Tidak dapat mengajukan ekstensi.");
     } finally {
@@ -439,12 +437,10 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
   const handleEndSession = async () => {
     try {
       setIsEndingSession(true);
-      const res = await bookingClient.endSession(bookingId);
-      if (res.success) {
-        notify.success("Sesi Selesai", "Sesi konseling berhasil diakhiri.");
-        setEndSessionModalOpen(false);
-        fetchBooking();
-      }
+      await bookingClient.endSession(bookingId);
+      setEndSessionModalOpen(false);
+      notify.success("Sesi Selesai", "Sesi konseling berhasil diakhiri.");
+      fetchBooking();
     } catch (err: unknown) {
       notify.error("Gagal Mengakhiri Sesi", err instanceof Error ? err.message : "Kesalahan sistem.");
     } finally {
@@ -610,11 +606,14 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
           />
         </div>
 
-        {/* Kolom Kanan: Placeholder Catatan Klien (Khusus Psikolog) */}
+        {/* Kolom Kanan: Catatan Klien (Khusus Psikolog) */}
         {role === "psikolog" && (
           <SessionNotesPlaceholder
             isOpen={isNotesPanelOpen}
+            bookingId={bookingId}
+            bookingStatus={booking.status}
             patientDisplayName={booking.patient_display_name}
+            patientId={booking.patient_id}
           />
         )}
       </div>
@@ -624,12 +623,12 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
         setExtensionModalOpen={setExtensionModalOpen}
         isRequestingExtension={isRequestingExtension}
         onRequestExtension={handleRequestExtension}
-        extensionPriceCoins={booking.extension_price_coins}
+        extensionPriceCoins={booking?.extension_price_coins ?? null}
         endSessionModalOpen={endSessionModalOpen}
         setEndSessionModalOpen={setEndSessionModalOpen}
         isEndingSession={isEndingSession}
         onEndSession={handleEndSession}
-        patientDisplayName={booking.patient_display_name}
+        patientDisplayName={booking?.patient_display_name || "pasien"}
       />
     </div>
   );

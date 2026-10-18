@@ -23,7 +23,7 @@ interface SessionModalsProps {
   setEndSessionModalOpen: (val: boolean) => void;
   isEndingSession: boolean;
   onEndSession: () => void;
-  patientDisplayName: string;
+  patientDisplayName?: string | null;
 }
 
 export function SessionModals({
@@ -38,6 +38,9 @@ export function SessionModals({
   onEndSession,
   patientDisplayName,
 }: SessionModalsProps) {
+  const cleanedName = patientDisplayName?.replace(/[?]/g, "").trim();
+  const normalizedPatientName = cleanedName || "pasien";
+
   return (
     <>
       {/* Confirmation Dialog: Pasien Ajukan Ekstensi */}
@@ -97,7 +100,7 @@ export function SessionModals({
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed pt-2">
               Apakah Anda yakin ingin menyelesaikan dan mengakhiri sesi konseling dengan{" "}
-              <strong>{patientDisplayName}</strong>? Setelah diakhiri, ruang obrolan akan beralih ke mode hanya-baca dan penerimaan honor sesi akan segera diselesaikan ke saldo Anda.
+              <strong className="text-slate-800 dark:text-slate-200">{normalizedPatientName}</strong>? Setelah diakhiri, ruang obrolan akan beralih ke mode hanya-baca dan penerimaan honor sesi akan segera diselesaikan ke saldo Anda.
             </DialogDescription>
           </DialogHeader>
 

@@ -9,6 +9,7 @@ import type { BookingEntity, BookingStatus, ExtensionStatus, PsikologBookingView
 export function toPsikologBookingView(booking: BookingEntity | Record<string, unknown>): PsikologBookingView {
   return {
     id: String(booking.id),
+    ...(booking.patient_id ? { patient_id: String(booking.patient_id) } : {}),
     start_at: String(booking.start_at),
     status: booking.status as BookingStatus,
     keluhan: String(booking.keluhan),

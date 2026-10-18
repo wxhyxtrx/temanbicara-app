@@ -17,6 +17,9 @@ import type {
   SessionMediaUploadPayload,
   SessionMediaUploadResponse,
   SessionMediaUrlResponse,
+  ClientNoteEntity,
+  PatientNotesResponse,
+  UpdateClientNotePayload,
 } from '@/types/booking';
 
 export class BookingApiError extends Error {
@@ -357,5 +360,47 @@ export const bookingClient = {
     if (!res.ok) {
       throw new Error(`Gagal mengunggah berkas ke penyimpanan (${res.status})`);
     }
+  },
+
+  /**
+   * Mengambil catatan klinis sesi konseling (psikolog)
+   */
+  async getClientNote(
+    bookingId: string
+  ): Promise<{ success: boolean; data: ClientNoteEntity | null; patient_id?: string }> {
+    const res = await fetch(`/api/bookings/${bookingId}/note`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: ClientNoteEntity | null; patient_id?: string }>(res);
+  },
+
+  /**
+   * Menyimpan / memperbarui catatan klinis sesi konseling (psikolog)
+   */
+  async updateClientNote(
+    bookingId: string,
+    payload: UpdateClientNotePayload
+  ): Promise<{ success: boolean; data: ClientNoteEntity }> {
+    const res = await fetch(`/api/bookings/${bookingId}/note`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<{ success: boolean; data: ClientNoteEntity }>(res);
+  },
+
+  /**
+   * Mengambil seluruh riwayat catatan klinis pasien untuk psikolog ini (baca saja)
+   */
+  async getPatientNotes(
+    patientId: string
+  ): Promise<{ success: boolean; data: PatientNotesResponse }> {
+    const res = await fetch(`/api/counselor/patients/${patientId}/notes`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: PatientNotesResponse }>(res);
   },
 };

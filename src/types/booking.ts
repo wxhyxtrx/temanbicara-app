@@ -47,6 +47,7 @@ export interface BookingEntity {
  */
 export interface PsikologBookingView {
   id: string;
+  patient_id?: string;
   start_at: string;
   status: BookingStatus;
   keluhan: string;

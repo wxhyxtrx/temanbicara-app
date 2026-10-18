@@ -39,7 +39,7 @@ export async function GET(
     // Verifikasi booking dan kepemilikan psikolog
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('bookings')
-      .select('id, psikolog_id, status')
+      .select('id, psikolog_id, status, patient_id')
       .eq('id', id)
       .maybeSingle();
 
@@ -69,6 +69,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: (note as ClientNoteEntity | null) ?? null,
+      patient_id: bookingRow.patient_id,
     });
   } catch (err: unknown) {
     return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
@@ -127,7 +128,7 @@ export async function PUT(
         return fail(403, 'FORBIDDEN', 'Hanya psikolog yang bertugas pada sesi ini yang dapat menyimpan catatan');
       }
       if (msg.includes('INVALID_BOOKING_STATUS')) {
-        return fail(400, 'INVALID_BOOKING_STATUS', 'Catatan hanya dapat dibuat atau diubah pada sesi yang sedang berlangsung atau sudah selesai');
+        return fail(409, 'INVALID_BOOKING_STATUS', 'Catatan hanya dapat dibuat atau diubah pada sesi yang sedang berlangsung atau sudah selesai');
       }
       if (msg.includes('BODY_TOO_LONG')) {
         return fail(422, 'BODY_TOO_LONG', 'Catatan maksimal 5000 karakter');
