@@ -30,6 +30,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  AlertTriangle,
   Wallet,
   Clock,
 } from "lucide-react";
@@ -47,6 +48,7 @@ import type {
   UserWalletSummary,
   PatientTopupSummary,
   MitraPayoutSummary,
+  PsikologStrikeSummary,
 } from "@/types/user-profile";
 
 interface UserDetailModalProps {
@@ -87,6 +89,7 @@ export function UserDetailModal({
   const [wallet, setWallet] = useState<UserWalletSummary | null>(null);
   const [topupSummary, setTopupSummary] = useState<PatientTopupSummary | null>(null);
   const [payoutSummary, setPayoutSummary] = useState<MitraPayoutSummary | null>(null);
+  const [strikeSummary, setStrikeSummary] = useState<PsikologStrikeSummary | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [dokumenSignedUrl, setDokumenSignedUrl] = useState<string | null>(null);
 
@@ -106,6 +109,7 @@ export function UserDetailModal({
       setWallet(null);
       setTopupSummary(null);
       setPayoutSummary(null);
+      setStrikeSummary(null);
       userService
         .getUserById(user.id)
         .then((res) => {
@@ -124,6 +128,9 @@ export function UserDetailModal({
             if (res.data.payout_summary) {
               setPayoutSummary(res.data.payout_summary);
             }
+            if (res.data.strike_summary) {
+              setStrikeSummary(res.data.strike_summary);
+            }
           }
         })
         .catch(() => {
@@ -134,6 +141,7 @@ export function UserDetailModal({
           setWallet(null);
           setTopupSummary(null);
           setPayoutSummary(null);
+          setStrikeSummary(null);
         })
         .finally(() => {
           setLoadingProfile(false);
@@ -145,6 +153,7 @@ export function UserDetailModal({
       setWallet(null);
       setTopupSummary(null);
       setPayoutSummary(null);
+      setStrikeSummary(null);
     }
   }, [open, user?.id]);
 
@@ -665,6 +674,104 @@ export function UserDetailModal({
                     isLoading={loadingProfile}
                   />
                 </>
+              )}
+            </div>
+          )}
+
+          {/* 4. Ringkasan Strike & Disiplin (Khusus Psikolog) */}
+          {activeUser.role === "psikolog" && (
+            <div className="p-3.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/60 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-rose-900 dark:text-rose-200 text-xs">
+                  <AlertTriangle size={15} className="text-rose-600 dark:text-rose-400" />
+                  <span>Ringkasan Strike & Kepatuhan (30 Hari Terakhir)</span>
+                </div>
+                {loadingProfile && (
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
+                    <Loader2 size={10} className="animate-spin" /> Memuat...
+                  </span>
+                )}
+              </div>
+
+              {loadingProfile ? (
+                <div className="space-y-2 py-1 animate-pulse">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-3.5 w-32 rounded bg-rose-200/50 dark:bg-rose-900/40" />
+                    <Skeleton className="h-3.5 w-24 rounded bg-rose-200/50 dark:bg-rose-900/40" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-3.5 w-28 rounded bg-rose-200/50 dark:bg-rose-900/40" />
+                    <Skeleton className="h-3.5 w-36 rounded bg-rose-200/50 dark:bg-rose-900/40" />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 text-[11px]">
+                  {/* Status Suspensi */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Status Suspensi</span>
+                    {(() => {
+                      const suspUntil = strikeSummary?.suspended_until || (psikologProf?.suspended_until as string | null | undefined);
+                      const isSuspended = suspUntil && new Date(suspUntil).getTime() > Date.now();
+                      if (isSuspended) {
+                        return (
+                          <Badge className="bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-300 text-[10px] font-bold">
+                            Ditangguhkan s/d {formatWIB(suspUntil)}
+                          </Badge>
+                        );
+                      }
+                      return (
+                        <Badge className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 text-[10px] font-semibold">
+                          Normal (Tidak Ditangguhkan)
+                        </Badge>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Akumulasi Poin */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Total Poin Strike</span>
+                    <span className="font-bold font-mono text-xs text-rose-700 dark:text-rose-400">
+                      {strikeSummary?.total_points_30d ?? 0} Poin ({strikeSummary?.strikes_count_30d ?? 0} insiden)
+                    </span>
+                  </div>
+
+                  {/* Daftar Strike */}
+                  <div className="pt-1.5 border-t border-rose-200/60 dark:border-rose-900/40">
+                    <span className="text-slate-500 dark:text-slate-400 font-semibold block mb-1">
+                      Daftar Pelanggaran Strike:
+                    </span>
+                    {strikeSummary && strikeSummary.items && strikeSummary.items.length > 0 ? (
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                        {strikeSummary.items.map((st) => (
+                          <div
+                            key={st.id}
+                            className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-rose-100 dark:border-rose-900/40 flex items-center justify-between text-[11px]"
+                          >
+                            <div className="space-y-0.5">
+                              <p className="font-bold text-slate-800 dark:text-slate-200">
+                                {st.reason === "late_cancel"
+                                  ? "Pembatalan Terlambat (< 24 Jam)"
+                                  : st.reason === "noshow"
+                                    ? "Tidak Hadir Sesi (No-Show)"
+                                    : st.reason}
+                              </p>
+                              <span className="text-[10px] text-slate-400 block font-mono">
+                                {formatWIB(st.created_at)} • ID: {st.booking_id.slice(0, 8)}...
+                              </span>
+                            </div>
+                            <Badge className="bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-300 text-[10px] font-bold shrink-0">
+                              +{st.points} Poin
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 italic">
+                        Tidak ada catatan strike dalam 30 hari terakhir.
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           )}
