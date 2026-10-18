@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -214,7 +215,36 @@ export default function PatientSettingsPage() {
       )}
 
       {/* 2. Main Tabs Navigation */}
-      <Tabs defaultValue="profile" className="w-full space-y-6">
+      {loadingProfile ? (
+        <div className="space-y-6 animate-pulse">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-9 w-28 rounded-xl shrink-0" />
+            ))}
+          </div>
+          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-6 shadow-xs">
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-16 h-16 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="w-48 h-5 rounded-md" />
+                <Skeleton className="w-32 h-3 rounded-md" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="w-24 h-4 rounded-md" />
+                  <Skeleton className="w-full h-9 rounded-xl" />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end pt-2">
+              <Skeleton className="w-32 h-9 rounded-xl" />
+            </div>
+          </Card>
+        </div>
+      ) : (
+        <Tabs defaultValue="profile" className="w-full space-y-6">
         <TabsList className="bg-slate-100/90 dark:bg-slate-900 p-1 rounded-xl flex w-full sm:w-auto overflow-x-auto justify-start border border-slate-200/80 dark:border-slate-800">
           <TabsTrigger
             value="profile"
@@ -622,6 +652,7 @@ export default function PatientSettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      )}
     </div>
   );
 }

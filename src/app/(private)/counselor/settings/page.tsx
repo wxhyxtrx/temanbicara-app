@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -216,7 +217,35 @@ export default function CounselorSettingsPage() {
       )}
 
       {/* 2. Main Form */}
-      <form onSubmit={handleSave} className="space-y-6">
+      {loadingProfile ? (
+        <div className="space-y-6 animate-pulse">
+          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-5 shadow-xs">
+            <div className="space-y-2">
+              <Skeleton className="w-56 h-5 rounded-md" />
+              <Skeleton className="w-72 h-3 rounded-md" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="w-28 h-4 rounded-md" />
+                  <Skeleton className="w-full h-9 rounded-xl" />
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 shadow-xs">
+            <Skeleton className="w-48 h-5 rounded-md" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Skeleton className="w-full h-10 rounded-xl" />
+              <Skeleton className="w-full h-10 rounded-xl" />
+            </div>
+            <div className="flex justify-end pt-2">
+              <Skeleton className="w-32 h-9 rounded-xl" />
+            </div>
+          </Card>
+        </div>
+      ) : (
+        <form onSubmit={handleSave} className="space-y-6">
         {/* Card 1: Identitas & Lisensi (Read-Only) */}
         <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -550,6 +579,7 @@ export default function CounselorSettingsPage() {
           </Button>
         </div>
       </form>
+      )}
     </div>
   );
 }

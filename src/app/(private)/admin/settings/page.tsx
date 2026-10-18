@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SettingsAuditTab } from "@/components/views/admin/settings/settings-audit-tab";
@@ -406,9 +407,23 @@ export default function AdminSettingsPage() {
 
         <TabsContent value="settings" className="space-y-6">
           {isLoading ? (
-            <div className="flex items-center justify-center gap-2 h-40 text-xs text-slate-500">
-              <RefreshCw size={14} className="animate-spin text-teal-600" />
-              Memuat pengaturan sistem...
+            <div className="space-y-6 animate-pulse">
+              <div className="flex gap-2 pb-1 overflow-x-auto">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-9 w-28 rounded-xl shrink-0" />
+                ))}
+              </div>
+              <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 p-6 space-y-4 bg-white dark:bg-slate-900">
+                <Skeleton className="w-48 h-5 rounded-md" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="w-32 h-4 rounded-md" />
+                      <Skeleton className="w-full h-9 rounded-xl" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : !form ? (
             <div role="alert" className="flex flex-col items-center justify-center gap-3 h-40 text-xs text-red-700 dark:text-red-300">
