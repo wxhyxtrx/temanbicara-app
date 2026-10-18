@@ -23,6 +23,8 @@ import {
   Star,
   HeartHandshake,
   Users,
+  CheckCircle2,
+  ArrowRight,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
@@ -32,6 +34,10 @@ import { PsychologistProfileModal } from "@/components/views/patient/psychologis
 import { PsychologistCard } from "@/components/views/patient/psychologist-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
+import { bookingClient } from "@/services/booking.client";
+import type { PatientBookingView } from "@/types/booking";
+import type { PasienProfile } from "@/types/user-profile";
+import { formatWibDateFull, formatWibTime, BOOKING_STATUS_CONFIG } from "@/lib/booking-utils";
 
 export default function PatientBerandaPage() {
   const [mounted, setMounted] = useState<boolean>(false);
@@ -53,6 +59,10 @@ export default function PatientBerandaPage() {
   const [psychologists, setPsychologists] = useState<PublicPsychologist[]>([]);
   const [loadingPsychologists, setLoadingPsychologists] = useState<boolean>(true);
 
+  // Dynamic Upcoming Bookings from API
+  const [upcomingBookings, setUpcomingBookings] = useState<PatientBookingView[]>([]);
+  const [loadingUpcoming, setLoadingUpcoming] = useState<boolean>(true);
+
   useEffect(() => {
     setMounted(true);
 
@@ -69,8 +79,29 @@ export default function PatientBerandaPage() {
       }
     }
 
+    async function loadUpcomingBookings() {
+      try {
+        const res = await bookingClient.getBookings({ scope: "upcoming", limit: 5 });
+        if (res && res.success && Array.isArray(res.data)) {
+          setUpcomingBookings(res.data as PatientBookingView[]);
+        }
+      } catch (err) {
+        console.error("Gagal memuat booking mendatang:", err);
+      } finally {
+        setLoadingUpcoming(false);
+      }
+    }
+
     loadPsychologists();
+    loadUpcomingBookings();
   }, []);
+
+  const isEmergencyContactEmpty = React.useMemo(() => {
+    if (!mounted || !isProfileLoaded) return false;
+    const rawContact = (user.rawProfile as PasienProfile | null)?.kontak_darurat_nama;
+    const storeContact = user.emergencyContact;
+    return (!rawContact || !rawContact.trim()) && (!storeContact || !storeContact.trim());
+  }, [mounted, isProfileLoaded, user.rawProfile, user.emergencyContact]);
 
   const filteredPsychologists = React.useMemo(() => {
     if (!psychologistSearch.trim()) return psychologists;
@@ -184,12 +215,37 @@ export default function PatientBerandaPage() {
               Semua sesi konseling dan catatan refleksi berada di bawah perlindungan kode etik kerahasiaan psikolog.
             </p>
             <div className="pt-1 flex items-center justify-between border-t border-teal-800/80 text-[11px] text-teal-300 font-medium">
-              <span>Sesi Terjadwal: 0 Sesi</span>
-              <span className="text-[10px] text-emerald-400 font-semibold">Fitur booking hadir di Fase 3</span>
+              <span>Sesi Terjadwal: {loadingUpcoming ? "..." : `${upcomingBookings.length} Sesi`}</span>
+              <Link href="/patient/schedule" className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold">
+                Lihat Jadwal →
+              </Link>
             </div>
           </div>
         </div>
       </div>
+
+      {/* 2. Banner: Lengkapi Kontak Darurat */}
+      {isEmergencyContactEmpty && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 shadow-xs">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="space-y-0.5">
+              <h4 className="font-bold font-heading text-sm text-amber-950 dark:text-amber-100">
+                Lengkapi Kontak Darurat
+              </h4>
+              <p className="text-xs text-amber-800 dark:text-amber-300 font-nunito leading-relaxed">
+                Informasi kontak darurat Anda belum lengkap. Kontak ini wajib sesuai SOP telekonseling klinis untuk penanganan cepat saat kondisi krisis.
+              </p>
+            </div>
+          </div>
+          <Link href="/patient/settings" className="shrink-0 self-start sm:self-center">
+            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-xs px-3.5 py-1.5 h-8 gap-1.5 shadow-xs cursor-pointer">
+              <span>Lengkapi Sekarang</span>
+              <ArrowRight size={13} />
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Main 2-Column Clinical Dashboard Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
@@ -304,28 +360,82 @@ export default function PatientBerandaPage() {
                 </div>
 
                 <Badge variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs shrink-0">
-                  0 Terjadwal
+                  {loadingUpcoming ? "Memuat..." : `${upcomingBookings.length} Terjadwal`}
                 </Badge>
               </div>
             </CardHeader>
 
-            <CardContent className="p-6">
-              <div className="py-10 flex flex-col items-center justify-center text-center gap-2.5">
-                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                  <Calendar size={24} />
+            <CardContent className="p-4 sm:p-6">
+              {loadingUpcoming ? (
+                <div className="space-y-3">
+                  {[1, 2].map((n) => (
+                    <div
+                      key={n}
+                      className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 animate-pulse flex items-center justify-between"
+                    >
+                      <div className="space-y-2">
+                        <Skeleton className="w-40 h-4" />
+                        <Skeleton className="w-28 h-3" />
+                      </div>
+                      <Skeleton className="w-20 h-6 rounded-full" />
+                    </div>
+                  ))}
                 </div>
-                <div className="space-y-1">
-                  <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                    Belum Ada Jadwal Sesi
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito">
-                    Sesi konseling klinis terjadwal bersama psikolog akan tampil di sini saat jadwal tiba.
-                  </p>
+              ) : upcomingBookings.length > 0 ? (
+                <div className="space-y-3">
+                  {upcomingBookings.slice(0, 3).map((b) => (
+                    <div
+                      key={b.id}
+                      className="p-3.5 sm:p-4 rounded-xl border border-teal-100 dark:border-teal-900/50 bg-teal-50/30 dark:bg-teal-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-slate-900 dark:text-white font-heading">
+                            {b.psikolog?.nama_lengkap_gelar || "Psikolog TemanBicara"}
+                          </span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                            {BOOKING_STATUS_CONFIG[b.status]?.label || b.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+                          {formatWibDateFull(b.start_at)} • Pukul {formatWibTime(b.start_at)} WIB
+                        </p>
+                      </div>
+                      <Link href="/patient/schedule" className="shrink-0 self-start sm:self-center">
+                        <Button size="sm" variant="outline" className="text-xs rounded-xl h-8 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300">
+                          Detail Sesi
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+                  {upcomingBookings.length > 3 && (
+                    <div className="text-center pt-1">
+                      <Link href="/patient/schedule" className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">
+                        Lihat {upcomingBookings.length - 3} sesi lainnya →
+                      </Link>
+                    </div>
+                  )}
                 </div>
-                <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-800">
-                  Fitur booking hadir di Fase 3
-                </span>
-              </div>
+              ) : (
+                <div className="py-10 flex flex-col items-center justify-center text-center gap-2.5">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                    <Calendar size={24} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                      Belum Ada Jadwal Sesi
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito">
+                      Sesi konseling klinis terjadwal bersama psikolog akan tampil di sini saat jadwal tiba.
+                    </p>
+                  </div>
+                  <Link href="/patient/schedule?booking=true">
+                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-xs mt-1 cursor-pointer">
+                      Reservasi Sesi Sekarang
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -471,9 +581,6 @@ export default function PatientBerandaPage() {
                     Riwayat percakapan telekonseling Anda akan dicatat otomatis setelah sesi berlangsung.
                   </p>
                 </div>
-                <span className="text-[10px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-800 mt-1">
-                  Fitur booking hadir di Fase 3
-                </span>
               </div>
             </CardContent>
           </Card>
