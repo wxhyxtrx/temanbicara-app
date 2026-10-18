@@ -16,6 +16,7 @@ import {
   FileCheck2,
   SlidersHorizontal,
   AlertTriangle,
+  Star,
   LucideIcon,
 } from "lucide-react";
 import { UserRole } from "./mock-users";
@@ -199,6 +200,12 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         description: "Daftar akun & verifikasi mitra",
         url: "/admin/users",
         icon: Users,
+      },
+      {
+        title: "Moderasi Ulasan",
+        description: "Sensor & kurasi ulasan publik",
+        url: "/admin/reviews",
+        icon: Star,
       },
       {
         title: "Eskalasi Krisis",

@@ -11,6 +11,7 @@ import type {
   SessionTipPayload,
   ReviewHidePayload,
   SessionReviewEntity,
+  AdminReviewItem,
   PublicReviewItem,
   SessionMessageView,
   SendSessionMessagePayload,
@@ -265,6 +266,37 @@ export const bookingClient = {
       method: 'GET',
     });
     return handleResponse<{ success: boolean; data: PublicReviewItem[]; meta: { page: number; limit: number; total: number } }>(res);
+  },
+
+  /**
+   * Moderasi admin: mengambil daftar ulasan dengan filter & pagination
+   */
+  async adminGetReviews(query?: {
+    filter?: 'reported' | 'hidden' | 'semua' | 'all';
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    success: boolean;
+    data: AdminReviewItem[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+    meta: { page: number; limit: number; total: number; totalPages: number };
+  }> {
+    const searchParams = new URLSearchParams();
+    if (query?.filter) searchParams.set('filter', query.filter);
+    if (query?.page) searchParams.set('page', String(query.page));
+    if (query?.limit) searchParams.set('limit', String(query.limit));
+    const qs = searchParams.toString();
+
+    const res = await fetch(`/api/admin/reviews${qs ? `?${qs}` : ''}`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<{
+      success: boolean;
+      data: AdminReviewItem[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+      meta: { page: number; limit: number; total: number; totalPages: number };
+    }>(res);
   },
 
   /**
