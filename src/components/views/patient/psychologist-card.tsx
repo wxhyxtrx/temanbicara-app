@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { PublicPsychologist } from "@/types/user-profile";
 import { MdVerified } from "react-icons/md";
-import { Sparkles, Calendar, User, Clock } from "lucide-react";
+import { Sparkles, Calendar, User, Clock, Star } from "lucide-react";
 import { tarifToCoins, formatRupiah, getInitials } from "@/lib/booking-utils";
 
 interface PsychologistCardProps {
@@ -52,13 +52,22 @@ export function PsychologistCard({
               {psychologist.nama_lengkap_gelar}
             </h3>
             <MdVerified className="text-sky-500 text-xs shrink-0" title="SIPPK Terverifikasi" />
-            <Badge
-              variant="outline"
-              className="text-[10px] px-2 py-0.5 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-800 font-semibold gap-1"
-            >
-              <Sparkles size={10} className="text-amber-500" />
-              <span>Psikolog baru</span>
-            </Badge>
+            {psychologist.rating_avg !== null && psychologist.rating_avg !== undefined ? (
+              <div className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800 px-1.5 py-0.5 rounded-md">
+                <Star size={11} className="fill-amber-400 text-amber-400" />
+                <span>{psychologist.rating_avg.toFixed(1)}</span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  ({psychologist.rating_count ?? 0})
+                </span>
+              </div>
+            ) : (
+              <Badge
+                variant="outline"
+                className="text-[10px] px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 font-medium"
+              >
+                Belum cukup ulasan
+              </Badge>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-nunito flex-wrap">
@@ -66,6 +75,14 @@ export function PsychologistCard({
               <Clock size={12} className="text-teal-600 dark:text-teal-400" />
               {psychologist.tahun_pengalaman} Thn Pengalaman
             </span>
+            {psychologist.attendance_pct !== null && psychologist.attendance_pct !== undefined && (
+              <>
+                <span>•</span>
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                  {psychologist.attendance_pct}% Hadir
+                </span>
+              </>
+            )}
             <span>•</span>
             <span className="font-semibold text-teal-700 dark:text-teal-300 font-mono">
               {coins} Koin

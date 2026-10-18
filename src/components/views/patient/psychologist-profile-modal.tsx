@@ -23,6 +23,8 @@ import {
   formatWibDateFull,
 } from "@/lib/booking-utils";
 import { scheduleClient } from "@/services/schedule.client";
+import { bookingClient } from "@/services/booking.client";
+import type { PublicReviewItem } from "@/types/booking";
 import {
   ShieldCheck,
   Star,
@@ -66,8 +68,9 @@ export function PsychologistProfileModal({
         specialty: psychologist.spesialisasi.join(", ") || "Konseling Klinis",
         licenseNumber: "SIPPK Terverifikasi",
         experienceYears: psychologist.tahun_pengalaman,
-        rating: null,
-        reviews: 0,
+        rating: psychologist.rating_avg ?? null,
+        reviews: psychologist.rating_count ?? 0,
+        attendancePct: psychologist.attendance_pct ?? null,
         initials: getInitials(psychologist.nama_lengkap_gelar),
         available: true,
         nextSlot: "Jadwal Tersedia",
@@ -91,6 +94,7 @@ export function PsychologistProfileModal({
         experienceYears: consultant.experienceYears,
         rating: consultant.rating,
         reviews: consultant.reviews,
+        attendancePct: null,
         initials: consultant.initials,
         available: consultant.available,
         nextSlot: consultant.nextSlot,
@@ -114,6 +118,10 @@ export function PsychologistProfileModal({
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedSlotIso, setSelectedSlotIso] = useState<string | null>(null);
 
+  // Reviews state from GET /api/psychologists/[id]/reviews
+  const [publicReviews, setPublicReviews] = useState<PublicReviewItem[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState<boolean>(false);
+
   const loadSlots = useCallback(async () => {
     if (!profile?.id) return;
     setLoadingSlots(true);
@@ -132,10 +140,30 @@ export function PsychologistProfileModal({
   }, [profile?.id]);
 
   useEffect(() => {
+    let active = true;
     if (open && profile?.id) {
       loadSlots();
       setSelectedSlotIso(null);
+      setLoadingReviews(true);
+      bookingClient
+        .getPublicReviews(profile.id, { limit: 20 })
+        .then((res) => {
+          if (active && res.success && Array.isArray(res.data)) {
+            setPublicReviews(res.data);
+          }
+        })
+        .catch((err) => {
+          console.error("Gagal memuat ulasan publik psikolog:", err);
+        })
+        .finally(() => {
+          if (active) setLoadingReviews(false);
+        });
+    } else {
+      setPublicReviews([]);
     }
+    return () => {
+      active = false;
+    };
   }, [open, profile?.id, loadSlots]);
 
   // Group slots by WIB date YYYY-MM-DD
@@ -233,31 +261,40 @@ export function PsychologistProfileModal({
 
             <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-1.5 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-slate-800">
               <div className="flex items-center gap-1 text-amber-500 font-bold text-sm">
-                {profile.rating ? (
+                {profile.rating !== null && profile.rating !== undefined ? (
                   <>
                     <Star size={16} className="fill-amber-400 text-amber-400" />
-                    <span>{profile.rating}</span>
+                    <span>{Number(profile.rating).toFixed(1)}</span>
                     <span className="text-xs text-slate-400 font-normal">({profile.reviews} ulasan)</span>
                   </>
                 ) : (
                   <Badge
                     variant="outline"
-                    className="text-xs px-2.5 py-0.5 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200/80 font-semibold gap-1"
+                    className="text-xs px-2.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 font-medium"
                   >
-                    <Sparkles size={12} className="text-amber-500" />
-                    <span>Psikolog baru</span>
+                    Belum cukup ulasan
                   </Badge>
                 )}
               </div>
-              <Badge
-                className={`text-[10px] px-2 py-0.5 border font-semibold ${
-                  profile.available
-                    ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300"
-                }`}
-              >
-                {slots.length > 0 ? `${slots.length} Slot Tersedia` : "Memuat Jadwal..."}
-              </Badge>
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {profile.attendancePct !== null && profile.attendancePct !== undefined && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 font-semibold"
+                  >
+                    Kehadiran {profile.attendancePct}%
+                  </Badge>
+                )}
+                <Badge
+                  className={`text-[10px] px-2 py-0.5 border font-semibold ${
+                    profile.available
+                      ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300"
+                  }`}
+                >
+                  {slots.length > 0 ? `${slots.length} Slot Tersedia` : "Memuat Jadwal..."}
+                </Badge>
+              </div>
             </div>
           </div>
           <DialogDescription className="sr-only">
@@ -268,7 +305,7 @@ export function PsychologistProfileModal({
         {/* Content Body */}
         <div className="p-6 space-y-6">
           {/* Quick Metrics Strip */}
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
             <div className="space-y-0.5">
               <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">
                 Pengalaman
@@ -277,15 +314,25 @@ export function PsychologistProfileModal({
                 {profile.experienceYears}+ Tahun
               </span>
             </div>
-            <div className="space-y-0.5 border-x border-slate-200/80 dark:border-slate-700">
+            <div className="space-y-0.5 border-l border-slate-200/80 dark:border-slate-700">
+              <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">
+                Kehadiran
+              </span>
+              <span className="text-sm sm:text-base font-extrabold font-heading text-emerald-600 dark:text-emerald-400">
+                {profile.attendancePct !== null && profile.attendancePct !== undefined
+                  ? `${profile.attendancePct}%`
+                  : "100%"}
+              </span>
+            </div>
+            <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-slate-200/80 dark:border-slate-700 pt-2 sm:pt-0">
               <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">
                 Biaya Sesi
               </span>
               <span className="text-sm sm:text-base font-extrabold font-heading text-teal-700 dark:text-teal-400">
-                {profile.hourlyRateCoins} Koin / Sesi
+                {profile.hourlyRateCoins} Koin
               </span>
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 border-l border-t sm:border-t-0 border-slate-200/80 dark:border-slate-700 pt-2 sm:pt-0">
               <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">
                 Setara Rupiah
               </span>
@@ -504,6 +551,81 @@ export function PsychologistProfileModal({
               </div>
             </div>
           )}
+
+          {/* 6. Ulasan & Evaluasi Klien (Tanpa Identitas) */}
+          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                <Star size={14} className="fill-amber-400 text-amber-500" />
+                <span>Ulasan Klien ({profile.reviews})</span>
+              </h4>
+              {profile.rating !== null && profile.rating !== undefined ? (
+                <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+                  <Star size={13} className="fill-amber-400 text-amber-400" />
+                  <span>{Number(profile.rating).toFixed(1)} / 5.0</span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-slate-400 font-medium">Belum cukup ulasan</span>
+              )}
+            </div>
+
+            {loadingReviews ? (
+              <div className="space-y-2">
+                {[1, 2].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-xl bg-slate-100 dark:bg-slate-800" />
+                ))}
+              </div>
+            ) : publicReviews.length === 0 ? (
+              <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Belum ada ulasan tertulis untuk psikolog ini
+                </p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                  Ulasan akan tercantum secara anonim setelah sesi konseling selesai.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                {publicReviews.map((rev, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1 text-amber-500">
+                        {Array.from({ length: 5 }).map((_, sIdx) => (
+                          <Star
+                            key={sIdx}
+                            size={12}
+                            className={
+                              sIdx < rev.rating
+                                ? "fill-amber-400 text-amber-400"
+                                : "text-slate-300 dark:text-slate-600"
+                            }
+                          />
+                        ))}
+                        <span className="ml-1 font-bold text-slate-700 dark:text-slate-300">
+                          {rev.rating}.0
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        {rev.month || "Baru saja"}
+                      </span>
+                    </div>
+                    {rev.review ? (
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed italic">
+                        &ldquo;{rev.review}&rdquo;
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 italic">
+                        (Memberikan rating tanpa ulasan tertulis)
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Modal Footer CTA */}
