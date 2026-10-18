@@ -589,7 +589,7 @@ INSERT INTO public.bookings (
     15, 8500, '[]'::jsonb, 'Budi'
 );
 
--- Booking 7: booked, start_at 25 menit lalu tanpa sapaan psikolog (untuk test session_tick 2 - simulasi error)
+-- Booking 7: booked, start_at 26 menit lalu tanpa sapaan psikolog (untuk test session_tick 2 - simulasi error)
 INSERT INTO public.bookings (
     id, patient_id, psikolog_id, start_at, status, keluhan,
     price_coins, mitra_share_bps, refund_policy, patient_display_name
@@ -597,12 +597,25 @@ INSERT INTO public.bookings (
     'b8a00000-0000-0000-0000-000000000007',
     'b8000000-0000-0000-0000-000000000004',
     'b8000000-0000-0000-0000-000000000002',
-    pg_catalog.now() - INTERVAL '25 minutes',
+    pg_catalog.now() - INTERVAL '26 minutes',
     'booked',
     'Keluhan sesi konseling kedua untuk pengujian cron tick error',
     15, 8500, '[]'::jsonb, 'Dewi'
 );
 
+
+-- ========================================================
+-- HELPER TRIGGER FUNCTION FOR TEST 9 (OUTSIDE DO BLOCK)
+-- ========================================================
+CREATE OR REPLACE FUNCTION public.tmp_fail_booking_7()
+RETURNS TRIGGER AS $fn$
+BEGIN
+    IF NEW.id = 'b8a00000-0000-0000-0000-000000000007' THEN
+        RAISE EXCEPTION 'SIMULATED CORRUPTION ON BOOKING 7';
+    END IF;
+    RETURN NEW;
+END;
+$fn$ LANGUAGE plpgsql;
 
 -- ========================================================
 -- EKSEKUSI PENGUJIAN DRY-RUN (ASSERTIONS)
@@ -848,22 +861,10 @@ BEGIN
     -- session_tick() harus tetap menyelesaikan Booking 6 tanpa abort transaction.
     -- ----------------------------------------------------
     -- Pasang trigger sementara pada bookings untuk mensimulasikan error pada Booking 7
-    EXECUTE $trig$
-        CREATE OR REPLACE FUNCTION public.tmp_fail_booking_7()
-        RETURNS TRIGGER AS $$
-        BEGIN
-            IF NEW.id = 'b8a00000-0000-0000-0000-000000000007' THEN
-                RAISE EXCEPTION 'SIMULATED CORRUPTION ON BOOKING 7';
-            END IF;
-            RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-
-        CREATE TRIGGER trg_tmp_fail_booking_7
-        BEFORE UPDATE ON public.bookings
-        FOR EACH ROW
-        EXECUTE FUNCTION public.tmp_fail_booking_7();
-    $trig$;
+    CREATE TRIGGER trg_tmp_fail_booking_7
+    BEFORE UPDATE ON public.bookings
+    FOR EACH ROW
+    EXECUTE FUNCTION public.tmp_fail_booking_7();
 
     -- Jalankan session_tick()
     -- Booking 6 harus sukses diproses, Booking 7 memicu exception yang ditangkap di blok per-baris
@@ -895,10 +896,11 @@ BEGIN
 
     -- Bersihkan trigger sementara
     DROP TRIGGER IF EXISTS trg_tmp_fail_booking_7 ON public.bookings;
-    DROP FUNCTION IF EXISTS public.tmp_fail_booking_7();
 
     RAISE NOTICE 'B8 DRY-RUN TESTS PASSED: All 9 test suites succeeded cleanly.';
 END;
 $$;
+
+DROP FUNCTION IF EXISTS public.tmp_fail_booking_7();
 
 ROLLBACK;
