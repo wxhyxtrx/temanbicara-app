@@ -311,7 +311,7 @@ export function PatientBookingDetailModal({
 
                 {(booking.status === "booked" || booking.status === "in_progress") && (
                   isRoomActive ? (
-                    <Link href="/patient/room" onClick={onClose}>
+                    <Link href={`/patient/session/${booking.id}`} onClick={onClose}>
                       <Button
                         size="sm"
                         className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl h-8 px-4 font-semibold gap-1.5 shadow-xs cursor-pointer"

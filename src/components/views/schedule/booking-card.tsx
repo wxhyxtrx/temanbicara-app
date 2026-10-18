@@ -260,7 +260,7 @@ export function BookingCard({
 
             {(isBooked || isInProgress) && (
               isRoomActive ? (
-                <Link href="/patient/room">
+                <Link href={`/patient/session/${booking.id}`}>
                   <Button
                     size="sm"
                     className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-8 px-3.5 gap-1.5 shadow-xs cursor-pointer"
