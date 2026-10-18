@@ -22,6 +22,7 @@ import {
   RefreshCw,
   XCircle,
   AlertCircle,
+  EyeOff,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
@@ -122,6 +123,7 @@ export default function CounselorBerandaPage() {
         patientDisplayName: b.patient_display_name,
         rating: b.review!.rating,
         review: b.review!.review,
+        isHidden: Boolean(b.review!.is_hidden),
         reportedAt: b.review!.reported_at,
         createdAt: b.review!.created_at,
       }));
@@ -634,7 +636,7 @@ export default function CounselorBerandaPage() {
                           <User size={16} />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-bold text-sm text-slate-900 dark:text-white font-heading">
                               {rev.patientDisplayName}
                             </p>
@@ -644,6 +646,15 @@ export default function CounselorBerandaPage() {
                             >
                               Klien Sesi
                             </Badge>
+                            {rev.isHidden && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 font-medium flex items-center gap-1"
+                              >
+                                <EyeOff size={10} className="text-rose-600 dark:text-rose-400" />
+                                <span>Disembunyikan admin</span>
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             <div className="flex items-center text-amber-500">
