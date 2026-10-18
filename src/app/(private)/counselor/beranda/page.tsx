@@ -402,7 +402,7 @@ export default function CounselorBerandaPage() {
                               </Button>
                             )}
 
-                            <Link href="/counselor/room">
+                            <Link href={`/counselor/room?booking=${b.id}`}>
                               <Button
                                 size="sm"
                                 className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-8 px-3.5 gap-1.5 shadow-xs"
@@ -448,7 +448,7 @@ export default function CounselorBerandaPage() {
                       {formatWibDateFull(upcomingBookings[0].start_at)}
                     </p>
                   </div>
-                  <Link href="/counselor/room" className="block pt-1">
+                  <Link href={`/counselor/room?booking=${upcomingBookings[0].id}`} className="block pt-1">
                     <Button size="sm" className="w-full text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-8 gap-1.5 shadow-xs">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
                       <span>Masuk Ruang Sesi</span>
