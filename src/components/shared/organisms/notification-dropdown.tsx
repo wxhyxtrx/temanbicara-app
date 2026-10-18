@@ -20,7 +20,17 @@ import {
   Inbox,
   Loader2,
 } from "lucide-react";
+import { supabasePublic } from "@/lib/supabase/client";
+import { useUserStore } from "@/store/user-store";
 import type { NotificationEntity } from "@/types/notification";
+
+function getAccessTokenFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)tb_access_token=([^;]+)/);
+  if (!match) return null;
+  const raw = decodeURIComponent(match[1]).trim().replace(/^"|"$/g, "");
+  return raw && raw !== "undefined" && raw !== "null" ? raw : null;
+}
 
 function formatRelativeTime(dateStr: string): string {
   try {
@@ -106,6 +116,7 @@ function getCategoryBg(type: string) {
 
 export function NotificationDropdown() {
   const router = useRouter();
+  const user = useUserStore((state) => state.user);
 
   const [notifications, setNotifications] = useState<NotificationEntity[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -134,6 +145,69 @@ export function NotificationDropdown() {
     setMounted(true);
     fetchNotifications();
   }, [fetchNotifications]);
+
+  // Realtime subscription dengan autentikasi token tb_access_token & fallback polling 30 detik
+  useEffect(() => {
+    if (!mounted || !user?.id || !supabasePublic) return;
+
+    let isMounted = true;
+    let channel: ReturnType<typeof supabasePublic.channel> | null = null;
+
+    const setupRealtime = async () => {
+      const token = getAccessTokenFromCookie();
+      if (!token) return;
+
+      try {
+        await supabasePublic.realtime.setAuth(token);
+      } catch (err) {
+        console.error("Gagal setAuth realtime notifikasi:", err);
+        return;
+      }
+
+      if (!isMounted) return;
+
+      const channelName = `notifications_user_${user.id}`;
+      const ch = supabasePublic
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            if (!isMounted) return;
+            const newRow = payload.new as NotificationEntity;
+            if (newRow && newRow.id) {
+              setNotifications((prev) => {
+                if (prev.some((n) => n.id === newRow.id)) return prev;
+                return [newRow, ...prev];
+              });
+              setUnreadCount((c) => c + 1);
+            }
+          }
+        )
+        .subscribe();
+
+      channel = ch;
+    };
+
+    setupRealtime();
+
+    const pollInterval = setInterval(() => {
+      fetchNotifications();
+    }, 30000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+      if (channel && supabasePublic) {
+        supabasePublic.removeChannel(channel);
+      }
+    };
+  }, [mounted, user?.id, fetchNotifications]);
 
   const displayList =
     filterMode === "unread"
