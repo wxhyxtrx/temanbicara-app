@@ -136,6 +136,15 @@ export async function POST(req: Request) {
       maxAge,
       sameSite: 'lax',
     });
+    if (authData.session.refresh_token) {
+      response.cookies.set('tb_refresh_token', authData.session.refresh_token, {
+        path: '/',
+        maxAge,
+        sameSite: 'lax',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+      });
+    }
     response.cookies.set('tb_user_role', await signRole(userProfile.role, authData.user.id, maxAge), {
       path: '/',
       maxAge,

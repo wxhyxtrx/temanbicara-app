@@ -56,6 +56,7 @@ export async function middleware(req: NextRequest) {
     // Jika ada token/cookie tidak valid (mis. role dimanipulasi), bersihkan cookie
     if (token || rawRoleCookie) {
       res.cookies.delete('tb_access_token');
+      res.cookies.delete('tb_refresh_token');
       res.cookies.delete('tb_user_role');
       res.cookies.delete('tb_user_status');
     }
