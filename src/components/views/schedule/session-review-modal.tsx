@@ -124,8 +124,8 @@ export function SessionReviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg font-nunito p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xl">
-        <DialogHeader className="space-y-1.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <DialogContent className="w-full max-w-lg max-h-[92vh] overflow-y-auto overflow-x-hidden font-nunito p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-xl">
+        <DialogHeader className="space-y-1.5 pb-3 border-b border-slate-100 dark:border-slate-800 w-full min-w-0">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
               <Star size={20} className="fill-amber-500 text-amber-500" />

@@ -71,14 +71,14 @@ export function ChooseRefundModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !submitting && onClose()}>
-      <DialogContent className="max-w-md font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
-        <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
+      <DialogContent className="w-full max-w-md max-h-[92vh] overflow-y-auto overflow-x-hidden font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
+        <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800 w-full min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
               <Coins size={18} />
             </div>
-            <div>
-              <DialogTitle className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white truncate">
                 Konfirmasi Refund 100% Koin
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
@@ -88,28 +88,28 @@ export function ChooseRefundModal({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-2 w-full min-w-0">
           {/* Sesi info */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 dark:text-slate-400">Psikolog:</span>
-              <span className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs w-full min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-500 dark:text-slate-400 shrink-0">Psikolog:</span>
+              <span className="font-bold text-slate-900 dark:text-white truncate text-right">
                 {psychName}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 dark:text-slate-400">Jadwal Sebelumnya:</span>
-              <span className="font-semibold text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-500 dark:text-slate-400 shrink-0">Jadwal Sebelumnya:</span>
+              <span className="font-semibold text-slate-900 dark:text-white text-right">
                 {formatWibDateFull(booking.start_at)}, {formatWibTime(booking.start_at)}
               </span>
             </div>
             {booking.choice_deadline_at && (
-              <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1 shrink-0">
                   <Clock size={12} className="text-amber-600" />
                   Batas Waktu Pilihan:
                 </span>
-                <span className="font-semibold text-amber-800 dark:text-amber-300">
+                <span className="font-semibold text-amber-800 dark:text-amber-300 text-right">
                   {formatWibDateFull(booking.choice_deadline_at)}, {formatWibTime(booking.choice_deadline_at)}
                 </span>
               </div>
@@ -117,7 +117,7 @@ export function ChooseRefundModal({
           </div>
 
           {/* Refund Box */}
-          <div className="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-emerald-50/50 dark:from-amber-950/40 dark:to-emerald-950/30 border border-amber-200 dark:border-amber-800 space-y-2 text-center">
+          <div className="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-emerald-50/50 dark:from-amber-950/40 dark:to-emerald-950/30 border border-amber-200 dark:border-amber-800 space-y-2 text-center w-full min-w-0">
             <span className="text-[11px] font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider block">
               Jumlah Koin yang Dikembalikan (100% Penuh):
             </span>
@@ -132,21 +132,21 @@ export function ChooseRefundModal({
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2 w-full min-w-0">
               <AlertCircle size={15} className="shrink-0 text-rose-600" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {/* Footer Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 w-full min-w-0">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onClose}
               disabled={submitting}
-              className="text-xs rounded-xl h-8 px-4"
+              className="text-xs rounded-xl h-8 px-4 cursor-pointer"
             >
               Batal
             </Button>
@@ -156,7 +156,7 @@ export function ChooseRefundModal({
               size="sm"
               onClick={handleConfirmRefund}
               disabled={submitting}
-              className="text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-8 px-4 font-semibold shadow-xs gap-1.5"
+              className="text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-xl h-8 px-4 font-semibold shadow-xs gap-1.5 cursor-pointer"
             >
               {submitting ? (
                 <>

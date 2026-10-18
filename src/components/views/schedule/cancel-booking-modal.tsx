@@ -113,14 +113,14 @@ export function CancelBookingModal({
         }
       }}
     >
-      <DialogContent className="max-w-md font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
-        <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
+      <DialogContent className="w-full max-w-md max-h-[92vh] overflow-y-auto overflow-x-hidden font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
+        <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800 w-full min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
               <XCircle size={18} />
             </div>
-            <div>
-              <DialogTitle className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white truncate">
                 {successResult ? "Sesi Berhasil Dibatalkan" : "Batalkan Jadwal Sesi"}
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
@@ -134,7 +134,7 @@ export function CancelBookingModal({
 
         {successResult ? (
           /* SUCCESS VIEW: Tampilkan refund_coins dari response */
-          <div className="space-y-4 pt-2 text-center">
+          <div className="space-y-4 pt-2 text-center w-full min-w-0">
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
               <CheckCircle2 size={32} />
             </div>
@@ -177,29 +177,29 @@ export function CancelBookingModal({
           </div>
         ) : (
           /* CONFIRMATION VIEW: ESTIMASI REFUND & SISA WAKTU */
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-2 w-full min-w-0">
             {/* Sesi Info Strip */}
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Psikolog:</span>
-                <span className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2 w-full min-w-0">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-slate-500 dark:text-slate-400 shrink-0">Psikolog:</span>
+                <span className="font-bold text-slate-900 dark:text-white truncate text-right">
                   {psychName}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Jadwal Sesi:</span>
-                <span className="font-semibold text-slate-900 dark:text-white">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-slate-500 dark:text-slate-400 shrink-0">Jadwal Sesi:</span>
+                <span className="font-semibold text-slate-900 dark:text-white text-right">
                   {formatWibDateFull(booking.start_at)}, {formatWibTime(booking.start_at)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-slate-400">Biaya Sesi:</span>
-                <span className="font-bold text-teal-700 dark:text-teal-400 font-mono">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-slate-500 dark:text-slate-400 shrink-0">Biaya Sesi:</span>
+                <span className="font-bold text-teal-700 dark:text-teal-400 font-mono text-right">
                   {booking.price_coins} Koin
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1 shrink-0">
                   <Clock size={12} className="text-teal-600 dark:text-teal-400" />
                   Sisa Waktu:
                 </span>
@@ -213,7 +213,7 @@ export function CancelBookingModal({
             </div>
 
             {/* ESTIMASI PENGEMBALIAN KOIN BOX */}
-            <div className="p-4 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 space-y-2.5">
+            <div className="p-4 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 space-y-2.5 w-full min-w-0">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-rose-900 dark:text-rose-200 uppercase tracking-wider flex items-center gap-1.5">
                   <Coins size={14} className="text-rose-600 dark:text-rose-400" />
@@ -244,7 +244,7 @@ export function CancelBookingModal({
             </div>
 
             {/* ATURAN KEBIJAKAN REFUND TIER */}
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 text-[11px] space-y-1.5 text-slate-600 dark:text-slate-400">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 text-[11px] space-y-1.5 text-slate-600 dark:text-slate-400 w-full min-w-0">
               <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
                 <HelpCircle size={13} className="text-teal-600 dark:text-teal-400" />
                 Ketentuan Kebijakan Pembatalan Pasien:
@@ -264,21 +264,21 @@ export function CancelBookingModal({
 
             {/* Error Message */}
             {errorMessage && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2 w-full min-w-0">
                 <AlertCircle size={15} className="shrink-0 text-rose-600" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
             {/* Footer Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 w-full min-w-0">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={onClose}
                 disabled={submitting}
-                className="text-xs rounded-xl h-8 px-4"
+                className="text-xs rounded-xl h-8 px-4 cursor-pointer"
               >
                 Batal
               </Button>
@@ -288,7 +288,7 @@ export function CancelBookingModal({
                 size="sm"
                 onClick={handleConfirmCancel}
                 disabled={submitting}
-                className="text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-xl h-8 px-4 font-semibold shadow-xs gap-1.5"
+                className="text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-xl h-8 px-4 font-semibold shadow-xs gap-1.5 cursor-pointer"
               >
                 {submitting ? (
                   <>

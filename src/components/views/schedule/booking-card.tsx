@@ -14,6 +14,7 @@ import {
   AlertCircle,
   ArrowRight,
   ShieldAlert,
+  Lock,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import type { PatientBookingView } from "@/types/booking";
@@ -24,6 +25,7 @@ import {
   formatRupiah,
   BOOKING_STATUS_CONFIG,
   checkRescheduleEligibility,
+  isBookingRoomActive,
 } from "@/lib/booking-utils";
 
 interface BookingCardProps {
@@ -52,6 +54,7 @@ export function BookingCard({
   const isAwaitingChoice = booking.status === "awaiting_patient_choice";
   const isBooked = booking.status === "booked";
   const isInProgress = booking.status === "in_progress";
+  const isRoomActive = isBookingRoomActive(booking);
 
   return (
     <div
@@ -242,28 +245,47 @@ export function BookingCard({
         </div>
 
         {/* Right side primary action */}
-        <div className="flex items-center gap-2 ml-auto">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onViewDetail(booking)}
-            className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl h-8 px-3 gap-1"
-          >
-            <Eye size={12} />
-            <span>Detail</span>
-          </Button>
+        <div className="flex flex-col items-end gap-1 ml-auto">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onViewDetail(booking)}
+              className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl h-8 px-3 gap-1 cursor-pointer"
+            >
+              <Eye size={12} />
+              <span>Detail</span>
+            </Button>
 
-          {(isBooked || isInProgress) && (
-            <Link href="/patient/room">
-              <Button
-                size="sm"
-                className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-8 px-3.5 gap-1.5 shadow-xs"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                <span>Masuk Sesi</span>
-              </Button>
-            </Link>
+            {(isBooked || isInProgress) && (
+              isRoomActive ? (
+                <Link href="/patient/room">
+                  <Button
+                    size="sm"
+                    className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl h-8 px-3.5 gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                    <span>Masuk Sesi</span>
+                  </Button>
+                </Link>
+              ) : (
+                <Button
+                  size="sm"
+                  disabled
+                  title="Ruang sesi dibuka 10 menit sebelum jadwal"
+                  className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200/80 dark:border-slate-700/80 rounded-xl h-8 px-3.5 gap-1.5 cursor-not-allowed opacity-70"
+                >
+                  <Lock size={12} className="text-slate-400" />
+                  <span>Masuk Sesi</span>
+                </Button>
+              )
+            )}
+          </div>
+          {(isBooked || isInProgress) && !isRoomActive && (
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 text-right">
+              Ruang sesi dibuka 10 menit sebelum jadwal
+            </span>
           )}
         </div>
       </div>

@@ -19,6 +19,7 @@ import {
   Coins,
   RotateCcw,
   Sparkles,
+  Lock,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import Link from "next/link";
@@ -30,6 +31,7 @@ import {
   formatRupiah,
   BOOKING_STATUS_CONFIG,
   checkRescheduleEligibility,
+  isBookingRoomActive,
 } from "@/lib/booking-utils";
 
 interface PatientBookingDetailModalProps {
@@ -63,11 +65,12 @@ export function PatientBookingDetailModal({
     booking.status === "booked" ||
     booking.status === "in_progress" ||
     booking.status === "awaiting_patient_choice";
+  const isRoomActive = isBookingRoomActive(booking);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
-        <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <DialogContent className="w-full max-w-lg max-h-[92vh] overflow-y-auto overflow-x-hidden font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
+        <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800 w-full min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
@@ -88,7 +91,7 @@ export function PatientBookingDetailModal({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-2 w-full min-w-0">
           {/* Status Explanation Banner */}
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2">
             <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
@@ -205,7 +208,7 @@ export function PatientBookingDetailModal({
           )}
 
           {/* Footer Actions */}
-          <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800 w-full min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               {booking.status === "awaiting_patient_choice" && (
                 <>
@@ -294,27 +297,46 @@ export function PatientBookingDetailModal({
               )}
             </div>
 
-            <div className="flex items-center gap-2 ml-auto">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onClose}
-                className="text-xs rounded-xl h-8 px-4"
-              >
-                Tutup
-              </Button>
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 sm:gap-2 ml-auto">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onClose}
+                  className="text-xs rounded-xl h-8 px-4 cursor-pointer"
+                >
+                  Tutup
+                </Button>
 
-              {(booking.status === "booked" || booking.status === "in_progress") && (
-                <Link href="/patient/room" onClick={onClose}>
-                  <Button
-                    size="sm"
-                    className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl h-8 px-4 font-semibold gap-1.5 shadow-xs"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                    <span>Masuk Sesi</span>
-                  </Button>
-                </Link>
+                {(booking.status === "booked" || booking.status === "in_progress") && (
+                  isRoomActive ? (
+                    <Link href="/patient/room" onClick={onClose}>
+                      <Button
+                        size="sm"
+                        className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl h-8 px-4 font-semibold gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                        <span>Masuk Sesi</span>
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button
+                      size="sm"
+                      disabled
+                      title="Ruang sesi dibuka 10 menit sebelum jadwal"
+                      className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200/80 dark:border-slate-700/80 rounded-xl h-8 px-4 font-semibold gap-1.5 cursor-not-allowed opacity-70"
+                    >
+                      <Lock size={12} className="text-slate-400" />
+                      <span>Masuk Sesi</span>
+                    </Button>
+                  )
+                )}
+              </div>
+              {(booking.status === "booked" || booking.status === "in_progress") && !isRoomActive && (
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 text-right">
+                  Ruang sesi dibuka 10 menit sebelum jadwal
+                </span>
               )}
             </div>
           </div>

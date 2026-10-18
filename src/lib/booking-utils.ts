@@ -1,4 +1,4 @@
-import type { BookingStatus, RefundPolicyTier } from '@/types/booking';
+import type { BookingStatus, RefundPolicyTier, ExtensionStatus, PatientBookingView } from '@/types/booking';
 
 /**
  * Utilitas pembantu untuk alur pencarian, perhitungan koin, dan booking psikolog (WIB)
@@ -146,6 +146,43 @@ export function checkRescheduleEligibility(
     eligible: true,
     hoursBefore: diffHours,
   };
+}
+
+/**
+ * Mengecek apakah ruang sesi konseling dapat dimasuki (tombol "Masuk Sesi" aktif).
+ * Aturan:
+ * - Status harus 'booked' atau 'in_progress'
+ * - Belum diakhiri (ended_at null / falsy)
+ * - Aktif mulai 10 menit sebelum start_at (start_at - 10 menit)
+ * - Berakhir setelah durasi sesi selesai:
+ *   - Durasi default 45 menit (55 menit jika ekstensi disetujui, batas maksimal 58 menit)
+ */
+export function isBookingRoomActive(
+  booking: Pick<PatientBookingView, 'status' | 'start_at'> & {
+    ended_at?: string | null;
+    extension_status?: ExtensionStatus | null;
+  }
+): boolean {
+  if (booking.status !== 'booked' && booking.status !== 'in_progress') {
+    return false;
+  }
+  if (booking.ended_at) {
+    return false;
+  }
+
+  const startMs = new Date(booking.start_at).getTime();
+  if (!Number.isFinite(startMs)) return false;
+
+  const nowMs = Date.now();
+  const openMs = startMs - 10 * 60 * 1000;
+  const durationMinutes = booking.extension_status === 'approved' ? 55 : 45;
+  const endMs = startMs + Math.min(durationMinutes, 58) * 60 * 1000;
+
+  if (booking.status === 'in_progress') {
+    return nowMs <= endMs;
+  }
+
+  return nowMs >= openMs && nowMs <= endMs;
 }
 
 
