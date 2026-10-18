@@ -7,6 +7,11 @@ import type {
   BookingListQuery,
   ExtensionRespondPayload,
   ExtensionRespondResponse,
+  ReviewUpsertPayload,
+  SessionTipPayload,
+  ReviewHidePayload,
+  SessionReviewEntity,
+  PublicReviewItem,
 } from '@/types/booking';
 
 export class BookingApiError extends Error {
@@ -176,5 +181,97 @@ export const bookingClient = {
       credentials: 'include',
     });
     return handleResponse<{ success: boolean; data: PsikologBookingView; message: string }>(res);
+  },
+
+  /**
+   * Mengisi atau memperbarui rating & ulasan sesi (pasien)
+   */
+  async submitReview(
+    bookingId: string,
+    payload: ReviewUpsertPayload
+  ): Promise<{ success: boolean; data: SessionReviewEntity }> {
+    const res = await fetch(`/api/bookings/${bookingId}/review`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<{ success: boolean; data: SessionReviewEntity }>(res);
+  },
+
+  /**
+   * Mengambil ulasan pada booking tertentu
+   */
+  async getReview(
+    bookingId: string
+  ): Promise<{ success: boolean; data: SessionReviewEntity | null }> {
+    const res = await fetch(`/api/bookings/${bookingId}/review`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: SessionReviewEntity | null }>(res);
+  },
+
+  /**
+   * Memberikan tip koin untuk sesi yang selesai (pasien)
+   */
+  async sendTip(
+    bookingId: string,
+    payload: SessionTipPayload
+  ): Promise<{ success: boolean; data: { tip_id: string; booking_id: string; coins: number }; message: string }> {
+    const res = await fetch(`/api/bookings/${bookingId}/tip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<{ success: boolean; data: { tip_id: string; booking_id: string; coins: number }; message: string }>(res);
+  },
+
+  /**
+   * Melaporkan ulasan sesi oleh psikolog
+   */
+  async reportReview(
+    bookingId: string
+  ): Promise<{ success: boolean; data: SessionReviewEntity; message: string }> {
+    const res = await fetch(`/api/bookings/${bookingId}/review/report`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: SessionReviewEntity; message: string }>(res);
+  },
+
+  /**
+   * Mengambil daftar ulasan publik seorang psikolog
+   */
+  async getPublicReviews(
+    psychologistId: string,
+    query?: { page?: number; limit?: number }
+  ): Promise<{ success: boolean; data: PublicReviewItem[]; meta: { page: number; limit: number; total: number } }> {
+    const searchParams = new URLSearchParams();
+    if (query?.page) searchParams.set('page', String(query.page));
+    if (query?.limit) searchParams.set('limit', String(query.limit));
+    const qs = searchParams.toString();
+
+    const res = await fetch(`/api/psychologists/${psychologistId}/reviews${qs ? `?${qs}` : ''}`, {
+      method: 'GET',
+    });
+    return handleResponse<{ success: boolean; data: PublicReviewItem[]; meta: { page: number; limit: number; total: number } }>(res);
+  },
+
+  /**
+   * Moderasi admin: sembunyikan atau tampilkan ulasan
+   */
+  async adminSetReviewHidden(
+    bookingId: string,
+    payload: ReviewHidePayload
+  ): Promise<{ success: boolean; data: SessionReviewEntity; message: string }> {
+    const res = await fetch(`/api/admin/reviews/${bookingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<{ success: boolean; data: SessionReviewEntity; message: string }>(res);
   },
 };

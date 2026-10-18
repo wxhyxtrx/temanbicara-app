@@ -135,5 +135,40 @@ export const updateClientNoteSchema = z.object({
 
 export type UpdateClientNoteInput = z.infer<typeof updateClientNoteSchema>;
 
+/**
+ * Task B8: Validations untuk Review, Tip & Moderasi Ulasan
+ */
+export const reviewUpsertSchema = z.object({
+  rating: z
+    .number({ message: 'Rating wajib diisi' })
+    .int('Rating harus berupa bilangan bulat')
+    .min(1, 'Rating minimal 1 bintang')
+    .max(5, 'Rating maksimal 5 bintang'),
+  review: z
+    .string()
+    .trim()
+    .max(500, 'Ulasan maksimal 500 karakter')
+    .optional()
+    .nullable(),
+});
+
+export const sessionTipSchema = z.object({
+  coins: z
+    .number({ message: 'Jumlah koin tip wajib diisi' })
+    .int('Jumlah koin harus berupa bilangan bulat')
+    .positive('Jumlah koin tip harus lebih dari 0'),
+});
+
+export const reviewHideSchema = z.object({
+  is_hidden: z.boolean({
+    message: 'is_hidden harus berupa boolean (true atau false)',
+  }),
+});
+
+export type ReviewUpsertInput = z.infer<typeof reviewUpsertSchema>;
+export type SessionTipInput = z.infer<typeof sessionTipSchema>;
+export type ReviewHideInput = z.infer<typeof reviewHideSchema>;
+
+
 
 

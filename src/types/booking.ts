@@ -69,6 +69,8 @@ export interface PsychologistSummary {
   avatar_url: string | null;
   tarif_sesi: number;
   attendance_pct?: number | null;
+  rating_avg?: number | null;
+  rating_count?: number;
 }
 
 export interface PatientBookingView extends BookingEntity {
@@ -196,6 +198,41 @@ export interface PatientEmergencyContactView {
   kontak_darurat_nama: string | null;
   kontak_darurat_wa: string | null;
 }
+
+/**
+ * Task B8: Rating, Ulasan Sesi & Tip
+ */
+export interface SessionReviewEntity {
+  booking_id: string;
+  patient_id: string;
+  psikolog_id: string;
+  rating: number;
+  review: string | null;
+  is_hidden: boolean;
+  reported_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicReviewItem {
+  rating: number;
+  review: string | null;
+  month: string;
+}
+
+export interface ReviewUpsertPayload {
+  rating: number;
+  review?: string | null;
+}
+
+export interface SessionTipPayload {
+  coins: number;
+}
+
+export interface ReviewHidePayload {
+  is_hidden: boolean;
+}
+
 
 
 

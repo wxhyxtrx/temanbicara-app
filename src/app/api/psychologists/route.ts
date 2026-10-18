@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { fail, pageParams } from '@/lib/auth/session';
-import { activeProfiles, getPsychologistsAttendance, toPublicPsychologist } from '@/lib/public-profiles';
+import {
+  activeProfiles,
+  getPsychologistsAttendance,
+  getPsychologistsRatings,
+  toPublicPsychologist,
+} from '@/lib/public-profiles';
 
 export async function GET(req: Request) {
   try {
@@ -12,14 +17,20 @@ export async function GET(req: Request) {
 
     const rows = data ?? [];
     const psychologistIds = rows.map((r) => r.user_id);
-    const attendanceMap = await getPsychologistsAttendance(psychologistIds);
+    const [attendanceMap, ratingsMap] = await Promise.all([
+      getPsychologistsAttendance(psychologistIds),
+      getPsychologistsRatings(psychologistIds),
+    ]);
 
     return NextResponse.json({
       success: true,
-      data: rows.map((r) => toPublicPsychologist(r, attendanceMap[r.user_id] ?? null)),
+      data: rows.map((r) =>
+        toPublicPsychologist(r, attendanceMap[r.user_id] ?? null, ratingsMap[r.user_id])
+      ),
       meta: { page, limit, total: count ?? 0 },
     });
   } catch (err: unknown) {
     return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
   }
 }
+
