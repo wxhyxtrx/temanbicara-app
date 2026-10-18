@@ -24,6 +24,14 @@ import type {
   SessionMessageView,
 } from "@/types/booking";
 
+function getAccessTokenFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)tb_access_token=([^;]+)/);
+  if (!match) return null;
+  const raw = decodeURIComponent(match[1]).trim().replace(/^"|"$/g, "");
+  return raw && raw !== "undefined" && raw !== "null" ? raw : null;
+}
+
 interface SessionRoomViewProps {
   bookingId: string;
   role: "pasien" | "psikolog";
@@ -38,6 +46,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
 
   const [messages, setMessages] = useState<SessionMessageView[]>([]);
   const [loadingMessages, setLoadingMessages] = useState<boolean>(true);
+  const [isChannelSubscribed, setIsChannelSubscribed] = useState<boolean>(false);
 
   // Input & sending state
   const [inputMessage, setInputMessage] = useState<string>("");
@@ -52,9 +61,14 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
   const [isRespondingExtension, setIsRespondingExtension] = useState<boolean>(false);
   const [insufficientCoinsError, setInsufficientCoinsError] = useState<string | null>(null);
 
-  // UI layout
+  // UI layout & refs
   const [isNotesPanelOpen, setIsNotesPanelOpen] = useState<boolean>(true);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const bookingRef = useRef(booking);
+  bookingRef.current = booking;
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const initialMessagesLoadedRef = useRef(false);
 
   const scrollToBottom = useCallback((smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
@@ -67,7 +81,11 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
         setBooking(res.data);
       }
     } catch (err: unknown) {
-      setLoadError(err instanceof Error ? err.message : "Gagal memuat detail sesi");
+      if (!bookingRef.current) {
+        setLoadError(err instanceof Error ? err.message : "Gagal memuat detail sesi");
+      } else {
+        console.error("Gagal memperbarui status booking:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -77,24 +95,42 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
     try {
       const res = await bookingClient.getSessionMessages(bookingId);
       if (res.success && Array.isArray(res.data)) {
-        setMessages(res.data);
+        const prevMessages = messagesRef.current;
+        const existingIds = new Set(prevMessages.map((m) => m.id));
+        const hasNew = res.data.some((m) => !existingIds.has(m.id));
+
+        setMessages((prev) => {
+          const map = new Map<string, SessionMessageView>();
+          for (const m of prev) map.set(m.id, m);
+          let changed = false;
+          for (const m of res.data) {
+            if (!map.has(m.id)) {
+              changed = true;
+            }
+            map.set(m.id, m);
+          }
+          if (!changed && map.size === prev.length) return prev;
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+
+        if (hasNew && initialMessagesLoadedRef.current) {
+          setTimeout(() => scrollToBottom(true), 80);
+          fetchBooking();
+        }
       }
     } catch (err: unknown) {
       console.error("Gagal memuat pesan sesi:", err);
     } finally {
       setLoadingMessages(false);
+      initialMessagesLoadedRef.current = true;
     }
-  }, [bookingId]);
+  }, [bookingId, fetchBooking, scrollToBottom]);
 
   useEffect(() => {
     fetchBooking();
     fetchMessages();
-
-    const pollInterval = setInterval(() => {
-      fetchBooking();
-    }, 12000);
-
-    return () => clearInterval(pollInterval);
   }, [fetchBooking, fetchMessages]);
 
   useEffect(() => {
@@ -102,65 +138,6 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
       scrollToBottom(false);
     }
   }, [loadingMessages, scrollToBottom]);
-
-  // Realtime subscriber
-  useEffect(() => {
-    if (!bookingId || !supabasePublic) return;
-
-    const channelName = `session_room_${bookingId}`;
-    const channel = supabasePublic
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "session_messages",
-          filter: `booking_id=eq.${bookingId}`,
-        },
-        (payload) => {
-          const newRow = payload.new as SessionMessageEntity;
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === newRow.id)) return prev;
-
-            const isMine = newRow.sender_id === currentUser.id;
-            const psikologId =
-              role === "psikolog"
-                ? currentUser.id
-                : (booking as PatientBookingView)?.psikolog_id;
-
-            const isMsgFromPsikolog = newRow.sender_id === psikologId;
-            const senderRole = isMsgFromPsikolog ? "psikolog" : "pasien";
-            const senderName = isMsgFromPsikolog
-              ? (booking as PatientBookingView)?.psikolog?.nama_lengkap_gelar || "Psikolog"
-              : booking?.patient_display_name || "Pasien";
-
-            const newMsgView: SessionMessageView = {
-              id: newRow.id,
-              booking_id: newRow.booking_id,
-              sender_id: newRow.sender_id,
-              sender_role: senderRole,
-              sender_name: senderName,
-              is_mine: isMine,
-              kind: newRow.kind,
-              body: newRow.body,
-              media_path: newRow.media_path,
-              duration_seconds: newRow.duration_seconds,
-              created_at: newRow.created_at,
-            };
-
-            return [...prev, newMsgView];
-          });
-
-          setTimeout(() => scrollToBottom(true), 100);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabasePublic.removeChannel(channel);
-    };
-  }, [bookingId, currentUser.id, role, booking, scrollToBottom]);
 
   const isTerminalStatus =
     booking?.status === "completed" ||
@@ -170,6 +147,128 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
     booking?.status === "cancelled_by_psikolog";
 
   const isReadOnly = isTerminalStatus;
+
+  // Polling status booking tiap 15 detik selama sesi aktif
+  useEffect(() => {
+    if (isTerminalStatus || !bookingId) return;
+
+    const bookingPollInterval = setInterval(() => {
+      fetchBooking();
+    }, 15000);
+
+    return () => clearInterval(bookingPollInterval);
+  }, [isTerminalStatus, bookingId, fetchBooking]);
+
+  // Realtime subscriber dengan autentikasi token tb_access_token
+  useEffect(() => {
+    if (!bookingId || !supabasePublic) return;
+
+    let isMounted = true;
+    let channel: ReturnType<typeof supabasePublic.channel> | null = null;
+
+    const setupRealtime = async () => {
+      const token = getAccessTokenFromCookie();
+      if (!token) {
+        if (isMounted) setIsChannelSubscribed(false);
+        return;
+      }
+
+      try {
+        await supabasePublic.realtime.setAuth(token);
+      } catch (err) {
+        console.error("Gagal setAuth realtime:", err);
+        if (isMounted) setIsChannelSubscribed(false);
+        return;
+      }
+
+      if (!isMounted) return;
+
+      const channelName = `session_room_${bookingId}`;
+      const ch = supabasePublic
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "session_messages",
+            filter: `booking_id=eq.${bookingId}`,
+          },
+          (payload) => {
+            const newRow = payload.new as SessionMessageEntity;
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newRow.id)) return prev;
+
+              const currentBooking = bookingRef.current;
+              const isMine = newRow.sender_id === currentUser.id;
+              const psikologId =
+                role === "psikolog"
+                  ? currentUser.id
+                  : (currentBooking as PatientBookingView)?.psikolog_id;
+
+              const isMsgFromPsikolog = newRow.sender_id === psikologId;
+              const senderRole = isMsgFromPsikolog ? "psikolog" : "pasien";
+              const senderName = isMsgFromPsikolog
+                ? (currentBooking as PatientBookingView)?.psikolog?.nama_lengkap_gelar || "Psikolog"
+                : currentBooking?.patient_display_name || "Pasien";
+
+              const newMsgView: SessionMessageView = {
+                id: newRow.id,
+                booking_id: newRow.booking_id,
+                sender_id: newRow.sender_id,
+                sender_role: senderRole,
+                sender_name: senderName,
+                is_mine: isMine,
+                kind: newRow.kind,
+                body: newRow.body,
+                media_path: newRow.media_path,
+                duration_seconds: newRow.duration_seconds,
+                created_at: newRow.created_at,
+              };
+
+              return [...prev, newMsgView];
+            });
+
+            setTimeout(() => scrollToBottom(true), 100);
+            fetchBooking();
+          }
+        )
+        .subscribe((status) => {
+          if (!isMounted) return;
+          if (status === "SUBSCRIBED") {
+            setIsChannelSubscribed(true);
+          } else if (
+            status === "CHANNEL_ERROR" ||
+            status === "TIMED_OUT" ||
+            status === "CLOSED"
+          ) {
+            setIsChannelSubscribed(false);
+          }
+        });
+
+      channel = ch;
+    };
+
+    setupRealtime();
+
+    return () => {
+      isMounted = false;
+      if (channel) {
+        supabasePublic.removeChannel(channel);
+      }
+    };
+  }, [bookingId, currentUser.id, role, fetchBooking, scrollToBottom]);
+
+  // Fallback polling pesan tiap 5 detik bila channel bukan SUBSCRIBED
+  useEffect(() => {
+    if (isChannelSubscribed || isTerminalStatus || !bookingId) return;
+
+    const messagesPollInterval = setInterval(() => {
+      fetchMessages();
+    }, 5000);
+
+    return () => clearInterval(messagesPollInterval);
+  }, [isChannelSubscribed, isTerminalStatus, bookingId, fetchMessages]);
 
   // Send text message
   const handleSendText = async () => {
@@ -190,6 +289,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
           return [...prev, res.data];
         });
         setTimeout(() => scrollToBottom(true), 80);
+        fetchBooking();
       }
     } catch (err: unknown) {
       notify.error("Gagal Mengirim Pesan", err instanceof Error ? err.message : "Terjadi kesalahan.");
@@ -239,6 +339,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
           return [...prev, res.data];
         });
         setTimeout(() => scrollToBottom(true), 80);
+        fetchBooking();
       }
       notify.success("Gambar Terkirim");
     } catch (err: unknown) {
@@ -281,6 +382,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
           return [...prev, res.data];
         });
         setTimeout(() => scrollToBottom(true), 80);
+        fetchBooking();
       }
       notify.success("Pesan Suara Terkirim");
     },
