@@ -119,3 +119,12 @@ export const sessionMediaUploadSchema = z
 export type SendSessionMessageInput = z.infer<typeof sendSessionMessageSchema>;
 export type SessionMediaUploadInput = z.infer<typeof sessionMediaUploadSchema>;
 
+export const extensionRespondSchema = z.object({
+  approve: z.boolean({
+    message: 'Keputusan approve harus berupa boolean (true atau false)',
+  }),
+});
+
+export type ExtensionRespondInput = z.infer<typeof extensionRespondSchema>;
+
+

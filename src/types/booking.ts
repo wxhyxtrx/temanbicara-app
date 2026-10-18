@@ -143,3 +143,15 @@ export interface SessionMediaUrlResponse {
   expires_in: number;
 }
 
+export interface ExtensionRespondPayload {
+  approve: boolean;
+}
+
+export type ExtensionRespondResult = 'approved' | 'declined' | 'insufficient_coins';
+
+export interface ExtensionRespondResponse {
+  result: ExtensionRespondResult;
+  booking?: PsikologBookingView | null;
+}
+
+

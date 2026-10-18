@@ -5,6 +5,8 @@ import type {
   PsikologBookingView,
   RescheduleBookingPayload,
   BookingListQuery,
+  ExtensionRespondPayload,
+  ExtensionRespondResponse,
 } from '@/types/booking';
 
 export class BookingApiError extends Error {
@@ -130,5 +132,49 @@ export const bookingClient = {
       body: JSON.stringify(payload),
     });
     return handleResponse<{ success: boolean; data: BookingEntity }>(res);
+  },
+
+  /**
+   * Mengajukan perpanjangan sesi 10 menit (oleh pasien)
+   */
+  async requestExtension(
+    id: string
+  ): Promise<{ success: boolean; data: BookingEntity; message: string }> {
+    const res = await fetch(`/api/bookings/${id}/extension`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: BookingEntity; message: string }>(res);
+  },
+
+  /**
+   * Merespons pengajuan ekstensi sesi (oleh psikolog: approve atau decline)
+   */
+  async respondExtension(
+    id: string,
+    payload: ExtensionRespondPayload
+  ): Promise<{ success: boolean; data: ExtensionRespondResponse; message: string }> {
+    const res = await fetch(`/api/bookings/${id}/extension/respond`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<{ success: boolean; data: ExtensionRespondResponse; message: string }>(res);
+  },
+
+  /**
+   * Mengakhiri sesi konseling (oleh psikolog)
+   */
+  async endSession(
+    id: string
+  ): Promise<{ success: boolean; data: PsikologBookingView; message: string }> {
+    const res = await fetch(`/api/bookings/${id}/end`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: PsikologBookingView; message: string }>(res);
   },
 };
