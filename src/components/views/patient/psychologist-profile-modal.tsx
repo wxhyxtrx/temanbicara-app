@@ -30,15 +30,9 @@ import {
   Star,
   Clock,
   Calendar,
-  GraduationCap,
-  Sparkles,
   HeartHandshake,
-  MessageSquare,
-  Phone,
   CheckCircle2,
   ArrowRight,
-  BookOpen,
-  AlertCircle,
   RefreshCw,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
@@ -73,12 +67,6 @@ export function PsychologistProfileModal({
         attendancePct: psychologist.attendance_pct ?? null,
         initials: getInitials(psychologist.nama_lengkap_gelar),
         available: true,
-        nextSlot: "Jadwal Tersedia",
-        almamater: "Magister Profesi Psikologi Klinis",
-        bio: `Psikolog klinis berlisensi resmi dengan keahlian di bidang ${
-          psychologist.spesialisasi.join(", ") || "kesehatan mental dan terapi perilaku"
-        }.`,
-        approaches: ["Cognitive Behavioral Therapy (CBT)", "Mindfulness", "Solution-Focused Brief Therapy"],
         handledTopics: psychologist.spesialisasi,
         hourlyRateCoins: tarifToCoins(psychologist.tarif_sesi),
         tarifSesi: Number(psychologist.tarif_sesi),
@@ -97,10 +85,6 @@ export function PsychologistProfileModal({
         attendancePct: null,
         initials: consultant.initials,
         available: consultant.available,
-        nextSlot: consultant.nextSlot,
-        almamater: consultant.almamater,
-        bio: consultant.bio,
-        approaches: consultant.approaches,
         handledTopics: consultant.handledTopics,
         hourlyRateCoins: consultant.hourlyRateCoins || 15,
         tarifSesi: (consultant.hourlyRateCoins || 15) * 10000,
@@ -213,11 +197,11 @@ export function PsychologistProfileModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0 rounded-3xl border border-slate-200 dark:border-slate-800 font-nunito bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl">
+      <DialogContent className="w-full max-w-2xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-0 rounded-3xl border border-slate-200 dark:border-slate-800 font-nunito bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl box-border">
         {/* Clean Ambient Header */}
-        <div className="p-6 pb-5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-900/60 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
+        <div className="p-6 pb-5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-900/60 space-y-4 w-full min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+            <div className="flex items-center gap-4 min-w-0">
               <div className="relative shrink-0">
                 {profile.avatarUrl ? (
                   <img
@@ -238,14 +222,14 @@ export function PsychologistProfileModal({
                 )}
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <DialogTitle className="text-lg sm:text-xl font-bold font-heading text-slate-900 dark:text-white leading-tight">
+                  <DialogTitle className="text-lg sm:text-xl font-bold font-heading text-slate-900 dark:text-white leading-tight truncate">
                     {profile.name}
                   </DialogTitle>
                   <MdVerified className="text-sky-500 text-base shrink-0" title="Terverifikasi SIPPK HIMPSI" />
                 </div>
-                <p className="text-xs sm:text-sm text-teal-700 dark:text-teal-400 font-medium">
+                <p className="text-xs sm:text-sm text-teal-700 dark:text-teal-400 font-medium truncate">
                   {profile.title}
                 </p>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-800 dark:text-teal-300 text-[11px] font-bold">
@@ -259,7 +243,7 @@ export function PsychologistProfileModal({
               </div>
             </div>
 
-            <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-1.5 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-slate-800">
+            <div className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-1.5 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-1 text-amber-500 font-bold text-sm">
                 {profile.rating !== null && profile.rating !== undefined ? (
                   <>
@@ -303,9 +287,9 @@ export function PsychologistProfileModal({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6 w-full min-w-0 box-border">
           {/* Quick Metrics Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center w-full min-w-0">
             <div className="space-y-0.5">
               <span className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider block">
                 Pengalaman
@@ -343,7 +327,7 @@ export function PsychologistProfileModal({
           </div>
 
           {/* 1. SECTION: PEMILIH TANGGAL (14 HARI WIB) & JAM DARI /slots */}
-          <div className="p-4 sm:p-5 rounded-2xl border-2 border-teal-500/30 bg-teal-50/20 dark:bg-teal-950/20 space-y-4">
+          <div className="p-4 sm:p-5 rounded-2xl border-2 border-teal-500/30 bg-teal-50/20 dark:bg-teal-950/20 space-y-4 w-full min-w-0 box-border">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <h4 className="text-sm font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
@@ -369,40 +353,42 @@ export function PsychologistProfileModal({
             </div>
 
             {/* Deret 14 Hari Horizontal */}
-            <div className="flex gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
-              {days14.map((d) => {
-                const isSelected = selectedDate === d.dateStr;
-                const slotCount = (slotsByDate[d.dateStr] || []).length;
-                return (
-                  <button
-                    key={d.dateStr}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDate(d.dateStr);
-                      setSelectedSlotIso(null);
-                    }}
-                    className={`shrink-0 flex flex-col items-center justify-center px-3 py-2 rounded-xl text-center border transition-all cursor-pointer min-w-[78px] ${
-                      isSelected
-                        ? "bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/40"
-                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-700"
-                    }`}
-                  >
-                    <span className="text-[11px] font-semibold">{d.dayLabel}</span>
-                    <span className="text-xs font-bold font-heading">{d.formattedDate}</span>
-                    <span
-                      className={`text-[9px] mt-1 px-1.5 py-0.5 rounded-full font-semibold whitespace-nowrap ${
+            <div className="w-full min-w-0 overflow-x-auto pb-2 pt-1 no-scrollbar scroll-smooth">
+              <div className="flex gap-2 min-w-max">
+                {days14.map((d) => {
+                  const isSelected = selectedDate === d.dateStr;
+                  const slotCount = (slotsByDate[d.dateStr] || []).length;
+                  return (
+                    <button
+                      key={d.dateStr}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDate(d.dateStr);
+                        setSelectedSlotIso(null);
+                      }}
+                      className={`shrink-0 flex flex-col items-center justify-center px-3 py-2 rounded-xl text-center border transition-all cursor-pointer min-w-[78px] ${
                         isSelected
-                          ? "bg-white/20 text-white"
-                          : slotCount > 0
-                          ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
-                          : "bg-slate-100 dark:bg-slate-700 text-slate-400"
+                          ? "bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/40"
+                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-teal-300 dark:hover:border-teal-700"
                       }`}
                     >
-                      {slotCount > 0 ? `${slotCount} slot` : "Tidak tersedia"}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span className="text-[11px] font-semibold">{d.dayLabel}</span>
+                      <span className="text-xs font-bold font-heading">{d.formattedDate}</span>
+                      <span
+                        className={`text-[9px] mt-1 px-1.5 py-0.5 rounded-full font-semibold whitespace-nowrap ${
+                          isSelected
+                            ? "bg-white/20 text-white"
+                            : slotCount > 0
+                            ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                            : "bg-slate-100 dark:bg-slate-700 text-slate-400"
+                        }`}
+                      >
+                        {slotCount > 0 ? `${slotCount} slot` : "Tidak tersedia"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Jam dari /slots untuk Hari Terpilih */}
@@ -483,56 +469,7 @@ export function PsychologistProfileModal({
             </div>
           </div>
 
-          {/* 2. Biografi Singkat */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <BookOpen size={14} className="text-teal-600 dark:text-teal-400" />
-              <span>Tentang Psikolog</span>
-            </h4>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
-              {profile.bio ||
-                "Psikolog klinis berlisensi HIMPSI yang mengkhususkan diri dalam pendampingan kesehatan mental dewasa dengan pendekatan berbasis bukti ilmiah."}
-            </p>
-          </div>
-
-          {/* 3. Latar Belakang Pendidikan & Almamater */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <GraduationCap size={15} className="text-teal-600 dark:text-teal-400" />
-              <span>Latar Belakang Akademik & Kredensial</span>
-            </h4>
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 space-y-1.5">
-              <p className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
-                <span>{profile.almamater || "Magister Profesi Psikologi Klinis"}</span>
-              </p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-5">
-                Surat Izin Praktik Psikolog Klinis (SIPPK) aktif terdaftar pada Sistem Registrasi Nasional Tenaga Kesehatan RI.
-              </p>
-            </div>
-          </div>
-
-          {/* 4. Pendekatan Terapi Klinis */}
-          {profile.approaches && profile.approaches.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles size={14} className="text-teal-600 dark:text-teal-400" />
-                <span>Metode & Pendekatan Terapi</span>
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {profile.approaches.map((approach, i) => (
-                  <span
-                    key={i}
-                    className="text-xs px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/80 dark:border-teal-800 text-teal-800 dark:text-teal-300 font-semibold"
-                  >
-                    ✓ {approach}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 5. Topik / Masalah yang Ditangani */}
+          {/* Fokus Isu & Keluhan yang Didampingi (Dari spesialisasi API) */}
           {profile.handledTopics && profile.handledTopics.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
@@ -552,7 +489,7 @@ export function PsychologistProfileModal({
             </div>
           )}
 
-          {/* 6. Ulasan & Evaluasi Klien (Tanpa Identitas) */}
+          {/* Ulasan & Evaluasi Klien (Dari API /reviews) */}
           <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
@@ -629,7 +566,7 @@ export function PsychologistProfileModal({
         </div>
 
         {/* Modal Footer CTA */}
-        <div className="p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/60 flex items-center justify-between gap-3 sticky bottom-0 backdrop-blur-md">
+        <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-900/80 flex items-center justify-between gap-3 sticky bottom-0 backdrop-blur-md w-full min-w-0 box-border">
           <Button
             type="button"
             variant="ghost"
