@@ -242,6 +242,15 @@ export interface ReviewHidePayload {
   is_hidden: boolean;
 }
 
+export interface AdminReviewItem extends SessionReviewEntity {
+  id: string;
+  nama_lengkap_gelar: string;
+  patient_display_name: string;
+  start_at: string | null;
+  session_date: string | null;
+  tanggal_sesi: string | null;
+}
+
 
 
 
