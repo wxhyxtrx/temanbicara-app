@@ -353,13 +353,24 @@ export default function ListenerSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Card 2: Preferensi Notifikasi */}
+        {/* Card 2: Preferensi Notifikasi (Coming Soon) */}
         <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Bell size={18} className="text-teal-600 dark:text-teal-400" />
-              Preferensi Notifikasi Antrean
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Bell size={18} className="text-teal-600 dark:text-teal-400" />
+                Preferensi Notifikasi Antrean
+              </CardTitle>
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+              >
+                Coming Soon
+              </Badge>
+            </div>
+            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+              Notifikasi browser dan Web Audio untuk antrean curhat masuk sedang dalam tahap pengembangan
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="p-4 sm:p-6 space-y-4">

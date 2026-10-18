@@ -23,6 +23,7 @@ import {
   Save,
   CheckCircle2,
   Loader2,
+  Clock,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
@@ -266,6 +267,12 @@ export default function PatientSettingsPage() {
           >
             <Bell size={15} />
             <span>Notifikasi Sesi</span>
+            <Badge
+              variant="outline"
+              className="ml-1 text-[9px] px-1.5 py-0 bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+            >
+              Coming Soon
+            </Badge>
           </TabsTrigger>
           <TabsTrigger
             value="security"
@@ -273,6 +280,12 @@ export default function PatientSettingsPage() {
           >
             <Lock size={15} />
             <span>Keamanan Akun</span>
+            <Badge
+              variant="outline"
+              className="ml-1 text-[9px] px-1.5 py-0 bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+            >
+              Coming Soon
+            </Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -531,9 +544,17 @@ export default function PatientSettingsPage() {
 
               <div className="flex items-center justify-between gap-4 pt-4">
                 <div className="space-y-0.5 min-w-0">
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Unduh Catatan Rekam Medis Konseling
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
+                      Unduh Catatan Rekam Medis Konseling
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] px-1.5 py-0 bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                    >
+                      Coming Soon
+                    </Badge>
+                  </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
                     Ekspor seluruh catatan refleksi dan ringkasan sesi dalam format PDF terenkripsi sandi.
                   </p>
@@ -542,7 +563,7 @@ export default function PatientSettingsPage() {
                   variant="outline"
                   size="sm"
                   className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-3 h-8 font-semibold shrink-0 gap-1.5"
-                  onClick={() => notify.info("Ekspor PDF", "Permintaan unduh arsip data konseling sedang diproses.")}
+                  onClick={() => notify.info("Coming Soon", "Fitur ekspor berkas rekam medis PDF sedang dalam pengembangan.")}
                 >
                   <Download size={13} />
                   Ekspor PDF
@@ -553,13 +574,41 @@ export default function PatientSettingsPage() {
         </TabsContent>
 
         {/* TAB 3: NOTIFIKASI */}
-        <TabsContent value="notifications" className="space-y-6">
+        <TabsContent value="notifications" className="space-y-4">
+          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs">
+            <Clock className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <p className="font-bold font-heading text-xs text-amber-950 dark:text-amber-100">
+                  Fitur Notifikasi Sesi (Coming Soon)
+                </p>
+                <Badge
+                  variant="outline"
+                  className="text-[9px] px-1.5 py-0 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                >
+                  Dalam Pengembangan
+                </Badge>
+              </div>
+              <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-nunito">
+                Sinkronisasi webhook WhatsApp & Web Push untuk notifikasi pengingat sesi dan pesan evaluasi klinis sedang dipersiapkan. Pengaturan di bawah saat ini beroperasi dalam mode pratinjau lokal.
+              </p>
+            </div>
+          </div>
+
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
             <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Bell size={18} className="text-teal-600 dark:text-teal-400" />
-                Preferensi Pengingat Sesi
-              </CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Bell size={18} className="text-teal-600 dark:text-teal-400" />
+                  Preferensi Pengingat Sesi
+                </CardTitle>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                >
+                  Coming Soon
+                </Badge>
+              </div>
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-4 divide-y divide-slate-100 dark:divide-slate-800">
@@ -599,13 +648,41 @@ export default function PatientSettingsPage() {
         </TabsContent>
 
         {/* TAB 4: KEAMANAN AKUN */}
-        <TabsContent value="security" className="space-y-6">
+        <TabsContent value="security" className="space-y-4">
+          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs">
+            <Clock className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <p className="font-bold font-heading text-xs text-amber-950 dark:text-amber-100">
+                  Fitur Keamanan Lanjutan (Coming Soon)
+                </p>
+                <Badge
+                  variant="outline"
+                  className="text-[9px] px-1.5 py-0 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                >
+                  Dalam Pengembangan
+                </Badge>
+              </div>
+              <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-nunito">
+                Autentikasi dua langkah (2FA OTP) dan pembaruan kata sandi mandiri via email verifikasi Supabase Auth sedang disiapkan untuk rilis berikutnya.
+              </p>
+            </div>
+          </div>
+
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
             <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Lock size={18} className="text-teal-600 dark:text-teal-400" />
-                Keamanan & Autentikasi
-              </CardTitle>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Lock size={18} className="text-teal-600 dark:text-teal-400" />
+                  Keamanan & Autentikasi
+                </CardTitle>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                >
+                  Coming Soon
+                </Badge>
+              </div>
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-4">
@@ -643,7 +720,7 @@ export default function PatientSettingsPage() {
                   size="sm"
                   variant="outline"
                   className="text-xs rounded-xl mt-2"
-                  onClick={() => notify.info("Ganti Kata Sandi", "Fitur ubah kata sandi melalui email verifikasi segera aktif.")}
+                  onClick={() => notify.info("Coming Soon", "Fitur ubah kata sandi melalui email verifikasi segera aktif.")}
                 >
                   Perbarui Kata Sandi
                 </Button>

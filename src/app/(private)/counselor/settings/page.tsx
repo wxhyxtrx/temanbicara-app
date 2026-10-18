@@ -516,15 +516,23 @@ export default function CounselorSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Card 3: Rekening Bank Pencairan */}
+        {/* Card 3: Rekening Bank Pencairan (Coming Soon - Payout API) */}
         <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Building2 size={18} className="text-teal-600 dark:text-teal-400" />
-              Rekening Bank Pencairan Honor
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Building2 size={18} className="text-teal-600 dark:text-teal-400" />
+                Rekening Bank Pencairan Honor
+              </CardTitle>
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+              >
+                Coming Soon
+              </Badge>
+            </div>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-              Rekening rujukan untuk pencairan honor koin konsultasi
+              Integrasi pencairan otomatis ke rekening bank sedang disiapkan. Honor saat ini dicatat dan dikonversi melalui mutasi saldo koin.
             </CardDescription>
           </CardHeader>
 
@@ -538,8 +546,8 @@ export default function CounselorSettingsPage() {
                   id="bankName"
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
-                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 rounded-xl"
-                  required
+                  disabled
+                  className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/40 text-slate-500 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed"
                 />
               </div>
 
@@ -551,11 +559,14 @@ export default function CounselorSettingsPage() {
                   id="accountNumber"
                   value={bankAccount}
                   onChange={(e) => setBankAccount(e.target.value)}
-                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 rounded-xl"
-                  required
+                  disabled
+                  className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/40 text-slate-500 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed font-mono"
                 />
               </div>
             </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+              * Rekening rujukan pencairan dapat diubah setelah modul integrasi bank mitra resmi dirilis.
+            </p>
           </CardContent>
         </Card>
 
