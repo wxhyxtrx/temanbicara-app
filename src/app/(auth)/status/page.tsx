@@ -98,10 +98,11 @@ function StatusContent() {
       await authService.logout();
     } catch {
       // Ignore
+    } finally {
+      logout();
+      notify.info("Keluar Akun", "Anda telah keluar dari akun.");
+      window.location.href = "/login";
     }
-    logout();
-    notify.info("Keluar Akun", "Anda telah keluar dari akun.");
-    window.location.href = "/login";
   };
 
   // syncSession memperbarui cookie tb_user_status dari server; jika sudah aktif,

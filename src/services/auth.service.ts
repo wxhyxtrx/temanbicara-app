@@ -156,7 +156,10 @@ export const authService = {
     }
     try {
       if (typeof window !== 'undefined') {
-        await supabasePublic.auth.signOut();
+        await Promise.race([
+          supabasePublic.auth.signOut(),
+          new Promise((resolve) => setTimeout(resolve, 2000)),
+        ]);
       }
     } catch {
       // Ignore supabase client signOut error if already logged out

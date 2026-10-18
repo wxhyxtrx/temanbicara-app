@@ -129,6 +129,8 @@ export function AppSidebar() {
     ? user.avatarInitials || defaultFallbackUser.avatarInitials
     : defaultFallbackUser.avatarInitials;
 
+  const [loggingOut, setLoggingOut] = React.useState(false);
+
   // Handler auto-close sidebar pada mobile dan tablet (< 1024px)
   const handleNavClick = () => {
     if (isMobile) {
@@ -137,14 +139,17 @@ export function AppSidebar() {
   };
 
   const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
     handleNavClick();
-    window.location.href = "/login";
     try {
       await authService.logout();
     } catch {
       // Ignore network errors on logout
+    } finally {
+      logout();
+      window.location.href = "/login";
     }
-    logout();
   };
 
   const getPortalHome = () => {
@@ -488,11 +493,12 @@ export function AppSidebar() {
         {/* Logout Row */}
         <button
           type="button"
+          disabled={loggingOut}
           onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-400 transition-colors cursor-pointer group text-left"
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-400 transition-colors cursor-pointer group text-left disabled:opacity-50"
         >
           <LogOut size={16} className="text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors" />
-          <span>Keluar dari Akun</span>
+          <span>{loggingOut ? "Keluar..." : "Keluar dari Akun"}</span>
         </button>
       </SidebarFooter>
     </Sidebar>

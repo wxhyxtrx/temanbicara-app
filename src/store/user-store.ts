@@ -24,7 +24,6 @@ export interface UserState {
   roleProfiles: Record<UserRole, UserProfile>;
   isAuthenticated: boolean;
   isProfileLoaded: boolean;
-  login: (email: string, name?: string) => UserProfile;
   register: (
     fullName: string,
     email: string,
@@ -77,57 +76,6 @@ export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
       ...createInitialUserState(),
-
-      login: (email, name) => {
-        // Cek apakah email cocok dengan akun preset mock
-        const cleanEmail = email.trim().toLowerCase();
-        const matchedMock = (Object.values(mockUsers) as UserProfile[]).find(
-          (u) => u.email.toLowerCase() === cleanEmail
-        );
-
-        if (matchedMock) {
-          set({
-            isAuthenticated: true,
-            isProfileLoaded: true,
-            user: matchedMock,
-          });
-          if (typeof window !== "undefined") {
-            document.cookie = `tb_access_token=mock-token-${matchedMock.role}; path=/; max-age=604800; SameSite=Lax`;
-            document.cookie = `tb_user_role=${matchedMock.role}; path=/; max-age=604800; SameSite=Lax`;
-            document.cookie = `tb_user_status=active; path=/; max-age=604800; SameSite=Lax`;
-          }
-          return matchedMock;
-        }
-
-        // Akun custom
-        const currentUser = get().user;
-        const newName = name || (cleanEmail.split("@")[0].replace(/[._]/g, " ") || "Pengguna TemanBicara");
-        const formattedName = newName.charAt(0).toUpperCase() + newName.slice(1);
-        const customUser: UserProfile = {
-          ...currentUser,
-          email: cleanEmail,
-          fullName: name ? formattedName : currentUser.fullName,
-          avatarInitials: generateInitials(name ? formattedName : currentUser.fullName),
-          role: currentUser.role || "patient",
-        };
-
-        const profiles = get().roleProfiles || { ...mockUsers };
-        set({
-          isAuthenticated: true,
-          isProfileLoaded: true,
-          user: customUser,
-          roleProfiles: {
-            ...profiles,
-            [customUser.role]: customUser,
-          },
-        });
-        if (typeof window !== "undefined") {
-          document.cookie = `tb_access_token=custom-token; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `tb_user_role=${customUser.role}; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `tb_user_status=active; path=/; max-age=604800; SameSite=Lax`;
-        }
-        return customUser;
-      },
 
       register: (fullName, email, role = "patient", extraData?: Partial<UserProfile>) => {
         const initials = generateInitials(fullName);
@@ -376,8 +324,8 @@ export const useUserStore = create<UserState>()(
         if (typeof window !== "undefined") {
           if (token) {
             localStorage.setItem("tb_access_token", token);
+            document.cookie = `tb_access_token=${token}; path=/; max-age=604800; SameSite=Lax`;
           }
-          document.cookie = `tb_access_token=${token || "session-token"}; path=/; max-age=604800; SameSite=Lax`;
           document.cookie = `tb_user_status=${sessionUser.status || "active"}; path=/; max-age=604800; SameSite=Lax`;
         }
       },
