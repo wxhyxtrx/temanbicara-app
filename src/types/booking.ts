@@ -154,4 +154,48 @@ export interface ExtensionRespondResponse {
   booking?: PsikologBookingView | null;
 }
 
+/**
+ * Task B7: Catatan Klien (Clinical Notes)
+ */
+export interface ClientNoteEntity {
+  booking_id: string;
+  psikolog_id: string;
+  patient_id: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientNoteDetail extends ClientNoteEntity {
+  patient_display_name?: string;
+  start_at?: string | null;
+}
+
+export interface PatientNotesResponse {
+  patient_id: string;
+  patient_display_name: string;
+  notes: ClientNoteDetail[];
+}
+
+export interface UpdateClientNotePayload {
+  body: string;
+}
+
+/**
+ * Task B7: Emergency Contact Access Log (Khusus Admin Krisis)
+ */
+export interface EmergencyContactAccessLogEntity {
+  id: string;
+  admin_id: string;
+  patient_id: string;
+  created_at: string;
+}
+
+export interface PatientEmergencyContactView {
+  patient_id: string;
+  kontak_darurat_nama: string | null;
+  kontak_darurat_wa: string | null;
+}
+
+
 

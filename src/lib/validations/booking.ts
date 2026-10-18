@@ -127,4 +127,13 @@ export const extensionRespondSchema = z.object({
 
 export type ExtensionRespondInput = z.infer<typeof extensionRespondSchema>;
 
+export const updateClientNoteSchema = z.object({
+  body: z
+    .string({ message: 'Catatan wajib diisi' })
+    .max(5000, 'Catatan maksimal 5000 karakter'),
+});
+
+export type UpdateClientNoteInput = z.infer<typeof updateClientNoteSchema>;
+
+
 
