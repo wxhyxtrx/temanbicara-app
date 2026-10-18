@@ -236,14 +236,14 @@ BEGIN
                 'session_started',
                 'Sesi Konseling Dimulai',
                 'Sesi konseling Anda telah dimulai. Silakan masuk ke ruang konsultasi.',
-                '/room/' || NEW.id
+                '/patient/session/' || NEW.id
             );
             PERFORM public.notify_internal(
                 NEW.psikolog_id,
                 'session_started',
                 'Sesi Konseling Dimulai',
                 'Sesi konseling bersama ' || NEW.patient_display_name || ' telah dimulai. Silakan masuk ke ruang konsultasi.',
-                '/counselor/room/' || NEW.id
+                '/counselor/room?booking=' || NEW.id
             );
         ELSIF NEW.status = 'completed' THEN
             PERFORM public.notify_internal(
@@ -312,7 +312,7 @@ BEGIN
                 'extension_requested',
                 'Permintaan Perpanjangan Sesi',
                 'Pasien ' || NEW.patient_display_name || ' mengajukan perpanjangan waktu sesi (+10 menit).',
-                '/counselor/room/' || NEW.id
+                '/counselor/room?booking=' || NEW.id
             );
         ELSIF NEW.extension_status = 'approved' THEN
             PERFORM public.notify_internal(
@@ -320,7 +320,7 @@ BEGIN
                 'extension_approved',
                 'Perpanjangan Sesi Disetujui',
                 'Psikolog telah menyetujui perpanjangan waktu sesi (+10 menit).',
-                '/room/' || NEW.id
+                '/patient/session/' || NEW.id
             );
         ELSIF NEW.extension_status = 'declined' THEN
             PERFORM public.notify_internal(
@@ -328,7 +328,7 @@ BEGIN
                 'extension_declined',
                 'Perpanjangan Sesi Ditolak',
                 'Psikolog belum dapat memperpanjang sesi kali ini.',
-                '/room/' || NEW.id
+                '/patient/session/' || NEW.id
             );
         END IF;
     END IF;
@@ -510,7 +510,7 @@ BEGIN
                 'session_reminder_10',
                 'Pengingat Sesi Konseling (10 Menit Lagi)',
                 'Sesi konseling Anda akan dimulai dalam 10 menit. Silakan bersiap masuk ke ruang konsultasi.',
-                '/patient/schedule'
+                '/patient/session/' || v_booking.id
             );
 
             PERFORM public.notify_internal(
@@ -518,7 +518,7 @@ BEGIN
                 'session_reminder_10',
                 'Pengingat Sesi Konseling (10 Menit Lagi)',
                 'Sesi konseling bersama pasien ' || v_booking.patient_display_name || ' akan dimulai dalam 10 menit. Mohon bersiap menyapa pasien.',
-                '/counselor/schedule'
+                '/counselor/room?booking=' || v_booking.id
             );
 
             v_count := v_count + 1;
@@ -618,6 +618,7 @@ DECLARE
     v_tip_id UUID := 'b9f00000-0000-0000-0000-000000000001';
     v_count BIGINT;
     v_body TEXT;
+    v_link TEXT;
     v_processed INTEGER;
 BEGIN
     -- ----------------------------------------------------
@@ -684,6 +685,14 @@ BEGIN
         RAISE EXCEPTION 'UJI 2.2 GAGAL: Pasien harus menerima tepat 1 notifikasi session_reminder_10, didapat: %', v_count;
     END IF;
 
+    SELECT link INTO v_link
+    FROM public.notifications
+    WHERE type = 'session_reminder_10' AND user_id = v_pasien_id;
+
+    IF v_link <> '/patient/session/' || v_booking_2::text THEN
+        RAISE EXCEPTION 'UJI 2.2b GAGAL: Link pengingat 10 menit pasien harus /patient/session/%, didapat: %', v_booking_2, v_link;
+    END IF;
+
     -- Cek pengingat 10 menit untuk psikolog
     SELECT COUNT(*) INTO v_count
     FROM public.notifications
@@ -691,6 +700,14 @@ BEGIN
 
     IF v_count <> 1 THEN
         RAISE EXCEPTION 'UJI 2.3 GAGAL: Psikolog harus menerima tepat 1 notifikasi session_reminder_10, didapat: %', v_count;
+    END IF;
+
+    SELECT link INTO v_link
+    FROM public.notifications
+    WHERE type = 'session_reminder_10' AND user_id = v_psikolog_id;
+
+    IF v_link <> '/counselor/room?booking=' || v_booking_2::text THEN
+        RAISE EXCEPTION 'UJI 2.3b GAGAL: Link pengingat 10 menit psikolog harus /counselor/room?booking=%, didapat: %', v_booking_2, v_link;
     END IF;
 
     -- Panggilan kedua session_tick() pada jendela waktu yang sama -> tidak boleh menghasilkan notifikasi duplikat
@@ -861,6 +878,14 @@ BEGIN
         RAISE EXCEPTION 'UJI 6.4 GAGAL: Psikolog harus menerima notifikasi extension_requested';
     END IF;
 
+    SELECT link INTO v_link
+    FROM public.notifications
+    WHERE user_id = v_psikolog_id AND type = 'extension_requested';
+
+    IF v_link <> '/counselor/room?booking=' || v_booking_2::text THEN
+        RAISE EXCEPTION 'UJI 6.4b GAGAL: Link extension_requested harus /counselor/room?booking=%, didapat: %', v_booking_2, v_link;
+    END IF;
+
     UPDATE public.bookings
     SET extension_status = 'approved'
     WHERE id = v_booking_2;
@@ -871,6 +896,14 @@ BEGIN
 
     IF v_count <> 1 THEN
         RAISE EXCEPTION 'UJI 6.5 GAGAL: Pasien harus menerima notifikasi extension_approved';
+    END IF;
+
+    SELECT link INTO v_link
+    FROM public.notifications
+    WHERE user_id = v_pasien_id AND type = 'extension_approved';
+
+    IF v_link <> '/patient/session/' || v_booking_2::text THEN
+        RAISE EXCEPTION 'UJI 6.5b GAGAL: Link extension_approved harus /patient/session/%, didapat: %', v_booking_2, v_link;
     END IF;
 
     RAISE NOTICE 'B9 DRY-RUN TESTS PASSED: All 6 notification test suites succeeded cleanly.';

@@ -200,14 +200,14 @@ BEGIN
                 'session_started',
                 'Sesi Konseling Dimulai',
                 'Sesi konseling Anda telah dimulai. Silakan masuk ke ruang konsultasi.',
-                '/room/' || NEW.id
+                '/patient/session/' || NEW.id
             );
             PERFORM public.notify_internal(
                 NEW.psikolog_id,
                 'session_started',
                 'Sesi Konseling Dimulai',
                 'Sesi konseling bersama ' || NEW.patient_display_name || ' telah dimulai. Silakan masuk ke ruang konsultasi.',
-                '/counselor/room/' || NEW.id
+                '/counselor/room?booking=' || NEW.id
             );
         -- 4. Sesi selesai (completed)
         ELSIF NEW.status = 'completed' THEN
@@ -280,7 +280,7 @@ BEGIN
                 'extension_requested',
                 'Permintaan Perpanjangan Sesi',
                 'Pasien ' || NEW.patient_display_name || ' mengajukan perpanjangan waktu sesi (+10 menit).',
-                '/counselor/room/' || NEW.id
+                '/counselor/room?booking=' || NEW.id
             );
         -- Psikolog menyetujui ekstensi -> notifikasi ke pasien
         ELSIF NEW.extension_status = 'approved' THEN
@@ -289,7 +289,7 @@ BEGIN
                 'extension_approved',
                 'Perpanjangan Sesi Disetujui',
                 'Psikolog telah menyetujui perpanjangan waktu sesi (+10 menit).',
-                '/room/' || NEW.id
+                '/patient/session/' || NEW.id
             );
         -- Psikolog menolak ekstensi -> notifikasi ke pasien
         ELSIF NEW.extension_status = 'declined' THEN
@@ -298,7 +298,7 @@ BEGIN
                 'extension_declined',
                 'Perpanjangan Sesi Ditolak',
                 'Psikolog belum dapat memperpanjang sesi kali ini.',
-                '/room/' || NEW.id
+                '/patient/session/' || NEW.id
             );
         END IF;
     END IF;
@@ -489,7 +489,7 @@ BEGIN
                 'session_reminder_10',
                 'Pengingat Sesi Konseling (10 Menit Lagi)',
                 'Sesi konseling Anda akan dimulai dalam 10 menit. Silakan bersiap masuk ke ruang konsultasi.',
-                '/patient/schedule'
+                '/patient/session/' || v_booking.id
             );
 
             -- Notifikasi ke psikolog (hanya patient_display_name)
@@ -498,7 +498,7 @@ BEGIN
                 'session_reminder_10',
                 'Pengingat Sesi Konseling (10 Menit Lagi)',
                 'Sesi konseling bersama pasien ' || v_booking.patient_display_name || ' akan dimulai dalam 10 menit. Mohon bersiap menyapa pasien.',
-                '/counselor/schedule'
+                '/counselor/room?booking=' || v_booking.id
             );
 
             v_count := v_count + 1;
