@@ -1,6 +1,11 @@
 import { useUserStore, PERSISTENT_STORES_TO_CLEAR } from "@/store/user-store";
 
 let isHandlingUnauthorized = false;
+let isInterceptorInstalled = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+const originalFetch =
+  typeof window !== "undefined" ? window.fetch.bind(window) : fetch;
 
 /**
  * Menangani respon 401 / token kedaluwarsa (INVALID_TOKEN / UNAUTHENTICATED)
@@ -35,7 +40,7 @@ export function handleUnauthorized(message?: string) {
 
   // 4. Request logout server-side secara non-blocking
   try {
-    fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    originalFetch("/api/auth/logout", { method: "POST" }).catch(() => {});
   } catch {
     // Abaikan error fetch logout
   }
@@ -52,4 +57,118 @@ export function handleUnauthorized(message?: string) {
   } else {
     isHandlingUnauthorized = false;
   }
+}
+
+/**
+ * Mencoba refresh token via POST /api/auth/refresh sekali.
+ * Menggunakan shared promise agar request concurrent tidak mengirim refresh ganda.
+ */
+export async function tryAuthRefresh(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const res = await originalFetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const json = await res.json().catch(() => null);
+        return json?.success !== false;
+      }
+      return false;
+    } catch (err) {
+      console.error("[AUTH]: Refresh session network error:", err);
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+function getRequestUrl(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.toString();
+  if (typeof Request !== "undefined" && input instanceof Request) return input.url;
+  return String(input);
+}
+
+function isInternalApiUrl(url: string): boolean {
+  if (url.startsWith("/api/")) return true;
+  if (typeof window !== "undefined") {
+    if (url.startsWith(window.location.origin + "/api/")) return true;
+  }
+  return false;
+}
+
+function isAuthBypassUrl(url: string): boolean {
+  return (
+    url.includes("/api/auth/login") ||
+    url.includes("/api/auth/refresh") ||
+    url.includes("/api/auth/logout") ||
+    url.includes("/api/auth/register")
+  );
+}
+
+/**
+ * Wrapper fetch dengan auto-refresh token saat menerima status 401.
+ * Jika refresh sukses, ulangi request semula; jika gagal, panggil handleUnauthorized().
+ */
+export async function fetchWithAuth(
+  input: RequestInfo | URL,
+  init?: RequestInit & { _isAuthRetry?: boolean }
+): Promise<Response> {
+  let reqCloneForRetry: Request | null = null;
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    try {
+      reqCloneForRetry = input.clone();
+    } catch {
+      reqCloneForRetry = null;
+    }
+  }
+
+  const res = await originalFetch(input, init);
+
+  if (res.status === 401 && !init?._isAuthRetry) {
+    const url = getRequestUrl(input);
+    if (isInternalApiUrl(url) && !isAuthBypassUrl(url)) {
+      const refreshed = await tryAuthRefresh();
+      if (refreshed) {
+        const retryInit: RequestInit & { _isAuthRetry?: boolean } = {
+          ...init,
+          _isAuthRetry: true,
+        };
+        const retryTarget = reqCloneForRetry || input;
+        const retryRes = await originalFetch(retryTarget, retryInit);
+        if (retryRes.status === 401) {
+          handleUnauthorized("Sesi berakhir setelah percobaan refresh token");
+        }
+        return retryRes;
+      } else {
+        handleUnauthorized("Sesi tidak valid atau kedaluwarsa");
+      }
+    }
+  }
+
+  return res;
+}
+
+/**
+ * Menginstal interceptor pada window.fetch di sisi browser
+ */
+export function installAuthFetchInterceptor() {
+  if (typeof window === "undefined" || isInterceptorInstalled) return;
+  isInterceptorInstalled = true;
+  window.fetch = fetchWithAuth;
+}
+
+// Auto install di browser saat modul dimuat
+if (typeof window !== "undefined") {
+  installAuthFetchInterceptor();
 }
