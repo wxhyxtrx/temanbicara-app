@@ -12,6 +12,7 @@ import type {
   ReviewHidePayload,
   SessionReviewEntity,
   AdminReviewItem,
+  AdminReviewStats,
   PublicReviewItem,
   SessionMessageView,
   SendSessionMessagePayload,
@@ -278,6 +279,7 @@ export const bookingClient = {
   }): Promise<{
     success: boolean;
     data: AdminReviewItem[];
+    stats?: AdminReviewStats;
     pagination: { page: number; limit: number; total: number; totalPages: number };
     meta: { page: number; limit: number; total: number; totalPages: number };
   }> {
@@ -294,6 +296,7 @@ export const bookingClient = {
     return handleResponse<{
       success: boolean;
       data: AdminReviewItem[];
+      stats?: AdminReviewStats;
       pagination: { page: number; limit: number; total: number; totalPages: number };
       meta: { page: number; limit: number; total: number; totalPages: number };
     }>(res);

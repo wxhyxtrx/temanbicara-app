@@ -242,6 +242,12 @@ export interface ReviewHidePayload {
   is_hidden: boolean;
 }
 
+export interface AdminReviewStats {
+  total: number;
+  reported: number;
+  hidden: number;
+}
+
 export interface AdminReviewItem extends SessionReviewEntity {
   id: string;
   nama_lengkap_gelar: string;

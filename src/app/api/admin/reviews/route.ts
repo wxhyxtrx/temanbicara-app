@@ -49,11 +49,24 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    const { data: reviews, error: reviewsError, count } = await query;
+    const [queryResult, totalRes, reportedRes, hiddenRes] = await Promise.all([
+      query,
+      supabaseAdmin.from('session_reviews').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('session_reviews').select('*', { count: 'exact', head: true }).not('reported_at', 'is', null),
+      supabaseAdmin.from('session_reviews').select('*', { count: 'exact', head: true }).eq('is_hidden', true),
+    ]);
+
+    const { data: reviews, error: reviewsError, count } = queryResult;
 
     if (reviewsError) {
       return fail(500, 'QUERY_FAILED', reviewsError.message);
     }
+
+    const stats = {
+      total: totalRes.count ?? 0,
+      reported: reportedRes.count ?? 0,
+      hidden: hiddenRes.count ?? 0,
+    };
 
     const reviewList = reviews ?? [];
     const totalCount = count ?? 0;
@@ -63,6 +76,7 @@ export async function GET(req: Request) {
       return NextResponse.json({
         success: true,
         data: [] as AdminReviewItem[],
+        stats,
         pagination: { page, limit, total: 0, totalPages: 1 },
         meta: { page, limit, total: 0, totalPages: 1 },
       });
@@ -123,6 +137,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: true,
       data: items,
+      stats,
       pagination: {
         page,
         limit,
