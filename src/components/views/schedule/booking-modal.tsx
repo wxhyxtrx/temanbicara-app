@@ -100,13 +100,10 @@ export function BookingModal({
 
   // Sync props when modal opens or props change
   useEffect(() => {
-    if (psychologist) {
-      setActivePsychologist(psychologist);
-    }
-    if (slotIso) {
-      setActiveSlotIso(slotIso);
-    }
-  }, [psychologist, slotIso]);
+    if (!isOpen) return;
+    setActivePsychologist(psychologist || null);
+    setActiveSlotIso(slotIso || null);
+  }, [isOpen, psychologist, slotIso]);
 
   // Load wallet balance on open
   useEffect(() => {

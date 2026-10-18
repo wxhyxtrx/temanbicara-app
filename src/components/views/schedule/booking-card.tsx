@@ -36,6 +36,7 @@ interface BookingCardProps {
   onCancel?: (booking: PatientBookingView) => void;
   onReschedule?: (booking: PatientBookingView) => void;
   onChooseRefund?: (booking: PatientBookingView) => void;
+  onRebook?: (booking: PatientBookingView) => void;
 }
 
 export function BookingCard({
@@ -44,6 +45,7 @@ export function BookingCard({
   onCancel,
   onReschedule,
   onChooseRefund,
+  onRebook,
 }: BookingCardProps) {
   const psychName = booking.psikolog?.nama_lengkap_gelar || "Psikolog Terverifikasi";
   const initials = getInitials(psychName);
@@ -85,9 +87,18 @@ export function BookingCard({
 
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="font-bold text-slate-900 dark:text-white text-sm font-heading truncate">
-                {psychName}
-              </p>
+              {booking.status === "completed" ? (
+                <Link
+                  href={`/patient/session/${booking.id}`}
+                  className="font-bold text-slate-900 dark:text-white text-sm font-heading truncate hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+                >
+                  {psychName}
+                </Link>
+              ) : (
+                <p className="font-bold text-slate-900 dark:text-white text-sm font-heading truncate">
+                  {psychName}
+                </p>
+              )}
               <MdVerified className="text-sky-500 text-xs shrink-0" />
               <Badge className={`${statusConfig.badgeClass} text-[10px] font-semibold py-0.5 px-2`}>
                 {statusConfig.label}
@@ -109,10 +120,21 @@ export function BookingCard({
 
         {/* Schedule & Price Info */}
         <div className="flex flex-wrap sm:flex-col sm:items-end justify-between sm:justify-start gap-1 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 text-xs">
-          <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
-            <CalendarIcon size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
-            <span>{formatWibDateFull(booking.start_at)}</span>
-          </div>
+          {booking.status === "completed" ? (
+            <Link
+              href={`/patient/session/${booking.id}`}
+              className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+              title="Lihat ruang sesi (read-only)"
+            >
+              <CalendarIcon size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
+              <span>{formatWibDateFull(booking.start_at)}</span>
+            </Link>
+          ) : (
+            <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
+              <CalendarIcon size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
+              <span>{formatWibDateFull(booking.start_at)}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-[11px]">
             <span className="flex items-center gap-1">
               <Clock size={12} className="text-teal-600 dark:text-teal-400 shrink-0" />
@@ -275,6 +297,32 @@ export function BookingCard({
               <span>Detail</span>
             </Button>
 
+            {booking.status === "completed" && (
+              <>
+                {onRebook && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onRebook(booking)}
+                    className="text-xs border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-xl h-8 px-3 gap-1.5 cursor-pointer font-semibold"
+                  >
+                    <RotateCcw size={12} />
+                    <span>Booking Lagi</span>
+                  </Button>
+                )}
+                <Link href={`/patient/session/${booking.id}`}>
+                  <Button
+                    size="sm"
+                    className="text-xs bg-slate-800 hover:bg-slate-900 dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900 font-semibold rounded-xl h-8 px-3.5 gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <Eye size={12} />
+                    <span>Lihat Sesi</span>
+                  </Button>
+                </Link>
+              </>
+            )}
+
             {(isBooked || isInProgress) && (
               isRoomActive ? (
                 <Link href={`/patient/session/${booking.id}`}>
@@ -303,6 +351,14 @@ export function BookingCard({
             <span className="text-[10px] text-slate-400 dark:text-slate-500 text-right">
               Ruang sesi dibuka 10 menit sebelum jadwal
             </span>
+          )}
+          {booking.status === "completed" && (
+            <Link
+              href={`/patient/session/${booking.id}`}
+              className="text-[10px] text-slate-400 hover:text-teal-600 dark:text-slate-500 dark:hover:text-teal-400 text-right underline underline-offset-2 transition-colors cursor-pointer"
+            >
+              Sesi konseling selesai • Riwayat read-only
+            </Link>
           )}
         </div>
       </div>

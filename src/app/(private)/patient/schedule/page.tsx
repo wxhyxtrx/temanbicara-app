@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
+import { PsychologistProfileModal } from "@/components/views/patient/psychologist-profile-modal";
 import { BookingCard } from "@/components/views/schedule/booking-card";
 import { PatientBookingDetailModal } from "@/components/views/schedule/patient-booking-detail-modal";
 import { CancelBookingModal } from "@/components/views/schedule/cancel-booking-modal";
@@ -32,6 +33,7 @@ import { ChooseRefundModal } from "@/components/views/schedule/choose-refund-mod
 import { notify } from "@/lib/toast";
 import { bookingClient } from "@/services/booking.client";
 import type { PatientBookingView, BookingStatus } from "@/types/booking";
+import type { PublicPsychologist } from "@/types/user-profile";
 
 type ScheduleTab = "upcoming" | "history";
 
@@ -53,6 +55,11 @@ function PatientScheduleContent() {
   const [isBookingOpen, setIsBookingOpen] = useState<boolean>(false);
   const [selectedBooking, setSelectedBooking] = useState<PatientBookingView | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
+
+  // Rebook / Psychologist Profile & Slots State
+  const [selectedPsychologist, setSelectedPsychologist] = useState<PublicPsychologist | null>(null);
+  const [selectedSlotIso, setSelectedSlotIso] = useState<string | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
 
   // Cancel Modal State (Point 2)
   const [cancelBookingTarget, setCancelBookingTarget] = useState<PatientBookingView | null>(null);
@@ -194,6 +201,29 @@ function PatientScheduleContent() {
     setIsRefundModalOpen(true);
   };
 
+  const handleOpenRebook = (booking: PatientBookingView) => {
+    if (booking.psikolog) {
+      const psych: PublicPsychologist = {
+        id: booking.psikolog.id,
+        nama_lengkap_gelar: booking.psikolog.nama_lengkap_gelar,
+        spesialisasi: booking.psikolog.spesialisasi || [],
+        tahun_pengalaman: booking.psikolog.tahun_pengalaman || 3,
+        tarif_sesi: booking.psikolog.tarif_sesi || 150000,
+        avatar_url: booking.psikolog.avatar_url || null,
+        attendance_pct: booking.psikolog.attendance_pct,
+        rating_avg: booking.psikolog.rating_avg,
+        rating_count: booking.psikolog.rating_count,
+      };
+      setSelectedPsychologist(psych);
+      setSelectedSlotIso(null);
+      setIsProfileModalOpen(true);
+    } else {
+      setSelectedPsychologist(null);
+      setSelectedSlotIso(null);
+      setIsBookingOpen(true);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Page Header */}
@@ -223,7 +253,11 @@ function PatientScheduleContent() {
           </Button>
 
           <Button
-            onClick={() => setIsBookingOpen(true)}
+            onClick={() => {
+              setSelectedPsychologist(null);
+              setSelectedSlotIso(null);
+              setIsBookingOpen(true);
+            }}
             className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-4 py-2 h-9 font-semibold shadow-xs gap-1.5"
           >
             <PlusCircle size={15} />
@@ -390,7 +424,11 @@ function PatientScheduleContent() {
               {activeTab === "upcoming" && (
                 <Button
                   size="sm"
-                  onClick={() => setIsBookingOpen(true)}
+                  onClick={() => {
+                    setSelectedPsychologist(null);
+                    setSelectedSlotIso(null);
+                    setIsBookingOpen(true);
+                  }}
                   className="mt-2 bg-teal-600 hover:bg-teal-700 text-white text-xs rounded-xl h-8 px-4 font-semibold shadow-xs gap-1.5"
                 >
                   <PlusCircle size={14} />
@@ -408,6 +446,7 @@ function PatientScheduleContent() {
                   onCancel={handleOpenCancel}
                   onReschedule={handleOpenReschedule}
                   onChooseRefund={handleOpenChooseRefund}
+                  onRebook={handleOpenRebook}
                 />
               ))}
             </div>
@@ -415,15 +454,35 @@ function PatientScheduleContent() {
         </CardContent>
       </Card>
 
+      {/* Modal Detail Profil & Slot Praktik Psikolog */}
+      <PsychologistProfileModal
+        psychologist={selectedPsychologist}
+        open={isProfileModalOpen}
+        onOpenChange={setIsProfileModalOpen}
+        onSelectSlot={(psych, slotIso) => {
+          setSelectedPsychologist(psych);
+          setSelectedSlotIso(slotIso);
+          setIsProfileModalOpen(false);
+          setIsBookingOpen(true);
+        }}
+      />
+
       {/* 3. New Booking Modal */}
       <BookingModal
         isOpen={isBookingOpen}
+        psychologist={selectedPsychologist}
+        slotIso={selectedSlotIso}
         onClose={() => {
           setIsBookingOpen(false);
+          setSelectedPsychologist(null);
+          setSelectedSlotIso(null);
           loadBookings("upcoming");
         }}
         onSuccess={() => {
+          setSelectedPsychologist(null);
+          setSelectedSlotIso(null);
           loadBookings("upcoming");
+          loadBookings("history");
         }}
       />
 
@@ -435,6 +494,7 @@ function PatientScheduleContent() {
         onOpenCancel={handleOpenCancel}
         onOpenReschedule={handleOpenReschedule}
         onOpenChooseRefund={handleOpenChooseRefund}
+        onRebook={handleOpenRebook}
       />
 
       {/* 5. Cancel Booking Modal (Point 2) */}

@@ -41,6 +41,7 @@ interface PatientBookingDetailModalProps {
   onOpenCancel?: (booking: PatientBookingView) => void;
   onOpenReschedule?: (booking: PatientBookingView) => void;
   onOpenChooseRefund?: (booking: PatientBookingView) => void;
+  onRebook?: (booking: PatientBookingView) => void;
 }
 
 export function PatientBookingDetailModal({
@@ -50,6 +51,7 @@ export function PatientBookingDetailModal({
   onOpenCancel,
   onOpenReschedule,
   onOpenChooseRefund,
+  onRebook,
 }: PatientBookingDetailModalProps) {
   if (!booking) return null;
 
@@ -332,10 +334,43 @@ export function PatientBookingDetailModal({
                     </Button>
                   )
                 )}
+
+                {booking.status === "completed" && (
+                  <>
+                    {onRebook && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          onClose();
+                          onRebook(booking);
+                        }}
+                        className="text-xs border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-xl h-8 px-3 font-semibold gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw size={12} />
+                        <span>Booking Lagi</span>
+                      </Button>
+                    )}
+                    <Link href={`/patient/session/${booking.id}`} onClick={onClose}>
+                      <Button
+                        size="sm"
+                        className="text-xs bg-slate-800 hover:bg-slate-900 dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900 rounded-xl h-8 px-4 font-semibold gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <span>Buka Ruang Sesi (Read-Only)</span>
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
               {(booking.status === "booked" || booking.status === "in_progress") && !isRoomActive && (
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 text-right">
                   Ruang sesi dibuka 10 menit sebelum jadwal
+                </span>
+              )}
+              {booking.status === "completed" && (
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 text-right">
+                  Sesi selesai • Riwayat percakapan bersifat read-only
                 </span>
               )}
             </div>
