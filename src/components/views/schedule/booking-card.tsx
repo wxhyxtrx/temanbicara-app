@@ -28,6 +28,7 @@ import {
   isBookingRoomActive,
 } from "@/lib/booking-utils";
 import { SessionReviewCard } from "@/components/views/session/session-review-card";
+import { SessionTipCard } from "@/components/views/session/session-tip-card";
 
 interface BookingCardProps {
   booking: PatientBookingView;
@@ -183,12 +184,16 @@ export function BookingCard({
         </div>
       )}
 
-      {/* Penilaian Sesi Selesai (Bagian A) */}
+      {/* Penilaian & Tip Sesi Selesai (Bagian A & B) */}
       {booking.status === "completed" && (
-        <div className="pt-1">
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
           <SessionReviewCard
             bookingId={booking.id}
             endedAt={booking.ended_at}
+            compact
+          />
+          <SessionTipCard
+            bookingId={booking.id}
             compact
           />
         </div>

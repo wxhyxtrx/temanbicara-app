@@ -15,6 +15,7 @@ import { SessionComplaintBanner } from "./session-complaint-banner";
 import { SessionChatInput } from "./session-chat-input";
 import { SessionNotesPlaceholder } from "./session-notes-placeholder";
 import { SessionReviewCard } from "./session-review-card";
+import { SessionTipCard } from "./session-tip-card";
 import { SessionModals } from "./session-modals";
 import { SessionAudioPlayer } from "./session-audio-player";
 import { SessionImagePreview } from "./session-image-preview";
@@ -521,10 +522,13 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
             </div>
 
             {booking.status === "completed" && role === "pasien" && (
-              <div className="max-w-xl mx-auto w-full my-2">
+              <div className="max-w-xl mx-auto w-full my-2 space-y-3">
                 <SessionReviewCard
                   bookingId={bookingId}
                   endedAt={booking.ended_at}
+                />
+                <SessionTipCard
+                  bookingId={bookingId}
                 />
               </div>
             )}
