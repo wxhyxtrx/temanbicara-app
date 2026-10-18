@@ -44,6 +44,7 @@ export interface BookingEntity {
 export interface PsikologBookingReview {
   rating: number;
   review: string | null;
+  is_hidden: boolean;
   reported_at: string | null;
   created_at: string;
 }

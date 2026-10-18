@@ -149,13 +149,14 @@ export async function GET(req: Request) {
       if (bookingIds.length > 0) {
         const { data: revs } = await supabaseAdmin
           .from('session_reviews')
-          .select('booking_id, rating, review, reported_at, created_at')
+          .select('booking_id, rating, review, is_hidden, reported_at, created_at')
           .in('booking_id', bookingIds);
 
         for (const r of revs || []) {
           reviewMap.set(r.booking_id, {
             rating: r.rating,
             review: r.review,
+            is_hidden: Boolean(r.is_hidden),
             reported_at: r.reported_at,
             created_at: r.created_at,
           });

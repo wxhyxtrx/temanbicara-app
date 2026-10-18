@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { toPsikologBookingView } from '@/lib/booking/views';
-import type { BookingEntity, PatientBookingView, PsychologistSummary } from '@/types/booking';
+import type { BookingEntity, PatientBookingView, PsychologistSummary, PsikologBookingReview } from '@/types/booking';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -58,13 +58,23 @@ export async function GET(
     if (user.role === 'psikolog') {
       const { data: rev } = await supabaseAdmin
         .from('session_reviews')
-        .select('rating, review, reported_at, created_at')
+        .select('rating, review, is_hidden, reported_at, created_at')
         .eq('booking_id', bookingRow.id)
         .maybeSingle();
 
+      const psikologReview: PsikologBookingReview | null = rev
+        ? {
+            rating: rev.rating,
+            review: rev.review,
+            is_hidden: Boolean(rev.is_hidden),
+            reported_at: rev.reported_at,
+            created_at: rev.created_at,
+          }
+        : null;
+
       return NextResponse.json({
         success: true,
-        data: toPsikologBookingView(bookingRow, rev ?? null),
+        data: toPsikologBookingView(bookingRow, psikologReview),
       });
     }
 
