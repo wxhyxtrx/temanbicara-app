@@ -756,7 +756,7 @@ export function UserDetailModal({
                                     : st.reason}
                               </p>
                               <span className="text-[10px] text-slate-400 block font-mono">
-                                {formatWIB(st.created_at)} • ID: {st.booking_id.slice(0, 8)}...
+                                {formatWIB(st.created_at)} {st.booking_id ? `• ID: ${st.booking_id.slice(0, 8)}...` : ""}
                               </span>
                             </div>
                             <Badge className="bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-300 text-[10px] font-bold shrink-0">

@@ -41,6 +41,7 @@ export default function AdminReviewsPage() {
   const [filter, setFilter] = useState<ModerationFilter>("reported");
   const [search, setSearch] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   // Modal dialog konfirmasi moderasi
@@ -50,6 +51,7 @@ export default function AdminReviewsPage() {
   const fetchReviews = useCallback(async (targetPage: number, targetFilter: ModerationFilter, targetLimit: number = limit) => {
     try {
       setIsLoading(true);
+      setError(null);
       const res = await bookingClient.adminGetReviews({
         filter: targetFilter === "all" ? undefined : targetFilter,
         page: targetPage,
@@ -57,6 +59,10 @@ export default function AdminReviewsPage() {
       });
 
       if (res.success && Array.isArray(res.data)) {
+        if (res.data.length === 0 && targetPage > 1 && res.pagination.totalPages < targetPage) {
+          setPage(res.pagination.totalPages);
+          return;
+        }
         setReviews(res.data);
         setTotal(res.pagination.total);
       } else {
@@ -65,11 +71,9 @@ export default function AdminReviewsPage() {
       }
     } catch (err: unknown) {
       console.error("Gagal memuat daftar ulasan admin:", err);
-      if (err instanceof BookingApiError) {
-        notify.error("Gagal Memuat Ulasan", err.message);
-      } else {
-        notify.error("Kesalahan Sistem", "Gagal memuat ulasan untuk moderasi");
-      }
+      const msg = err instanceof BookingApiError ? err.message : err instanceof Error ? err.message : "Gagal memuat ulasan untuk moderasi";
+      setError(msg);
+      notify.error("Gagal Memuat Ulasan", msg);
       setReviews([]);
       setTotal(0);
     } finally {
@@ -96,11 +100,15 @@ export default function AdminReviewsPage() {
     const q = search.trim().toLowerCase();
     if (!q) return reviews;
     return reviews.filter((r) => {
+      const nama = (r.nama_lengkap_gelar || "").toLowerCase();
+      const patient = (r.patient_display_name || "").toLowerCase();
+      const reviewText = (r.review || "").toLowerCase();
+      const bookingId = (r.booking_id || "").toLowerCase();
       return (
-        r.nama_lengkap_gelar.toLowerCase().includes(q) ||
-        r.patient_display_name.toLowerCase().includes(q) ||
-        (r.review && r.review.toLowerCase().includes(q)) ||
-        r.booking_id.toLowerCase().includes(q)
+        nama.includes(q) ||
+        patient.includes(q) ||
+        reviewText.includes(q) ||
+        bookingId.includes(q)
       );
     });
   }, [reviews, search]);
@@ -127,13 +135,22 @@ export default function AdminReviewsPage() {
         is_hidden: targetHiddenState,
       });
 
+      // Optimistic update
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.booking_id === selectedReview.booking_id
+            ? { ...r, is_hidden: targetHiddenState }
+            : r
+        )
+      );
+
       notify.success(
         targetHiddenState ? "Ulasan Disembunyikan" : "Ulasan Ditampilkan",
         res.message || (targetHiddenState ? "Ulasan tidak lagi terlihat di publik" : "Ulasan dapat dilihat kembali oleh publik")
       );
 
       setSelectedReview(null);
-      fetchReviews(page, filter, limit);
+      await fetchReviews(page, filter, limit);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal memproses moderasi ulasan";
       notify.error("Gagal Moderasi", msg);
@@ -362,7 +379,7 @@ export default function AdminReviewsPage() {
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                Total Ulasan
+                Total Ulasan ({filter === "reported" ? "Dilaporkan" : filter === "hidden" ? "Disembunyikan" : "Semua"})
               </span>
               <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono">
                 {total} Ulasan
@@ -447,14 +464,41 @@ export default function AdminReviewsPage() {
               <Loader2 size={24} className="animate-spin text-teal-600" />
               <span className="text-xs">Memuat ulasan moderasi...</span>
             </div>
+          ) : error ? (
+            <div className="py-16 flex flex-col items-center justify-center gap-3 text-center px-4">
+              <AlertCircle size={32} className="text-rose-500" />
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-rose-600 dark:text-rose-400">
+                  Gagal Memuat Daftar Ulasan
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-sm">
+                  {error}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchReviews(page, filter, limit)}
+                className="text-xs rounded-xl h-8 gap-1.5 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer font-semibold"
+              >
+                <RefreshCw size={12} />
+                <span>Coba Lagi</span>
+              </Button>
+            </div>
           ) : filteredReviews.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-center px-4">
               <AlertCircle size={28} className="text-slate-300 dark:text-slate-600" />
               <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                Tidak ada ulasan pada filter ini
+                {search.trim() ? "Tidak Ada Ulasan yang Cocok" : "Tidak Ada Ulasan pada Kategori Ini"}
               </p>
               <p className="text-[11px] text-slate-400 max-w-sm">
-                Ulasan sesi yang berstatus {filter === "all" ? "apa pun" : filter} akan ditampilkan di sini.
+                {search.trim()
+                  ? `Tidak ditemukan ulasan dengan kata kunci "${search}". Coba kata kunci lain.`
+                  : filter === "reported"
+                  ? "Bagus! Saat ini tidak ada ulasan yang dilaporkan oleh psikolog."
+                  : filter === "hidden"
+                  ? "Belum ada ulasan yang disembunyikan dari profil publik."
+                  : "Belum ada riwayat ulasan sesi konseling yang tersimpan di sistem."}
               </p>
             </div>
           ) : (
@@ -466,18 +510,20 @@ export default function AdminReviewsPage() {
           )}
 
           {/* Pagination Footer */}
-          <TablePaginationFooter
-            totalItems={total}
-            page={page}
-            limit={limit}
-            onPageChange={setPage}
-            onChangeLimit={handleLimitChange}
-          />
+          {!error && (
+            <TablePaginationFooter
+              totalItems={total}
+              page={page}
+              limit={limit}
+              onPageChange={setPage}
+              onChangeLimit={handleLimitChange}
+            />
+          )}
         </CardContent>
       </Card>
 
       {/* Dialog Konfirmasi Sembunyikan / Tampilkan */}
-      <Dialog open={!!selectedReview} onOpenChange={(open) => !open && setSelectedReview(null)}>
+      <Dialog open={!!selectedReview} onOpenChange={(open) => !isProcessing && !open && setSelectedReview(null)}>
         <DialogContent className="sm:max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
           <DialogHeader>
             <DialogTitle className="font-heading text-base font-bold flex items-center gap-2">
