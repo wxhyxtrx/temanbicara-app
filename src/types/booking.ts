@@ -41,6 +41,13 @@ export interface BookingEntity {
   updated_at: string;
 }
 
+export interface PsikologBookingReview {
+  rating: number;
+  review: string | null;
+  reported_at: string | null;
+  created_at: string;
+}
+
 /**
  * Bentuk data booking yang dikirim ke psikolog.
  * Review Focus #5 & Task B4: Bebas dari data pribadi pasien (nama_lengkap, email, no_wa, kontak darurat).
@@ -59,6 +66,7 @@ export interface PsikologBookingView {
   ended_at: string | null;
   created_at: string;
   updated_at: string;
+  review?: PsikologBookingReview | null;
 }
 
 export interface PsychologistSummary {

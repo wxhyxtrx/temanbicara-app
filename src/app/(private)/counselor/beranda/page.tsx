@@ -21,6 +21,7 @@ import {
   User,
   RefreshCw,
   XCircle,
+  AlertCircle,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
@@ -53,6 +54,11 @@ export default function CounselorBerandaPage() {
   const [cancelTarget, setCancelTarget] = useState<PsikologBookingView | null>(null);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState<boolean>(false);
 
+  // Completed bookings & session reviews (GET /api/bookings?scope=history)
+  const [completedBookings, setCompletedBookings] = useState<PsikologBookingView[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState<boolean>(true);
+  const [reportingBookingId, setReportingBookingId] = useState<string | null>(null);
+
   const loadUpcomingBookings = useCallback(async () => {
     setLoadingBookings(true);
     try {
@@ -66,6 +72,66 @@ export default function CounselorBerandaPage() {
       setLoadingBookings(false);
     }
   }, []);
+
+  const loadCompletedBookings = useCallback(async () => {
+    setLoadingReviews(true);
+    try {
+      const res = await bookingClient.getBookings({ scope: "history", limit: 50 });
+      if (res?.success && Array.isArray(res.data)) {
+        setCompletedBookings(res.data as PsikologBookingView[]);
+      }
+    } catch (err) {
+      console.error("Gagal memuat ulasan sesi psikolog:", err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  }, []);
+
+  const handleReportReview = async (bookingId: string) => {
+    setReportingBookingId(bookingId);
+    try {
+      const res = await bookingClient.reportReview(bookingId);
+      if (res?.success) {
+        notify.success("Ulasan Dilaporkan", "Laporan Anda telah diteruskan ke admin moderasi.");
+        setCompletedBookings((prev) =>
+          prev.map((b) =>
+            b.id === bookingId && b.review
+              ? { ...b, review: { ...b.review, reported_at: new Date().toISOString() } }
+              : b
+          )
+        );
+      } else {
+        notify.error("Gagal Melaporkan", "Terjadi kesalahan saat melaporkan ulasan.");
+      }
+    } catch (err: unknown) {
+      console.error("Gagal melaporkan ulasan:", err);
+      notify.error(
+        "Gagal Melaporkan",
+        err instanceof Error ? err.message : "Terjadi kesalahan saat melaporkan ulasan."
+      );
+    } finally {
+      setReportingBookingId(null);
+    }
+  };
+
+  const sessionReviews = React.useMemo(() => {
+    return completedBookings
+      .filter((b) => b.review !== null && b.review !== undefined)
+      .map((b) => ({
+        bookingId: b.id,
+        patientDisplayName: b.patient_display_name,
+        rating: b.review!.rating,
+        review: b.review!.review,
+        reportedAt: b.review!.reported_at,
+        createdAt: b.review!.created_at,
+      }));
+  }, [completedBookings]);
+
+  const averageRating = React.useMemo(() => {
+    if (sessionReviews.length === 0) return null;
+    const sum = sessionReviews.reduce((acc, r) => acc + r.rating, 0);
+    return (sum / sessionReviews.length).toFixed(1);
+  }, [sessionReviews]);
 
   useEffect(() => {
     let isMounted = true;
@@ -100,11 +166,12 @@ export default function CounselorBerandaPage() {
 
     loadData();
     loadUpcomingBookings();
+    loadCompletedBookings();
 
     return () => {
       isMounted = false;
     };
-  }, [loadUpcomingBookings]);
+  }, [loadUpcomingBookings, loadCompletedBookings]);
 
   const counselorName =
     profile?.nama_lengkap_gelar || userMe?.fullName || user.fullName || "Psikolog Mitra";
@@ -216,10 +283,11 @@ export default function CounselorBerandaPage() {
             </span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white">
-            0 <span className="text-xs font-semibold text-slate-500">Sesi</span>
+            {completedBookings.filter((b) => b.status === "completed").length}{" "}
+            <span className="text-xs font-semibold text-slate-500">Sesi</span>
           </p>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
-            Tersedia setelah fitur booking aktif
+            {completedBookings.length > 0 ? "Riwayat sesi selesai tercatat" : "Belum ada sesi selesai"}
           </span>
         </div>
 
@@ -231,11 +299,20 @@ export default function CounselorBerandaPage() {
               <Star size={15} className="fill-amber-400 text-amber-400" />
             </span>
           </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white">
-            Belum ada
+          <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white flex items-center gap-1.5">
+            {averageRating ? (
+              <>
+                <span>{averageRating}</span>
+                <span className="text-xs font-semibold text-slate-500">
+                  / 5.0 ({sessionReviews.length})
+                </span>
+              </>
+            ) : (
+              "Belum ada"
+            )}
           </p>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
-            Tersedia setelah fitur booking aktif
+            {averageRating ? "Berdasarkan ulasan sesi pasien" : "Belum cukup ulasan masuk"}
           </span>
         </div>
 
@@ -489,34 +566,154 @@ export default function CounselorBerandaPage() {
               <span>Evaluasi & Kepuasan Pasien Terbaru</span>
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-              Ulasan terverifikasi pasca sesi telekonseling yang diselesaikan pasien
+              Ulasan terverifikasi pasca sesi telekonseling yang diselesaikan pasien (hanya nama samaran)
             </CardDescription>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs py-1 px-2.5">
-              Belum Ada Rating
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 text-xs py-1 px-2.5 font-mono">
+              {sessionReviews.length} Ulasan Masuk
             </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={loadCompletedBookings}
+              disabled={loadingReviews}
+              className="h-8 px-2 text-xs text-teal-700 dark:text-teal-300"
+              title="Segarkan daftar ulasan"
+            >
+              <RefreshCw size={12} className={loadingReviews ? "animate-spin" : ""} />
+            </Button>
           </div>
         </CardHeader>
 
-        <CardContent className="p-6">
-          <div className="py-12 flex flex-col items-center justify-center text-center gap-2.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-100 dark:border-amber-900 flex items-center justify-center text-amber-500">
-              <Star size={24} />
+        <CardContent className="p-4 sm:p-6">
+          {loadingReviews ? (
+            <div className="space-y-3">
+              {[1, 2].map((n) => (
+                <div
+                  key={n}
+                  className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 animate-pulse space-y-2"
+                >
+                  <Skeleton className="w-48 h-4 bg-slate-200 dark:bg-slate-800" />
+                  <Skeleton className="w-full h-10 bg-slate-200 dark:bg-slate-800" />
+                </div>
+              ))}
             </div>
-            <div className="space-y-1">
-              <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                Belum Ada Evaluasi Pasien
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito">
-                Ulasan dan evaluasi klinis dari pasien akan ditampilkan di sini setelah sesi konseling selesai dilaksanakan.
-              </p>
+          ) : sessionReviews.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-center gap-2.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-100 dark:border-amber-900 flex items-center justify-center text-amber-500">
+                <Star size={24} />
+              </div>
+              <div className="space-y-1">
+                <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                  Belum Ada Evaluasi Pasien
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito">
+                  Ulasan dan evaluasi klinis dari pasien akan ditampilkan di sini setelah sesi konseling selesai dilaksanakan.
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-800">
+                Privasi terjaga: hanya nama samaran pasien yang ditampilkan
+              </span>
             </div>
-            <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-800">
-              Tersedia setelah fitur booking aktif
-            </span>
-          </div>
+          ) : (
+            <div className="space-y-3.5">
+              {sessionReviews.map((rev) => {
+                const isReported = Boolean(rev.reportedAt);
+                const isReporting = reportingBookingId === rev.bookingId;
+
+                return (
+                  <div
+                    key={rev.bookingId}
+                    className="p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-teal-300 dark:hover:border-teal-700 transition-all shadow-2xs space-y-3"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center font-bold text-xs shrink-0">
+                          <User size={16} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-sm text-slate-900 dark:text-white font-heading">
+                              {rev.patientDisplayName}
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 bg-teal-50/50"
+                            >
+                              Klien Sesi
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <div className="flex items-center text-amber-500">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star
+                                  key={i}
+                                  size={12}
+                                  className={
+                                    i < rev.rating
+                                      ? "fill-amber-400 text-amber-400"
+                                      : "text-slate-300 dark:text-slate-700"
+                                  }
+                                />
+                              ))}
+                              <span className="ml-1.5 font-bold text-slate-700 dark:text-slate-300">
+                                {rev.rating}.0
+                              </span>
+                            </div>
+                            <span>•</span>
+                            <span className="text-[11px] text-slate-400">
+                              {formatWibDateFull(rev.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tombol Laporkan Ulasan (sembunyikan bila sudah dilaporkan) */}
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        {isReported ? (
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800 flex items-center gap-1 font-medium"
+                          >
+                            <AlertCircle size={12} className="text-amber-600" />
+                            <span>Telah Dilaporkan</span>
+                          </Badge>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={isReporting}
+                            onClick={() => handleReportReview(rev.bookingId)}
+                            className="text-xs h-8 px-3 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl cursor-pointer gap-1.5"
+                          >
+                            {isReporting ? (
+                              <RefreshCw size={12} className="animate-spin" />
+                            ) : (
+                              <AlertCircle size={12} />
+                            )}
+                            <span>Laporkan ulasan</span>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Komentar Ulasan */}
+                    {rev.review ? (
+                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 text-xs text-slate-700 dark:text-slate-300 leading-relaxed italic">
+                        &ldquo;{rev.review}&rdquo;
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">
+                        (Klien memberikan penilaian bintang tanpa ulasan tertulis)
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

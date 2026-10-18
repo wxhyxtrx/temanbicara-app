@@ -1,4 +1,10 @@
-import type { BookingEntity, BookingStatus, ExtensionStatus, PsikologBookingView } from '@/types/booking';
+import type {
+  BookingEntity,
+  BookingStatus,
+  ExtensionStatus,
+  PsikologBookingReview,
+  PsikologBookingView,
+} from '@/types/booking';
 
 /**
  * Helper untuk menyaring record booking agar sesuai dengan batas privasi psikolog.
@@ -6,7 +12,10 @@ import type { BookingEntity, BookingStatus, ExtensionStatus, PsikologBookingView
  * Psikolog TIDAK PERNAH menerima nama_lengkap, email, no_wa, kontak darurat, atau data identitas asli pasien.
  * Hanya patient_display_name snapshot yang disertakan.
  */
-export function toPsikologBookingView(booking: BookingEntity | Record<string, unknown>): PsikologBookingView {
+export function toPsikologBookingView(
+  booking: BookingEntity | Record<string, unknown>,
+  review?: PsikologBookingReview | null
+): PsikologBookingView {
   return {
     id: String(booking.id),
     ...(booking.patient_id ? { patient_id: String(booking.patient_id) } : {}),
@@ -25,5 +34,6 @@ export function toPsikologBookingView(booking: BookingEntity | Record<string, un
     ended_at: (booking.ended_at as string | null) ?? null,
     created_at: String(booking.created_at),
     updated_at: String(booking.updated_at),
+    review: review !== undefined ? review : ((booking as { review?: PsikologBookingReview | null }).review ?? null),
   };
 }

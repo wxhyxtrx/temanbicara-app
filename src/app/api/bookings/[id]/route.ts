@@ -56,9 +56,15 @@ export async function GET(
 
     // Jika diakses psikolog, kembalikan tampilan yang telah disanitasi
     if (user.role === 'psikolog') {
+      const { data: rev } = await supabaseAdmin
+        .from('session_reviews')
+        .select('rating, review, reported_at, created_at')
+        .eq('booking_id', bookingRow.id)
+        .maybeSingle();
+
       return NextResponse.json({
         success: true,
-        data: toPsikologBookingView(bookingRow),
+        data: toPsikologBookingView(bookingRow, rev ?? null),
       });
     }
 

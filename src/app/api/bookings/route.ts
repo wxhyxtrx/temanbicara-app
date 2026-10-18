@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { createBookingSchema, bookingQuerySchema } from '@/lib/validations/booking';
 import { toPsikologBookingView } from '@/lib/booking/views';
-import type { BookingEntity, PatientBookingView, PsychologistSummary } from '@/types/booking';
+import type { BookingEntity, PatientBookingView, PsychologistSummary, PsikologBookingReview } from '@/types/booking';
 
 /**
  * POST /api/bookings
@@ -143,7 +143,28 @@ export async function GET(req: Request) {
 
     // Jika yang meminta adalah psikolog, lakukan penyaringan ketat bebas data pribadi pasien
     if (user.role === 'psikolog') {
-      const sanitized = bookingList.map((b) => toPsikologBookingView(b));
+      const bookingIds = bookingList.map((b) => b.id);
+      const reviewMap = new Map<string, PsikologBookingReview>();
+
+      if (bookingIds.length > 0) {
+        const { data: revs } = await supabaseAdmin
+          .from('session_reviews')
+          .select('booking_id, rating, review, reported_at, created_at')
+          .in('booking_id', bookingIds);
+
+        for (const r of revs || []) {
+          reviewMap.set(r.booking_id, {
+            rating: r.rating,
+            review: r.review,
+            reported_at: r.reported_at,
+            created_at: r.created_at,
+          });
+        }
+      }
+
+      const sanitized = bookingList.map((b) =>
+        toPsikologBookingView(b, reviewMap.get(b.id) ?? null)
+      );
       return NextResponse.json({
         success: true,
         data: sanitized,
