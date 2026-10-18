@@ -143,6 +143,9 @@ export interface PublicPsychologist {
   tahun_pengalaman: number;
   tarif_sesi: number;
   avatar_url: string | null;
+  attendance_pct?: number | null;
+  rating_avg?: number | null;
+  rating_count?: number;
 }
 
 export type PsychologistListResponse =

@@ -14,6 +14,7 @@ import { SessionRoomHeader } from "./session-room-header";
 import { SessionComplaintBanner } from "./session-complaint-banner";
 import { SessionChatInput } from "./session-chat-input";
 import { SessionNotesPlaceholder } from "./session-notes-placeholder";
+import { SessionReviewCard } from "./session-review-card";
 import { SessionModals } from "./session-modals";
 import { SessionAudioPlayer } from "./session-audio-player";
 import { SessionImagePreview } from "./session-image-preview";
@@ -518,6 +519,15 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
                 <span>Sesi Konseling Privat Terenkripsi Medis</span>
               </div>
             </div>
+
+            {booking.status === "completed" && role === "pasien" && (
+              <div className="max-w-xl mx-auto w-full my-2">
+                <SessionReviewCard
+                  bookingId={bookingId}
+                  endedAt={booking.ended_at}
+                />
+              </div>
+            )}
 
             {loadingMessages ? (
               <div className="flex items-center justify-center py-10 text-xs text-slate-400 gap-2">

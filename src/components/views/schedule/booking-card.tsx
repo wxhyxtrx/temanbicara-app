@@ -27,6 +27,7 @@ import {
   checkRescheduleEligibility,
   isBookingRoomActive,
 } from "@/lib/booking-utils";
+import { SessionReviewCard } from "@/components/views/session/session-review-card";
 
 interface BookingCardProps {
   booking: PatientBookingView;
@@ -179,6 +180,17 @@ export function BookingCard({
               </Button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Penilaian Sesi Selesai (Bagian A) */}
+      {booking.status === "completed" && (
+        <div className="pt-1">
+          <SessionReviewCard
+            bookingId={booking.id}
+            endedAt={booking.ended_at}
+            compact
+          />
         </div>
       )}
 
