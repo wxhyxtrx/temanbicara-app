@@ -217,7 +217,7 @@ export const useClinicalRecordsStore = create<ClinicalRecordsState>()(
 
         useNotificationStore.getState().addNotification({
           title: "Catatan SOAP Tersimpan",
-          message: `Rekam medis Sesi ${sessionNumber} untuk ${target?.name || "Klien"} berhasil diperbarui & dienkripsi.`,
+          message: `Rekam medis Sesi ${sessionNumber} untuk ${target?.name || "Klien"} berhasil diperbarui & disimpan aman.`,
           type: "chat",
           actionUrl: "/counselor/clients",
         });

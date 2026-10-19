@@ -47,7 +47,7 @@ export default function FeaturesSection() {
       tag: "Jaminan Privasi Total",
       title: "Kerahasiaan & Anonimitas 100%",
       description:
-        "Identitasmu sepenuhnya milikmu. Gunakan nama inisial atau samaran. Seluruh percakapan dilindungi enkripsi end-to-end berstandar kerahasiaan medis yang ketat.",
+        "Identitasmu sepenuhnya milikmu. Gunakan nama inisial atau samaran. Seluruh percakapan privat & rahasia, dilindungi standar kerahasiaan medis yang ketat.",
       features: [
         "Pilihan anonim penuh",
         "Tanpa riwayat yang dibagikan ke pihak ketiga",
@@ -84,7 +84,7 @@ export default function FeaturesSection() {
     {
       step: "03",
       title: "Masuk ke Ruang Tenang",
-      desc: "Mulai sesi konsultasimu di ruang privat yang aman, nyaman, dan terenkripsi tanpa distraksi.",
+      desc: "Mulai sesi konsultasimu di ruang privat yang aman, nyaman, dan rahasia tanpa distraksi.",
     },
   ];
 

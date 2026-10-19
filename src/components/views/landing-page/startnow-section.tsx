@@ -55,7 +55,7 @@ export default function StartNowSection() {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold font-heading text-slate-900 dark:text-white">Privasi Terjamin 100%</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">Terenkripsi & Bebas Stigma</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">Privat & Bebas Stigma</p>
                 </div>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed border-t border-slate-100 dark:border-slate-800 pt-3">

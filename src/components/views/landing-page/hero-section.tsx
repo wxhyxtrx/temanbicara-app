@@ -38,7 +38,7 @@ export default function HeroSection() {
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 font-nunito leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              TemanBicara menghubungkanmu dengan psikolog klinis berlisensi (SIPPK) dan AI pendengar empatik 24/7. Curahkan isi hati tanpa rasa takut, tanpa stigma, dan dengan privasi 100% terenkripsi.
+              TemanBicara menghubungkanmu dengan psikolog klinis berlisensi (SIPPK) dan AI pendengar empatik 24/7. Curahkan isi hati tanpa rasa takut, tanpa stigma, dan dijamin privat & rahasia.
             </p>
 
             {/* Actions */}

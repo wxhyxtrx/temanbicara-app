@@ -282,7 +282,7 @@ export default function Login() {
         {/* Privacy Note */}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-medium text-center pt-1 border-t border-slate-100 dark:border-slate-800">
           <ShieldCheck size={14} className="text-teal-600 dark:text-teal-400 shrink-0" />
-          <span>Kerahasiaan Terenkripsi • Terikat Kode Etik HIMPSI</span>
+          <span>Privat & Rahasia • Terikat Kode Etik HIMPSI</span>
         </div>
 
         {/* Register CTA */}

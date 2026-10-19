@@ -309,7 +309,7 @@ export const useChatStore = create<ChatState>()(
             if (audioUrl) {
               replyText = `Terima kasih telah membagikan rekaman suaramu. Menyampaikan perasaan secara verbal adalah langkah katarsis yang luar biasa.`;
             } else if (attachment) {
-              replyText = `Berkas "${attachment.name}" telah terenkripsi aman dan dimasukkan ke catatan sesi konseling kita.`;
+              replyText = `Berkas "${attachment.name}" telah tersimpan aman dan dimasukkan ke catatan sesi konseling kita.`;
             } else if (selectedConversation.isAI) {
               replyText = `Aku memahami beban yang kamu rasakan terkait "${content}". Tubuhmu sedang memberi sinyal butuh jeda. Cobalah rilekskan bahumu sekarang, apa yang paling memberatkanmu?`;
             } else if (selectedConversation.isPeerListener) {

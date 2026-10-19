@@ -56,7 +56,7 @@ export default function PublicHelpCenterPage() {
         {
           question: "Bagaimana kerahasiaan data dan isi percakapan saya dilindungi?",
           answer:
-            "Setiap sesi dilindungi oleh Kode Etik Psikologi Indonesia dan enkripsi end-to-end berstandar data medis. Isi sesi tidak akan dibagikan kepada keluarga, atasan kantor, atau pihak ketiga mana pun tanpa persetujuan tertulis eksplisit dari Anda, kecuali dalam situasi darurat ancaman keselamatan jiwa (sesuai mandat hukum).",
+            "Setiap sesi dilindungi oleh Kode Etik Psikologi Indonesia dan standar kerahasiaan data medis. Isi sesi bersifat privat, hanya bisa diakses kamu dan psikologmu, serta tidak akan dibagikan kepada keluarga, atasan kantor, atau pihak ketiga mana pun tanpa persetujuan tertulis eksplisit dari Anda, kecuali dalam situasi darurat ancaman keselamatan jiwa (sesuai mandat hukum).",
         },
         {
           question: "Apa perbedaan antara Konseling Psikolog Klinis dan Curhat AI?",

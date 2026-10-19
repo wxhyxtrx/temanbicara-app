@@ -120,7 +120,7 @@ export function CallRoomModal({
             Ruang Voice Call Telehealth - {conversation.name}
           </DialogTitle>
           <DialogDescription id="call-room-accessible-desc" className="sr-only">
-            Sesi panggilan suara privat terenkripsi bersama psikolog berlisensi
+            Sesi panggilan suara privat bersama psikolog berlisensi
           </DialogDescription>
 
           {/* 1. Header Bar: Info Psikolog & Timer Sesi */}
@@ -192,7 +192,7 @@ export function CallRoomModal({
 
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-700/60 text-[11px] font-medium text-emerald-300">
               <ShieldCheck size={13} />
-              <span>Enkripsi Suara End-to-End DTLS/SRTP</span>
+              <span>Panggilan Suara Privat & Rahasia</span>
             </div>
           </div>
 

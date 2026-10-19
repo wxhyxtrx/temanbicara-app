@@ -46,7 +46,7 @@ export function MessageList() {
       <div className="flex items-center justify-center pt-0.5">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/90 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-[11px] font-medium select-none shadow-2xs">
           <Lock size={12} className="text-teal-600 dark:text-teal-400 shrink-0" />
-          <span>Percakapan privat & terenkripsi</span>
+          <span>Percakapan privat & rahasia</span>
         </div>
       </div>
 

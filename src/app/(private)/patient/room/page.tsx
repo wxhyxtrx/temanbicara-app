@@ -68,7 +68,7 @@ function RoomChatContent() {
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-teal-700 dark:text-teal-400 font-medium pt-2">
                 <ShieldCheck size={14} />
-                <span>100% Terenkripsi & Dilindungi Standar Kerahasiaan Medis</span>
+                <span>Privat & Dilindungi Standar Kerahasiaan Medis</span>
               </div>
             </div>
           )}

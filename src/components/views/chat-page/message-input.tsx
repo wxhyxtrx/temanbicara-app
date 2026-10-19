@@ -348,7 +348,7 @@ export function MessageInput() {
       )}
 
       <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 font-nunito">
-        Percakapan privat & terenkripsi. Tekan Enter untuk mengirim.
+        Percakapan privat & rahasia. Tekan Enter untuk mengirim.
       </p>
     </div>
   );

@@ -531,10 +531,10 @@ export default function PatientSettingsPage() {
               <div className="flex items-center justify-between gap-4 pt-4">
                 <div className="space-y-0.5 min-w-0">
                   <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Enkripsi Berlapis Riwayat Chat
+                    Kerahasiaan Riwayat Chat
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
-                    Percakapan dienkripsi dengan standar AES-256 end-to-end. Hanya Anda dan psikolog yang memiliki kunci dekripsi.
+                    Percakapan hanya bisa diakses kamu dan psikologmu.
                   </p>
                 </div>
                 <span className="text-[11px] font-bold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 px-2.5 py-1 rounded-full shrink-0">
@@ -556,7 +556,7 @@ export default function PatientSettingsPage() {
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
-                    Ekspor seluruh catatan refleksi dan ringkasan sesi dalam format PDF terenkripsi sandi.
+                    Ekspor seluruh catatan refleksi dan ringkasan sesi dalam format PDF.
                   </p>
                 </div>
                 <Button

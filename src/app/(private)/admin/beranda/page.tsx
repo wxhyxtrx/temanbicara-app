@@ -142,7 +142,7 @@ export default function AdminBerandaPage() {
               <span>Infrastruktur Layanan Aktif</span>
             </div>
             <p className="text-xs text-teal-100/70 leading-relaxed font-nunito">
-              Semua saluran percakapan dan basis data terenkripsi dengan standar perlindungan data klinis & ledger akuntansi terpusat.
+              Semua saluran percakapan dan basis data dilindungi standar perlindungan data klinis & ledger akuntansi terpusat.
             </p>
             <div className="pt-2 border-t border-teal-800/80 flex items-center justify-between text-[11px] text-teal-300">
               <span className="flex items-center gap-1 text-emerald-400 font-semibold">

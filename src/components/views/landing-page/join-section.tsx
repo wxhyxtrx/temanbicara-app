@@ -77,10 +77,10 @@ export default function JoinSection() {
                 <div className="p-3.5 rounded-xl bg-teal-950/60 border border-teal-800/70 space-y-1.5">
                   <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
                     <Lock size={14} />
-                    <span>Enkripsi Berlapis End-to-End</span>
+                    <span>Privat & Rahasia</span>
                   </div>
                   <p className="text-[11px] text-teal-200/70">
-                    Data transmisi sesi dilindungi enkripsi standar SSL/TLS 256-bit berstandar perlindungan data medis.
+                    Percakapan hanya bisa diakses kamu dan psikologmu, terlindungi standar kerahasiaan medis.
                   </p>
                 </div>
               </div>
