@@ -18,7 +18,6 @@ import {
   MessageCircle,
   ShieldCheck,
   Clock,
-  Sparkles,
   AlertCircle,
   Star,
   HeartHandshake,
@@ -438,32 +437,6 @@ export default function PatientBerandaPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* 4. Clinical Care Package Card */}
-          <div className="rounded-2xl p-5 sm:p-7 bg-gradient-to-br from-teal-50/90 via-white to-emerald-50/50 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-900 border border-teal-200/90 dark:border-teal-800/70 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
-            <div className="space-y-3 max-w-xl">
-              <div className="flex items-center">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-teal-800 dark:text-teal-300 bg-white dark:bg-slate-800 border border-teal-300/80 dark:border-teal-700 shadow-2xs tracking-wide">
-                  <Sparkles size={13} className="text-teal-600 dark:text-teal-400" />
-                  PROGRAM TERAPI INTENSIF
-                </span>
-              </div>
-
-              <h3 className="text-lg sm:text-xl font-bold font-heading text-slate-900 dark:text-white leading-snug">
-                Paket Pendampingan Psikologis Berkala
-              </h3>
-
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-nunito leading-relaxed">
-                Dapatkan 3 sesi konseling mendalam 60 menit bersama psikolog berlisensi, pendampingan terstruktur, dan akses ruang chat aman terpadu.
-              </p>
-            </div>
-
-            <Link href="/patient/top-up" className="shrink-0 w-full sm:w-auto">
-              <Button size="default" className="w-full sm:w-auto text-xs sm:text-sm bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-5 py-2.5 cursor-pointer shadow-xs">
-                Lihat Paket Konseling
-              </Button>
-            </Link>
-          </div>
         </div>
 
         {/* Right Column (4 Cols on Desktop) */}
