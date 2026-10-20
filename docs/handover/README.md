@@ -2,14 +2,16 @@
 
 Per 2026-10-20 · versi yang bisa dibagikan (dengan diagram interaktif): https://claude.ai/code/artifact/4b9afd71-63be-4f74-82e1-ae284e844e36
 
+Dokumen pendamping di folder ini: `baseline-prd.md` (fitur yang sudah ada = PRD-000), `sdd.md` (model data, RPC, alur status booking), `status-fitur.md` (status per halaman & daftar kekurangan).
+
 ## 1. Ringkasan proyek & status
 
 TemanBicara adalah aplikasi telekonseling kesehatan mental dengan 4 role (pasien, psikolog, relawan, admin). Fase 3 (booking & sesi psikolog berbayar koin) selesai dibangun dan lulus UAT ulang di semua role pada 2026-10-20; master `778afdf`, auto-deploy ke Vercel.
 
-- **Repo:** GitHub `wxhyxtrx/temanbicara-app`, branch utama `master` (tidak ada branch develop).
+- **Repo:** GitHub `wxhyxtrx/temanbicara-app`, branch utama `master`; tim agen bekerja di branch `dev`, SA merilis `dev` → `master`.
 - **App:** https://temanbicara-app-eight.vercel.app (project Vercel `temanbicara-app`).
 - **Database:** Supabase project "Temanbicara" (`mcciuvlqvvvptgmelexi`) — **khusus development**. Produksi belum dibuat.
-- **Tim agen saat ini:** Paul = backend-leader (worktree `temanbicara-be`), Rimuru = frontend-leader (checkout utama `temanbicara`), keduanya agen QwenPaw. Claude berperan PM/tech lead: memecah tugas, review, dry-run + migrasi, merge, tes browser.
+- **Tim agen saat ini:** Paul = backend-leader (worktree `temanbicara-be`), Rimuru = frontend-leader (checkout utama `temanbicara`), keduanya agen QwenPaw. Sejak 2026-10-20 proyek dijalankan tim agent-team (PM → Tech Lead → Rimuru/Paul); Claude berperan SA + supervisor + QA-rilis + deployment (`pengawas-temanbicara`): review lewat komentar board, menerapkan migrasi, tes browser, rilis `dev` → `master`.
 
 | # | Tahap | Status |
 | --- | --- | --- |
