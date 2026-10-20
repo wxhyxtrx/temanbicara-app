@@ -157,3 +157,70 @@ export const adminCreateAdminSchema = z.object({
 });
 
 export type AdminCreateAdminDTO = z.infer<typeof adminCreateAdminSchema>;
+
+// 9. GANTI / BUAT PASSWORD
+export type PasswordFormDTO = {
+  current_password?: string;
+  new_password: string;
+  confirm_password: string;
+};
+
+export function passwordFormSchema(hasPassword: boolean): z.ZodType<PasswordFormDTO> {
+  return z
+    .object({
+      current_password: hasPassword
+        ? z
+            .string({ message: 'Kata sandi lama wajib diisi' })
+            .min(1, 'Kata sandi lama wajib diisi')
+        : z.string().optional(),
+      new_password: z
+        .string({ message: 'Kata sandi baru wajib diisi' })
+        .superRefine((val, ctx) => {
+          if (!val || val.length === 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'Kata sandi baru wajib diisi',
+            });
+            return;
+          }
+          if (val.length < 8) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'Kata sandi baru minimal 8 karakter.',
+            });
+            return;
+          }
+          if (val.length > 72) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'Kata sandi baru maksimal 72 karakter.',
+            });
+          }
+        }),
+      confirm_password: z
+        .string({ message: 'Konfirmasi kata sandi wajib diisi' })
+        .min(1, 'Konfirmasi kata sandi wajib diisi'),
+    })
+    .superRefine((data, ctx) => {
+      if (hasPassword && data.current_password && data.new_password) {
+        if (data.new_password === data.current_password) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Kata sandi baru harus berbeda dari kata sandi lama.',
+            path: ['new_password'],
+          });
+        }
+      }
+
+      if (data.confirm_password && data.new_password) {
+        if (data.confirm_password !== data.new_password) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Konfirmasi kata sandi tidak cocok.',
+            path: ['confirm_password'],
+          });
+        }
+      }
+    });
+}
+
