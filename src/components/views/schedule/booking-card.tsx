@@ -69,8 +69,8 @@ export function BookingCard({
       }`}
     >
       {/* Top Bar: Psychologist, Status, Badges */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 min-w-0">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
           <div className="relative shrink-0">
             {booking.psikolog?.avatar_url ? (
               <img
@@ -85,7 +85,7 @@ export function BookingCard({
             )}
           </div>
 
-          <div className="space-y-1 min-w-0">
+          <div className="space-y-1 min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               {booking.status === "completed" ? (
                 <Link

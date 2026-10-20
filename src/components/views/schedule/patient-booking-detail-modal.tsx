@@ -101,7 +101,7 @@ export function PatientBookingDetailModal({
           </div>
 
           {/* Psikolog Profile */}
-          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
+          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 min-w-0">
             <div className="relative shrink-0">
               {booking.psikolog?.avatar_url ? (
                 <img
@@ -116,7 +116,7 @@ export function PatientBookingDetailModal({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <h4 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
                   {psychName}
                 </h4>

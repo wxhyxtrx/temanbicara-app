@@ -364,7 +364,7 @@ export function BookingModal({
           </div>
         </DialogHeader>
 
-        <form onSubmit={handleBookingSubmit} className="space-y-5 pt-2">
+        <form onSubmit={handleBookingSubmit} className="space-y-5 pt-2 w-full min-w-0">
           {/* Structured Error State Banner */}
           {bookingError && (
             <div
@@ -436,8 +436,8 @@ export function BookingModal({
           )}
 
           {/* 1. Ringkasan Psikolog Terpilih */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-teal-50/40 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-teal-50/40 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="relative shrink-0">
                 {activePsychologist?.avatar_url ? (
                   <img
@@ -452,8 +452,8 @@ export function BookingModal({
                 )}
               </div>
 
-              <div className="space-y-0.5 min-w-0">
-                <div className="flex items-center gap-1.5">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <h4 className="font-bold text-sm text-slate-900 dark:text-white font-heading truncate">
                     {activePsychologist?.nama_lengkap_gelar || "Pilih Psikolog"}
                   </h4>
@@ -471,7 +471,7 @@ export function BookingModal({
 
             {/* Jadwal Terpilih Info */}
             {activeSlotIso ? (
-              <div className="sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-teal-200/50 dark:border-teal-800/50">
+              <div className="sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-teal-200/50 dark:border-teal-800/50 shrink-0">
                 <span className="text-[10px] uppercase font-bold text-teal-800 dark:text-teal-300 tracking-wider block">
                   Jadwal Sesi Konseling (WIB)
                 </span>
@@ -486,7 +486,7 @@ export function BookingModal({
                 </span>
               </div>
             ) : (
-              <div className="sm:text-right">
+              <div className="sm:text-right shrink-0">
                 <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-400 text-xs">
                   Pilih slot waktu di bawah
                 </Badge>
@@ -677,7 +677,7 @@ export function BookingModal({
           </div>
 
           {/* 4. Tombol Aksi */}
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800 w-full min-w-0">
             <Button
               type="button"
               variant="outline"
