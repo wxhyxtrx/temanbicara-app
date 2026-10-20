@@ -13,23 +13,71 @@ import { passwordClient } from "@/services/password.client";
 
 export interface PasswordFormProps {
   className?: string;
-  showTitle?: boolean;
-  title?: string;
-  buttonVariant?: "default" | "outline" | "secondary";
-  buttonClassName?: string;
-  onSuccess?: (mode: "change" | "create") => void;
 }
 
 type FieldKey = "current_password" | "new_password" | "confirm_password";
 
-export function PasswordForm({
+interface PasswordFieldProps {
+  id: FieldKey;
+  name: FieldKey;
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+  autoComplete: "current-password" | "new-password";
+  disabled?: boolean;
+  className?: string;
+}
+
+function PasswordField({
+  id,
+  name,
+  label,
+  placeholder,
+  value,
+  onChange,
+  error,
+  autoComplete,
+  disabled,
   className,
-  showTitle = true,
-  title,
-  buttonVariant = "default",
-  buttonClassName,
-  onSuccess,
-}: PasswordFormProps) {
+}: PasswordFieldProps) {
+  const errorId = `${id}-error`;
+
+  return (
+    <div className={cn("space-y-1.5 min-w-0", className)}>
+      <Label
+        htmlFor={id}
+        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+      >
+        {label}
+      </Label>
+      <PasswordInput
+        id={id}
+        name={name}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        autoComplete={autoComplete}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
+        className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 rounded-xl"
+      />
+      {error && (
+        <p
+          id={errorId}
+          role="alert"
+          className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold min-w-0 break-words"
+        >
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function PasswordForm({ className }: PasswordFormProps = {}) {
   const isMountedRef = useRef(true);
 
   // Status kata sandi dari server
@@ -79,6 +127,19 @@ export function PasswordForm({
     };
   }, [loadStatus]);
 
+  const handleChange = (
+    field: FieldKey,
+    setter: React.Dispatch<React.SetStateAction<string>>
+  ) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value);
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+    if (serverErrorMessage) {
+      setServerErrorMessage(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting || loadingStatus) return;
@@ -121,7 +182,6 @@ export function PasswordForm({
           }
         } else {
           setServerErrorMessage(result.message);
-          notify.error(result.message);
         }
         return;
       }
@@ -142,8 +202,6 @@ export function PasswordForm({
       setConfirmPassword("");
       setErrors({});
       setServerErrorMessage(null);
-
-      onSuccess?.(result.mode);
     } finally {
       setIsSubmitting(false);
     }
@@ -155,7 +213,7 @@ export function PasswordForm({
         className={cn("space-y-3.5 w-full max-w-lg min-w-0", className)}
         data-testid="password-form-skeleton"
       >
-        {showTitle && <Skeleton className="h-4 w-36 rounded-md" />}
+        <Skeleton className="h-4 w-36 rounded-md" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full min-w-0">
           <div className="space-y-1.5 sm:col-span-2 min-w-0">
             <Skeleton className="h-3.5 w-24 rounded-md" />
@@ -178,11 +236,9 @@ export function PasswordForm({
   if (loadError) {
     return (
       <div className={cn("space-y-3 w-full max-w-lg min-w-0", className)}>
-        {showTitle && (
-          <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading min-w-0">
-            {title || "Ganti Kata Sandi Akun"}
-          </p>
-        )}
+        <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading min-w-0">
+          Ganti Kata Sandi Akun
+        </p>
         <div
           role="alert"
           className="rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/30 p-3.5 text-xs text-rose-700 dark:text-rose-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0"
@@ -208,18 +264,16 @@ export function PasswordForm({
       noValidate
       className={cn("space-y-3.5 w-full max-w-lg min-w-0", className)}
     >
-      {showTitle && (
-        <div className="space-y-0.5 min-w-0">
-          <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading min-w-0">
-            {hasPassword ? (title || "Ganti Kata Sandi Akun") : "Buat Kata Sandi"}
+      <div className="space-y-0.5 min-w-0">
+        <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading min-w-0">
+          {hasPassword ? "Ganti Kata Sandi Akun" : "Buat Kata Sandi"}
+        </p>
+        {!hasPassword && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito min-w-0">
+            Akun Google kamu belum memiliki kata sandi. Buat kata sandi untuk dapat masuk dengan email dan kata sandi.
           </p>
-          {!hasPassword && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito min-w-0">
-              Akun Google kamu belum memiliki kata sandi. Buat kata sandi untuk dapat masuk dengan email dan kata sandi.
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {serverErrorMessage && (
         <div
@@ -232,114 +286,43 @@ export function PasswordForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full min-w-0">
         {hasPassword && (
-          <div className="space-y-1.5 sm:col-span-2 min-w-0">
-            <Label
-              htmlFor="current_password"
-              className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-            >
-              Kata Sandi Lama
-            </Label>
-            <PasswordInput
-              id="current_password"
-              name="current_password"
-              placeholder="Masukkan kata sandi lama"
-              value={currentPassword}
-              onChange={(e) => {
-                setCurrentPassword(e.target.value);
-                if (errors.current_password) {
-                  setErrors((prev) => ({ ...prev, current_password: undefined }));
-                }
-                if (serverErrorMessage) setServerErrorMessage(null);
-              }}
-              disabled={isSubmitting}
-              autoComplete="current-password"
-              aria-invalid={Boolean(errors.current_password)}
-              aria-describedby={errors.current_password ? "current_password-error" : undefined}
-              className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 rounded-xl"
-            />
-            {errors.current_password && (
-              <p
-                id="current_password-error"
-                role="alert"
-                className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold min-w-0 break-words"
-              >
-                {errors.current_password}
-              </p>
-            )}
-          </div>
+          <PasswordField
+            id="current_password"
+            name="current_password"
+            label="Kata Sandi Lama"
+            placeholder="Masukkan kata sandi lama"
+            value={currentPassword}
+            onChange={handleChange("current_password", setCurrentPassword)}
+            error={errors.current_password}
+            autoComplete="current-password"
+            disabled={isSubmitting}
+            className="sm:col-span-2"
+          />
         )}
 
-        <div className={cn("space-y-1.5 min-w-0", !hasPassword && "sm:col-span-1")}>
-          <Label
-            htmlFor="new_password"
-            className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-          >
-            Kata Sandi Baru
-          </Label>
-          <PasswordInput
-            id="new_password"
-            name="new_password"
-            placeholder="Minimal 8 karakter"
-            value={newPassword}
-            onChange={(e) => {
-              setNewPassword(e.target.value);
-              if (errors.new_password) {
-                setErrors((prev) => ({ ...prev, new_password: undefined }));
-              }
-              if (serverErrorMessage) setServerErrorMessage(null);
-            }}
-            disabled={isSubmitting}
-            autoComplete="new-password"
-            aria-invalid={Boolean(errors.new_password)}
-            aria-describedby={errors.new_password ? "new_password-error" : undefined}
-            className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 rounded-xl"
-          />
-          {errors.new_password && (
-            <p
-              id="new_password-error"
-              role="alert"
-              className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold min-w-0 break-words"
-            >
-              {errors.new_password}
-            </p>
-          )}
-        </div>
+        <PasswordField
+          id="new_password"
+          name="new_password"
+          label="Kata Sandi Baru"
+          placeholder="Minimal 8 karakter"
+          value={newPassword}
+          onChange={handleChange("new_password", setNewPassword)}
+          error={errors.new_password}
+          autoComplete="new-password"
+          disabled={isSubmitting}
+        />
 
-        <div className={cn("space-y-1.5 min-w-0", !hasPassword && "sm:col-span-1")}>
-          <Label
-            htmlFor="confirm_password"
-            className="text-xs font-semibold text-slate-700 dark:text-slate-300"
-          >
-            Konfirmasi Kata Sandi
-          </Label>
-          <PasswordInput
-            id="confirm_password"
-            name="confirm_password"
-            placeholder="Ulangi kata sandi baru"
-            value={confirmPassword}
-            onChange={(e) => {
-              setConfirmPassword(e.target.value);
-              if (errors.confirm_password) {
-                setErrors((prev) => ({ ...prev, confirm_password: undefined }));
-              }
-              if (serverErrorMessage) setServerErrorMessage(null);
-            }}
-            disabled={isSubmitting}
-            autoComplete="new-password"
-            aria-invalid={Boolean(errors.confirm_password)}
-            aria-describedby={errors.confirm_password ? "confirm_password-error" : undefined}
-            className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 rounded-xl"
-          />
-          {errors.confirm_password && (
-            <p
-              id="confirm_password-error"
-              role="alert"
-              className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold min-w-0 break-words"
-            >
-              {errors.confirm_password}
-            </p>
-          )}
-        </div>
+        <PasswordField
+          id="confirm_password"
+          name="confirm_password"
+          label="Konfirmasi Kata Sandi"
+          placeholder="Ulangi kata sandi baru"
+          value={confirmPassword}
+          onChange={handleChange("confirm_password", setConfirmPassword)}
+          error={errors.confirm_password}
+          autoComplete="new-password"
+          disabled={isSubmitting}
+        />
       </div>
 
       <div className="pt-1">
@@ -347,8 +330,7 @@ export function PasswordForm({
           type="submit"
           disabled={isSubmitting}
           size="sm"
-          variant={buttonVariant}
-          className={cn("text-xs rounded-xl cursor-pointer disabled:opacity-50", buttonClassName)}
+          className="text-xs rounded-xl cursor-pointer disabled:opacity-50"
         >
           {isSubmitting ? (
             <>
