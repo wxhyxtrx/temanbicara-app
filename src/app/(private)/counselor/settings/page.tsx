@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { PasswordForm } from "@/components/views/settings/password-form";
 import {
   ShieldCheck,
   Building2,
@@ -245,6 +246,7 @@ export default function CounselorSettingsPage() {
           </Card>
         </div>
       ) : (
+        <div className="space-y-6">
         <form onSubmit={handleSave} className="space-y-6">
         {/* Card 1: Identitas & Lisensi (Read-Only) */}
         <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
@@ -590,6 +592,23 @@ export default function CounselorSettingsPage() {
           </Button>
         </div>
       </form>
+
+      {/* Card 4: Ganti Kata Sandi */}
+      <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Lock size={18} className="text-teal-600 dark:text-teal-400" />
+            Ganti Kata Sandi
+          </CardTitle>
+          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+            Kelola kata sandi akun untuk mengamankan akses praktik konseling Anda
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          <PasswordForm />
+        </CardContent>
+      </Card>
+      </div>
       )}
     </div>
   );

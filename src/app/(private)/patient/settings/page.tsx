@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordForm } from "@/components/views/settings/password-form";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -664,7 +664,7 @@ export default function PatientSettingsPage() {
                 </Badge>
               </div>
               <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-nunito">
-                Autentikasi dua langkah (2FA OTP) dan pembaruan kata sandi mandiri via email verifikasi Supabase Auth sedang disiapkan untuk rilis berikutnya.
+                Autentikasi dua langkah (2FA OTP) sedang disiapkan untuk rilis berikutnya.
               </p>
             </div>
           </div>
@@ -702,29 +702,7 @@ export default function PatientSettingsPage() {
                 />
               </div>
 
-              <div className="space-y-3 pt-1">
-                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                  Ganti Kata Sandi Akun
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
-                  <PasswordInput
-                    placeholder="Kata Sandi Lama"
-                    className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 rounded-xl"
-                  />
-                  <PasswordInput
-                    placeholder="Kata Sandi Baru"
-                    className="h-9 text-xs bg-slate-50/50 dark:bg-slate-800/60 rounded-xl"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs rounded-xl mt-2"
-                  onClick={() => notify.info("Coming Soon", "Fitur ubah kata sandi melalui email verifikasi segera aktif.")}
-                >
-                  Perbarui Kata Sandi
-                </Button>
-              </div>
+              <PasswordForm className="pt-1" />
             </CardContent>
           </Card>
         </TabsContent>
