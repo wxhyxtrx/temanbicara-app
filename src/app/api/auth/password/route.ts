@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser } from '@/lib/auth/session';
 import { getPasswordStatus } from '@/lib/auth/password';
 import { passwordFormSchema } from '@/lib/validations/auth';
+import { setSessionCookies, clearSessionCookies, SESSION_MAX_AGE } from '@/lib/auth/session-cookies';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -161,13 +162,69 @@ export async function POST(req: Request) {
 
     const mode = hasPassword ? 'change' : 'create';
 
-    // Response 200 tanpa Set-Cookie
-    return NextResponse.json({
+    let sessionRenewed = false;
+    let newSessionTokens: { accessToken: string; refreshToken?: string | null } | null = null;
+
+    try {
+      if (supabaseUrl && supabaseAnonKey && email) {
+        const loginClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+          },
+        });
+
+        const { data: signInData, error: signInError } = await loginClient.auth.signInWithPassword({
+          email,
+          password: parsed.data.new_password,
+        });
+
+        if (!signInError && signInData?.session?.access_token) {
+          sessionRenewed = true;
+          newSessionTokens = {
+            accessToken: signInData.session.access_token,
+            refreshToken: signInData.session.refresh_token,
+          };
+        }
+      }
+    } catch {
+      // Pembuatan sesi baru gagal, password tetap dianggap berhasil diubah.
+      // Sesuai PRD-002: error dan kredensial tidak pernah di-log mentah.
+    }
+
+    if (sessionRenewed && newSessionTokens) {
+      const response = NextResponse.json({
+        success: true,
+        data: {
+          mode,
+          session_renewed: true,
+        },
+      });
+
+      await setSessionCookies(response, {
+        accessToken: newSessionTokens.accessToken,
+        refreshToken: newSessionTokens.refreshToken,
+        userId: session.user.id,
+        role: session.user.role,
+        status: session.user.status,
+        maxAge: SESSION_MAX_AGE,
+      });
+
+      return response;
+    }
+
+    // Pembuatan sesi baru gagal: tetap 200 dengan session_renewed: false dan clearSessionCookies
+    const response = NextResponse.json({
       success: true,
       data: {
         mode,
+        session_renewed: false,
       },
     });
+
+    clearSessionCookies(response);
+
+    return response;
   } catch (err: unknown) {
     // Keamanan: Password dan err.message mentah TIDAK PERNAH di-log
     console.error('[POST /api/auth/password] Gagal memproses pembaruan kata sandi');

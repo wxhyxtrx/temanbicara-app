@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { supabaseAdmin, supabasePublic } from '@/lib/supabase/client';
-import { signRole } from '@/lib/auth/role-cookie';
+import { setSessionCookies, clearSessionCookies, SESSION_MAX_AGE } from '@/lib/auth/session-cookies';
 
 /**
  * POST /api/auth/refresh
@@ -45,38 +45,13 @@ export async function POST(req: Request) {
       );
 
       // Bersihkan cookie sesi yang kedaluwarsa
-      errorResponse.cookies.set('tb_access_token', '', {
-        path: '/',
-        maxAge: 0,
-        expires: new Date(0),
-        sameSite: 'lax',
-      });
-      errorResponse.cookies.set('tb_refresh_token', '', {
-        path: '/',
-        maxAge: 0,
-        expires: new Date(0),
-        sameSite: 'lax',
-        httpOnly: true,
-      });
-      errorResponse.cookies.set('tb_user_role', '', {
-        path: '/',
-        maxAge: 0,
-        expires: new Date(0),
-        sameSite: 'lax',
-        httpOnly: true,
-      });
-      errorResponse.cookies.set('tb_user_status', '', {
-        path: '/',
-        maxAge: 0,
-        expires: new Date(0),
-        sameSite: 'lax',
-      });
+      clearSessionCookies(errorResponse);
 
       return errorResponse;
     }
 
     const { session, user } = authData;
-    const maxAge = 60 * 60 * 24 * 7; // 7 hari
+    const maxAge = SESSION_MAX_AGE; // 7 hari
 
     // Ambil data profil terbaru untuk memastikan role dan status akun
     let userProfile: { id: string; role: string; status: string } | null = null;
@@ -112,45 +87,14 @@ export async function POST(req: Request) {
       },
     });
 
-    // Pasang ulang access token (JavaScript-readable untuk websocket/chat)
-    response.cookies.set('tb_access_token', session.access_token, {
-      path: '/',
+    await setSessionCookies(response, {
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      userId: userProfile?.id || user.id,
+      role: userProfile?.role,
+      status: userProfile?.status,
       maxAge,
-      sameSite: 'lax',
     });
-
-    // Pasang ulang refresh token baru (httpOnly)
-    if (session.refresh_token) {
-      response.cookies.set('tb_refresh_token', session.refresh_token, {
-        path: '/',
-        maxAge,
-        sameSite: 'lax',
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-      });
-    }
-
-    // Sinkronkan cookie role dan status jika profil ditemukan
-    if (userProfile) {
-      try {
-        const signedRole = await signRole(userProfile.role, userProfile.id, maxAge);
-        response.cookies.set('tb_user_role', signedRole, {
-          path: '/',
-          maxAge,
-          sameSite: 'lax',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-        });
-      } catch (err) {
-        console.error('[AUTH REFRESH]: Gagal menandatangani role cookie:', err);
-      }
-
-      response.cookies.set('tb_user_status', userProfile.status, {
-        path: '/',
-        maxAge,
-        sameSite: 'lax',
-      });
-    }
 
     return response;
   } catch (err: unknown) {

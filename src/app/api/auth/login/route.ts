@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin, supabasePublic } from '@/lib/supabase/client';
 import { loginSchema } from '@/lib/validations/auth';
-import { signRole } from '@/lib/auth/role-cookie';
+import { setSessionCookies } from '@/lib/auth/session-cookies';
 
 export async function POST(req: Request) {
   try {
@@ -131,31 +131,13 @@ export async function POST(req: Request) {
     });
 
     const maxAge = remember_me ? 60 * 60 * 24 * 7 : 60 * 60 * 24;
-    response.cookies.set('tb_access_token', authData.session.access_token, {
-      path: '/',
+    await setSessionCookies(response, {
+      accessToken: authData.session.access_token,
+      refreshToken: authData.session.refresh_token,
+      userId: authData.user.id,
+      role: userProfile.role,
+      status: userProfile.status,
       maxAge,
-      sameSite: 'lax',
-    });
-    if (authData.session.refresh_token) {
-      response.cookies.set('tb_refresh_token', authData.session.refresh_token, {
-        path: '/',
-        maxAge,
-        sameSite: 'lax',
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-      });
-    }
-    response.cookies.set('tb_user_role', await signRole(userProfile.role, authData.user.id, maxAge), {
-      path: '/',
-      maxAge,
-      sameSite: 'lax',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-    });
-    response.cookies.set('tb_user_status', userProfile.status, {
-      path: '/',
-      maxAge,
-      sameSite: 'lax',
     });
 
     return response;
