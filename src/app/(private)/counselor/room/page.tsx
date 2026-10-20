@@ -129,11 +129,7 @@ function CounselorRoomContent() {
           const list = historyRes.data as PsikologBookingView[];
           const relevantHistory = list.filter(
             (b: PsikologBookingView) =>
-              b.status === "completed" ||
-              b.status === "no_show" ||
-              b.status === "auto_cancelled_late" ||
-              b.status === "cancelled_by_patient" ||
-              b.status === "cancelled_by_psikolog"
+              b.status === "completed" || b.status === "no_show"
           );
           setHistoryBookings(relevantHistory);
         }
@@ -320,7 +316,7 @@ function CounselorRoomContent() {
                   Belum Ada Riwayat Sesi
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Belum ada catatan sesi konseling yang telah selesai, dibatalkan, atau lewat jadwal sebelumnya.
+                  Belum ada catatan sesi konseling yang telah selesai atau tidak hadir (no show) sebelumnya.
                 </p>
               </div>
               <Link href="/counselor/schedule" className="inline-block pt-2">
