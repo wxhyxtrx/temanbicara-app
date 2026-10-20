@@ -38,7 +38,7 @@ export async function GET() {
       {
         success: false,
         error: 'INTERNAL_SERVER_ERROR',
-        message: 'Gagal menyimpan kata sandi. Coba lagi beberapa saat lagi.',
+        message: 'Gagal memuat status kata sandi. Coba lagi beberapa saat lagi.',
       },
       { status: 500 }
     );
@@ -81,10 +81,7 @@ export async function POST(req: Request) {
     const parsed = schema.safeParse(body);
 
     if (!parsed.success) {
-      const firstErrorMessage =
-        parsed.error.issues?.[0]?.message ||
-        (parsed.error as unknown as { errors?: Array<{ message?: string }> }).errors?.[0]?.message ||
-        'Validasi gagal.';
+      const firstErrorMessage = parsed.error.issues[0]?.message ?? 'Validasi gagal.';
 
       return NextResponse.json(
         {
@@ -102,6 +99,10 @@ export async function POST(req: Request) {
         throw new Error('Supabase client environment variables missing');
       }
 
+      if (!email) {
+        throw new Error('Email pengguna auth tidak ditemukan');
+      }
+
       // Verifikasi password lama dengan client anon per request (bukan singleton supabasePublic)
       const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
@@ -110,21 +111,28 @@ export async function POST(req: Request) {
         },
       });
 
-      const userEmail = email || session.user.email;
       const { data: signInData, error: signInError } = await tempClient.auth.signInWithPassword({
-        email: userEmail,
+        email,
         password: parsed.data.current_password!,
       });
 
       if (signInError || !signInData?.user) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'WRONG_CURRENT_PASSWORD',
-            message: 'Kata sandi lama salah.',
-          },
-          { status: 400 }
-        );
+        const isInvalidCredentials =
+          signInError?.code === 'invalid_credentials' ||
+          (signInError?.status === 400 && !signInError?.code);
+
+        if (isInvalidCredentials) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'WRONG_CURRENT_PASSWORD',
+              message: 'Kata sandi lama salah.',
+            },
+            { status: 400 }
+          );
+        }
+
+        throw signInError || new Error('Autentikasi verifikasi gagal');
       }
 
       try {

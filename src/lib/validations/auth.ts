@@ -178,21 +178,21 @@ export function passwordFormSchema(hasPassword: boolean): z.ZodType<PasswordForm
         .superRefine((val, ctx) => {
           if (!val || val.length === 0) {
             ctx.addIssue({
-              code: z.ZodIssueCode.custom,
+              code: 'custom',
               message: 'Kata sandi baru wajib diisi',
             });
             return;
           }
           if (val.length < 8) {
             ctx.addIssue({
-              code: z.ZodIssueCode.custom,
+              code: 'custom',
               message: 'Kata sandi baru minimal 8 karakter.',
             });
             return;
           }
           if (val.length > 72) {
             ctx.addIssue({
-              code: z.ZodIssueCode.custom,
+              code: 'custom',
               message: 'Kata sandi baru maksimal 72 karakter.',
             });
           }
@@ -205,7 +205,7 @@ export function passwordFormSchema(hasPassword: boolean): z.ZodType<PasswordForm
       if (hasPassword && data.current_password && data.new_password) {
         if (data.new_password === data.current_password) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: 'custom',
             message: 'Kata sandi baru harus berbeda dari kata sandi lama.',
             path: ['new_password'],
           });
@@ -215,7 +215,7 @@ export function passwordFormSchema(hasPassword: boolean): z.ZodType<PasswordForm
       if (data.confirm_password && data.new_password) {
         if (data.confirm_password !== data.new_password) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: 'custom',
             message: 'Konfirmasi kata sandi tidak cocok.',
             path: ['confirm_password'],
           });
