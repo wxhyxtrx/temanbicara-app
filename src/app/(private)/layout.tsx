@@ -11,6 +11,7 @@ import { useUserStore, UserRole } from "@/store/user-store";
 import { NotificationDropdown } from "@/components/shared/organisms/notification-dropdown";
 import { ThemeToggle } from "@/components/shared/atoms/theme-toggle";
 import { GlobalToastListener } from "@/components/shared/global-toast-listener";
+import { MaintenanceScheduledBanner } from "@/components/shared/maintenance-scheduled-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { mockUsers } from "@/constant/mock-users";
 
@@ -100,6 +101,7 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
       <GlobalToastListener />
       <AppSidebar />
       <SidebarInset className="bg-slate-50/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+        <MaintenanceScheduledBanner />
         <header className="sticky top-0 z-40 w-full flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-4 md:px-8 py-3 backdrop-blur-md shadow-2xs transition-colors duration-200">
           <div className="flex items-center gap-3 md:gap-4">
             <SidebarTrigger className="h-9 w-9 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer" />
