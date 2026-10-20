@@ -1,7 +1,7 @@
 import type { PasswordFormDTO } from '@/lib/validations/auth';
 
 export type PasswordUpdateResult =
-  | { ok: true; mode: 'change' | 'create' }
+  | { ok: true; mode: 'change' | 'create'; sessionRenewed: boolean }
   | {
       ok: false;
       kind: 'validation';
@@ -66,6 +66,7 @@ export const passwordClient = {
         return {
           ok: true,
           mode: json.data.mode === 'create' ? 'create' : 'change',
+          sessionRenewed: json.data.session_renewed !== false,
         };
       }
 

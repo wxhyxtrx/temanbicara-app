@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { passwordFormSchema, type PasswordFormDTO } from "@/lib/validations/auth";
 import { passwordClient } from "@/services/password.client";
+import { handleUnauthorized } from "@/lib/auth/unauthorized-handler";
 
 export interface PasswordFormProps {
   className?: string;
@@ -187,13 +188,22 @@ export function PasswordForm({ className }: PasswordFormProps = {}) {
       }
 
       // Sukses
-      if (result.mode === "create") {
-        notify.success(
-          "Kata sandi berhasil dibuat. Sekarang kamu juga bisa masuk dengan email dan kata sandi."
-        );
-        setHasPassword(true);
+      if (result.sessionRenewed) {
+        if (result.mode === "create") {
+          notify.success(
+            "Kata sandi berhasil dibuat. Sekarang kamu juga bisa masuk dengan email dan kata sandi."
+          );
+          setHasPassword(true);
+        } else {
+          notify.success("Kata sandi berhasil diperbarui.");
+        }
       } else {
-        notify.success("Kata sandi berhasil diperbarui.");
+        notify.warning(
+          "Kata sandi berhasil diubah. Silakan masuk kembali dengan kata sandi baru."
+        );
+        setTimeout(() => {
+          handleUnauthorized();
+        }, 3000);
       }
 
       // Kosongkan form setelah berhasil
