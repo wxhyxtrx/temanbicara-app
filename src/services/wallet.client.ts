@@ -79,6 +79,18 @@ export function formatWalletErrorMessage(status: number, code?: string, serverMe
   if (status === 502 || code === 'PAYMENT_GATEWAY_ERROR') {
     return serverMessage || 'Layanan gateway pembayaran sedang bermasalah atau sibuk. Silakan coba kembali beberapa saat lagi.';
   }
+  if (status === 503 || code === 'MAINTENANCE_ACTIVE' || code === 'MAINTENANCE_DRAINING') {
+    if (code === 'MAINTENANCE_DRAINING') {
+      return (
+        serverMessage ||
+        'Sistem sedang bersiap untuk pemeliharaan. Transaksi baru ditunda sementara.'
+      );
+    }
+    return (
+      serverMessage ||
+      'Sistem sedang dalam pemeliharaan. Silakan coba beberapa saat lagi.'
+    );
+  }
   return serverMessage || `Terjadi kesalahan pada sistem (Kode HTTP ${status}).`;
 }
 
@@ -104,12 +116,18 @@ async function handleWalletResponse<T>(res: Response): Promise<{ data: T; meta?:
     const errorCode = body?.error;
     const rawMessage = body?.message;
 
+    const isMaintenance =
+      status === 503 ||
+      errorCode === 'MAINTENANCE_ACTIVE' ||
+      errorCode === 'MAINTENANCE_DRAINING';
+
     const isUnauthorized =
-      status === 401 ||
-      errorCode === 'UNAUTHENTICATED' ||
-      errorCode === 'INVALID_TOKEN' ||
-      (status === 404 && errorCode === 'USER_NOT_FOUND') ||
-      errorCode === 'USER_NOT_FOUND';
+      !isMaintenance &&
+      (status === 401 ||
+        errorCode === 'UNAUTHENTICATED' ||
+        errorCode === 'INVALID_TOKEN' ||
+        (status === 404 && errorCode === 'USER_NOT_FOUND') ||
+        errorCode === 'USER_NOT_FOUND');
 
     if (isUnauthorized) {
       handleUnauthorized(rawMessage || 'Sesi login tidak valid atau pengguna tidak ditemukan');

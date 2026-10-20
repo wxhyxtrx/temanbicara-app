@@ -1,8 +1,11 @@
 import { useUserStore, PERSISTENT_STORES_TO_CLEAR } from "@/store/user-store";
+import { notify } from "@/lib/toast";
 
 let isHandlingUnauthorized = false;
 let isInterceptorInstalled = false;
 let refreshPromise: Promise<boolean> | null = null;
+let lastMaintenanceToastAt = 0;
+const MAINTENANCE_TOAST_THROTTLE_MS = 2000;
 
 const originalFetch =
   typeof window !== "undefined" ? window.fetch.bind(window) : fetch;
@@ -116,8 +119,32 @@ function isAuthBypassUrl(url: string): boolean {
   );
 }
 
+async function handleMaintenance503(res: Response): Promise<void> {
+  if (res.status !== 503) return;
+  try {
+    const clone = res.clone();
+    const data = await clone.json().catch(() => null);
+    const errorCode = data?.error;
+    if (errorCode === "MAINTENANCE_ACTIVE" || errorCode === "MAINTENANCE_DRAINING") {
+      const now = Date.now();
+      if (typeof window !== "undefined" && now - lastMaintenanceToastAt > MAINTENANCE_TOAST_THROTTLE_MS) {
+        lastMaintenanceToastAt = now;
+        const fallbackMsg =
+          errorCode === "MAINTENANCE_DRAINING"
+            ? "Sistem sedang bersiap untuk pemeliharaan. Transaksi baru ditunda sementara."
+            : "Sistem sedang dalam pemeliharaan. Silakan coba beberapa saat lagi.";
+        const description = data?.message || fallbackMsg;
+        notify.warning("Pemeliharaan Sistem", description);
+      }
+    }
+  } catch {
+    // Abaikan error clone/parsing agar response asli tetap utuh
+  }
+}
+
 /**
- * Wrapper fetch dengan auto-refresh token saat menerima status 401.
+ * Wrapper fetch dengan auto-refresh token saat menerima status 401
+ * serta notifikasi pemeliharaan sistem pada status 503 tanpa mengganggu sesi.
  * Jika refresh sukses, ulangi request semula; jika gagal, panggil handleUnauthorized().
  */
 export async function fetchWithAuth(
@@ -135,6 +162,11 @@ export async function fetchWithAuth(
 
   const res = await originalFetch(input, init);
 
+  if (res.status === 503) {
+    await handleMaintenance503(res);
+    return res;
+  }
+
   if (res.status === 401 && !init?._isAuthRetry) {
     const url = getRequestUrl(input);
     if (isInternalApiUrl(url) && !isAuthBypassUrl(url)) {
@@ -146,6 +178,10 @@ export async function fetchWithAuth(
         };
         const retryTarget = reqCloneForRetry || input;
         const retryRes = await originalFetch(retryTarget, retryInit);
+        if (retryRes.status === 503) {
+          await handleMaintenance503(retryRes);
+          return retryRes;
+        }
         if (retryRes.status === 401) {
           handleUnauthorized("Sesi berakhir setelah percobaan refresh token");
         }
