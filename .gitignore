@@ -50,5 +50,6 @@ next-env.d.ts
 superpowers/
 
 # internal documentation & scripts
-docs/
+docs/*
+!docs/handover/
 scripts/
