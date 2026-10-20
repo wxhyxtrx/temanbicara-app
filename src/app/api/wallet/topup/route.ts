@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser, fail } from '@/lib/auth/session';
+import { getMaintenanceStatus } from '@/lib/maintenance';
 import { WalletService, WalletHttpError } from '@/services/wallet.service';
 import { createTopupOrderSchema } from '@/lib/validations/wallet';
 
 export async function POST(req: Request) {
   try {
+    const maintenance = await getMaintenanceStatus();
+    if (maintenance.phase === 'draining') {
+      return fail(503, 'MAINTENANCE_DRAINING', 'Sistem sedang bersiap untuk pemeliharaan. Transaksi baru ditunda.');
+    }
+    if (maintenance.phase === 'active') {
+      return fail(503, 'MAINTENANCE_ACTIVE', maintenance.message);
+    }
+
     const session = await getSessionUser();
     if (session.response) return session.response;
     if (session.user.role !== 'pasien') {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
+import { getMaintenanceStatus } from '@/lib/maintenance';
 import { createBookingSchema, bookingQuerySchema } from '@/lib/validations/booking';
 import { toPsikologBookingView } from '@/lib/booking/views';
 import type { BookingEntity, PatientBookingView, PsychologistSummary, PsikologBookingReview } from '@/types/booking';
@@ -12,6 +13,14 @@ import type { BookingEntity, PatientBookingView, PsychologistSummary, PsikologBo
  */
 export async function POST(req: Request) {
   try {
+    const maintenance = await getMaintenanceStatus();
+    if (maintenance.phase === 'draining') {
+      return fail(503, 'MAINTENANCE_DRAINING', 'Sistem sedang bersiap untuk pemeliharaan. Transaksi baru ditunda.');
+    }
+    if (maintenance.phase === 'active') {
+      return fail(503, 'MAINTENANCE_ACTIVE', maintenance.message);
+    }
+
     const session = await getSessionUser();
     if (session.response) return session.response;
     const { user } = session;

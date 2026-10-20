@@ -1,5 +1,3 @@
-import 'server-only';
-
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { DEFAULT_SYSTEM_SETTINGS } from '@/constant/system-settings';
 import {
@@ -25,15 +23,30 @@ export class SystemSettingsService {
     this.publicCache = null;
   }
 
-  /** Fase 1: bookings belum tersedia, maka maintenance yang waktunya tiba langsung active. */
   public static async calculateMaintenancePhase(scheduledStart: string | null): Promise<MaintenancePhase> {
     if (!scheduledStart) return 'none';
     const startTime = new Date(scheduledStart).getTime();
     if (!Number.isFinite(startTime)) return 'none';
     if (Date.now() < startTime) return 'scheduled';
 
-    // TODO Fase 3/4: setelah tabel bookings tersedia, cek sesi in_progress dan hasilkan draining.
-    return 'active';
+    if (!supabaseAdmin) return 'active';
+
+    try {
+      const { count, error } = await supabaseAdmin
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'in_progress');
+
+      if (error) {
+        console.error('Gagal memeriksa booking in_progress untuk fase maintenance:', error.message);
+        return 'active';
+      }
+
+      return (count ?? 0) > 0 ? 'draining' : 'active';
+    } catch (err) {
+      console.error('Error calculating maintenance phase:', err);
+      return 'active';
+    }
   }
 
   public static async getPublicSettings(): Promise<PublicSettings> {
