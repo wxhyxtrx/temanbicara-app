@@ -53,3 +53,6 @@ superpowers/
 docs/*
 !docs/handover/
 scripts/
+
+# local scratch (not part of the app)
+_trash/
