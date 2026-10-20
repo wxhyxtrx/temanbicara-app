@@ -36,6 +36,7 @@ import {
   BOOKING_STATUS_CONFIG,
 } from "@/lib/booking-utils";
 import { CounselorCancelBookingModal } from "@/components/views/counselor/counselor-cancel-booking-modal";
+import { MaintenanceDrainingBanner } from "@/components/shared/maintenance-draining-banner";
 import type { WalletInfoResponse } from "@/types/wallet";
 import type { PsikologProfile } from "@/types/user-profile";
 import type { PsikologBookingView } from "@/types/booking";
@@ -201,6 +202,8 @@ export default function CounselorBerandaPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+      <MaintenanceDrainingBanner />
+
       {/* 1. Header Welcome Counselor Card */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-950 to-slate-950 text-white p-6 sm:p-8 md:p-10 shadow-lg border border-teal-800/60 dark:border-teal-900/40">
         <div className="absolute top-0 right-10 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />

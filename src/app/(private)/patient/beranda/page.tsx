@@ -32,6 +32,7 @@ import { VentingModalForm } from "@/components/views/patient/venting-modal-form"
 import { PsychologistProfileModal } from "@/components/views/patient/psychologist-profile-modal";
 import { PsychologistCard } from "@/components/views/patient/psychologist-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MaintenanceDrainingBanner } from "@/components/shared/maintenance-draining-banner";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
 import { bookingClient } from "@/services/booking.client";
 import type { PatientBookingView } from "@/types/booking";
@@ -154,6 +155,8 @@ export default function PatientBerandaPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-10 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+      <MaintenanceDrainingBanner />
+
       {/* 1. Header Welcome Sanctuary Card */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-950 to-slate-950 text-white p-6 sm:p-7 xl:p-8 2xl:p-10 shadow-lg border border-teal-800/60 dark:border-teal-900/40">
         {/* Calming ambient background glow */}
