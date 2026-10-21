@@ -71,3 +71,6 @@ export interface AdminProfileEntity {
   level: string;
   created_at: string;
 }
+
+export * from './peer-tickets';
+
