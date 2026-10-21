@@ -16,13 +16,16 @@ const ROLE_DASHBOARDS: Record<string, string> = {
 
 function isMaintenanceBypass(pathname: string): boolean {
   const p = pathname.replace(/\/$/, '');
+  const isAuthBypass =
+    (p === '/api/auth' || p.startsWith('/api/auth/')) &&
+    !p.startsWith('/api/auth/register');
+
   return (
     p === '/api/webhooks/midtrans' ||
     p.startsWith('/api/webhooks/midtrans/') ||
     p === '/api/cron' ||
     p.startsWith('/api/cron/') ||
-    p === '/api/auth' ||
-    p.startsWith('/api/auth/') ||
+    isAuthBypass ||
     p === '/api/admin' ||
     p.startsWith('/api/admin/') ||
     p === '/api/settings/public' ||
@@ -83,13 +86,23 @@ export async function middleware(req: NextRequest) {
       );
     }
 
+    // Rute registrasi dialihkan ke /maintenance saat fase active
+    const isRegisterPage =
+      normalizedPath === '/register' ||
+      normalizedPath.startsWith('/register/');
+
+    if (isRegisterPage) {
+      return NextResponse.redirect(new URL('/maintenance', req.url), 307);
+    }
+
     // Pengunjung / role non-admin yang membuka /patient/*, /counselor/*, /listener/* dialihkan ke /maintenance
     if (
-      normalizedPath.startsWith('/patient') ||
-      normalizedPath.startsWith('/counselor') ||
-      normalizedPath.startsWith('/listener')
+      !isAdmin &&
+      (normalizedPath.startsWith('/patient') ||
+        normalizedPath.startsWith('/counselor') ||
+        normalizedPath.startsWith('/listener'))
     ) {
-      return NextResponse.redirect(new URL('/maintenance', req.url));
+      return NextResponse.redirect(new URL('/maintenance', req.url), 307);
     }
   }
 

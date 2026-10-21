@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import { getMaintenanceStatus } from '@/lib/maintenance';
 import { registerRelawanSchema } from '@/lib/validations/auth';
 import { normalizePhone } from '@/lib/validations/phone';
 
 export async function POST(req: Request) {
   try {
+    const maintenance = await getMaintenanceStatus();
+    if (maintenance.phase === 'active') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'MAINTENANCE_ACTIVE',
+          message: maintenance.message,
+        },
+        { status: 503 }
+      );
+    }
+
     const body = await req.json();
     const parsed = registerRelawanSchema.safeParse(body);
 
@@ -137,12 +150,12 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
       {
         success: false,
         error: 'INTERNAL_SERVER_ERROR',
-        message: err.message || 'Terjadi kesalahan sistem',
+        message: err instanceof Error ? err.message : 'Terjadi kesalahan sistem',
       },
       { status: 500 }
     );
