@@ -28,3 +28,20 @@ export interface RelawanDailyQuotaEntity {
 
 export type RelawanPeerTicketDTO = Omit<PeerTicketEntity, 'patient_id'>;
 
+export interface RelawanQuotaInfo {
+  quota_date: string;
+  daily_limit: number;
+  tickets_claimed: number;
+  penalty_points: number;
+  carry_penalty: number;
+  consumed: number;
+  remaining: number;
+}
+
+export interface CreatePeerTicketPayload {
+  patient_alias: string;
+  topic: string;
+  emotion: string;
+  content: string;
+  is_anonymous?: boolean;
+}
