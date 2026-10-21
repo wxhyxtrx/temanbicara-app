@@ -86,13 +86,6 @@ CREATE POLICY peer_tickets_select_policy ON public.peer_tickets
     FOR SELECT TO authenticated
     USING (
         auth.uid() = patient_id
-        OR (
-            EXISTS (
-                SELECT 1 FROM public.users u
-                WHERE u.id = auth.uid() AND u.role = 'relawan'::public.user_role AND u.status = 'active'::public.account_status
-            )
-            AND (status = 'open'::public.peer_ticket_status OR claimed_by = auth.uid())
-        )
         OR public.is_admin()
     );
 
@@ -224,7 +217,11 @@ DECLARE
     v_relawan_role public.user_role;
     v_relawan_status public.account_status;
     v_daily_limit INTEGER;
+    v_max_carry_penalty INTEGER;
     v_today DATE;
+    v_yesterday DATE;
+    v_yesterday_consumed INTEGER;
+    v_carry_penalty INTEGER := 0;
     v_quota public.relawan_daily_quota%ROWTYPE;
     v_consumed INTEGER;
 BEGIN
@@ -261,22 +258,43 @@ BEGIN
         RAISE EXCEPTION 'FORBIDDEN_ROLE' USING MESSAGE = 'Hanya relawan aktif yang dapat mengklaim tiket curhat.';
     END IF;
 
-    -- 5. Baca kuota harian dari system_settings
-    SELECT COALESCE(
-        (value->>'daily_ticket_quota')::INTEGER,
-        (value->'relawan'->>'daily_ticket_quota')::INTEGER,
-        3
-    )
-    INTO v_daily_limit
+    -- 5. Baca kuota harian & batas carry penalty dari system_settings
+    SELECT
+        COALESCE(
+            (value->>'daily_ticket_quota')::INTEGER,
+            (value->'relawan'->>'daily_ticket_quota')::INTEGER,
+            3
+        ),
+        COALESCE(
+            (value->>'max_carry_penalty')::INTEGER,
+            (value->'relawan'->>'max_carry_penalty')::INTEGER,
+            1
+        )
+    INTO v_daily_limit, v_max_carry_penalty
     FROM public.system_settings
     WHERE key = 'relawan';
 
     v_daily_limit := COALESCE(v_daily_limit, 3);
+    v_max_carry_penalty := COALESCE(v_max_carry_penalty, 1);
 
-    -- 6. Tanggal hari ini zona WIB (Asia/Jakarta)
+    -- 6. Tanggal hari ini zona WIB (Asia/Jakarta) & kemarin
     v_today := (pg_catalog.now() AT TIME ZONE 'Asia/Jakarta')::DATE;
+    v_yesterday := v_today - 1;
 
-    -- 7. Pastikan baris kuota relawan ada dan kunci baris tersebut
+    -- 7. Hitung penalti terbawa (carry penalty) dari hari kemarin
+    SELECT COALESCE(tickets_claimed, 0) + COALESCE(penalty_points, 0)
+    INTO v_yesterday_consumed
+    FROM public.relawan_daily_quota
+    WHERE relawan_id = p_relawan_id AND quota_date = v_yesterday;
+
+    v_yesterday_consumed := COALESCE(v_yesterday_consumed, 0);
+    IF v_yesterday_consumed > v_daily_limit THEN
+        v_carry_penalty := pg_catalog.least(v_yesterday_consumed - v_daily_limit, v_max_carry_penalty);
+    ELSE
+        v_carry_penalty := 0;
+    END IF;
+
+    -- 8. Pastikan baris kuota relawan ada dan kunci baris tersebut
     INSERT INTO public.relawan_daily_quota (
         relawan_id,
         quota_date,
@@ -296,17 +314,17 @@ BEGIN
     WHERE relawan_id = p_relawan_id AND quota_date = v_today
     FOR UPDATE;
 
-    v_consumed := COALESCE(v_quota.tickets_claimed, 0) + COALESCE(v_quota.penalty_points, 0);
+    v_consumed := COALESCE(v_quota.tickets_claimed, 0) + COALESCE(v_quota.penalty_points, 0) + v_carry_penalty;
     IF v_consumed >= v_daily_limit THEN
         RAISE EXCEPTION 'DAILY_QUOTA_EXHAUSTED' USING MESSAGE = 'Kuota klaim tiket harian relawan sudah habis.';
     END IF;
 
-    -- 8. Tambah tickets_claimed relawan
+    -- 9. Tambah tickets_claimed relawan
     UPDATE public.relawan_daily_quota
     SET tickets_claimed = public.relawan_daily_quota.tickets_claimed + 1
     WHERE relawan_id = p_relawan_id AND quota_date = v_today;
 
-    -- 9. Perbarui status tiket menjadi claimed
+    -- 10. Perbarui status tiket menjadi claimed
     UPDATE public.peer_tickets
     SET
         status = 'claimed'::public.peer_ticket_status,
@@ -400,9 +418,10 @@ BEGIN
             claimed_at = NULL,
             abandoned_by = v_new_abandoned,
             updated_at = pg_catalog.now()
-        WHERE id = p_ticket_id;
+        WHERE id = p_ticket_id
+        RETURNING * INTO v_ticket;
 
-        RAISE EXCEPTION 'CLAIM_RESPONSE_TIMEOUT' USING MESSAGE = 'Batas waktu respon pertama telah terlewati. Tiket dikembalikan ke antrean dan penalti kuota dikenakan.';
+        RETURN v_ticket;
     END IF;
 
     -- 5. Respon tepat waktu: ubah status ke active

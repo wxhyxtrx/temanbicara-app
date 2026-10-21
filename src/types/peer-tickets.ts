@@ -25,3 +25,6 @@ export interface RelawanDailyQuotaEntity {
   tickets_claimed: number;
   penalty_points: number;
 }
+
+export type RelawanPeerTicketDTO = Omit<PeerTicketEntity, 'patient_id'>;
+

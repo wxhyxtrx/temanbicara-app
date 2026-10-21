@@ -11,13 +11,14 @@
 -- 7. Assert Uji 5: peer_ticket_claim tiket yang sudah claimed ditolak (TICKET_NOT_AVAILABLE)
 -- 8. Assert Uji 6: peer_ticket_claim saat kuota harian habis (3) ditolak (DAILY_QUOTA_EXHAUSTED)
 -- 9. Assert Uji 7: peer_ticket_first_response tepat waktu ubah status jadi 'active'
--- 10. Assert Uji 8: peer_ticket_first_response timeout (>10 menit) batalkan klaim, catat abandoned_by, tambah penalti
+-- 10. Assert Uji 8: peer_ticket_first_response timeout (>10 menit) return tiket open, catat abandoned_by, tambah penalti tanpa exception
 -- 11. Assert Uji 9: peer_ticket_claim relawan di abandoned_by ditolak (TICKET_PREVIOUSLY_ABANDONED)
 -- 12. Assert Uji 10: peer_ticket_tick timeout claimed tiket kembalikan ke open & beri penalti
 -- 13. Assert Uji 11: peer_ticket_tick arsipkan tiket open > 24 jam jadi 'archived'
 -- 14. Assert Uji 12: Pasien dengan tiket archived dapat membuat tiket baru (partial unique index)
--- 15. Assert Uji 13: RLS peer_tickets (pasien, relawan open/claimed, admin, hak mutasi dicabut)
--- 16. Assert Uji 14: RLS relawan_daily_quota (relawan sendiri, admin, hak mutasi dicabut)
+-- 15. Assert Uji 13: Penegakan kuota carry penalty hari kemarin (maksimal 1 poin)
+-- 16. Assert Uji RLS: peer_tickets (pasien, relawan 0 baris demi privasi patient_id, admin, hak mutasi dicabut)
+-- 17. Assert Uji RLS: relawan_daily_quota (relawan sendiri, admin, hak mutasi dicabut)
 -- SELURUH UJI BERJALAN DALAM SATU TRANSAKSI DAN OTOMATIS DI-ROLLBACK
 -- ========================================================
 
@@ -35,8 +36,12 @@ VALUES
     ('a1000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'p_test4@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
     ('a1000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'p_test5@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
     ('a1000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'p_test6@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
+    ('a1000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'p_test7@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
+    ('a1000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'p_test8@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
+    ('a1000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'p_test9@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
     ('a2000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'r_test1@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
     ('a2000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'r_test2@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
+    ('a2000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'r_test3@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
     ('a3000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'adm_test@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
     ('a4000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'other_test@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
@@ -49,8 +54,12 @@ VALUES
     ('a1000000-0000-0000-0000-000000000004', 'p_test4@temanbicara.test', '081211110004', 'pasien'::public.user_role, 'active'::public.account_status),
     ('a1000000-0000-0000-0000-000000000005', 'p_test5@temanbicara.test', '081211110005', 'pasien'::public.user_role, 'active'::public.account_status),
     ('a1000000-0000-0000-0000-000000000006', 'p_test6@temanbicara.test', '081211110006', 'pasien'::public.user_role, 'active'::public.account_status),
+    ('a1000000-0000-0000-0000-000000000007', 'p_test7@temanbicara.test', '081211110007', 'pasien'::public.user_role, 'active'::public.account_status),
+    ('a1000000-0000-0000-0000-000000000008', 'p_test8@temanbicara.test', '081211110008', 'pasien'::public.user_role, 'active'::public.account_status),
+    ('a1000000-0000-0000-0000-000000000009', 'p_test9@temanbicara.test', '081211110009', 'pasien'::public.user_role, 'active'::public.account_status),
     ('a2000000-0000-0000-0000-000000000001', 'r_test1@temanbicara.test', '081222220001', 'relawan'::public.user_role, 'active'::public.account_status),
     ('a2000000-0000-0000-0000-000000000002', 'r_test2@temanbicara.test', '081222220002', 'relawan'::public.user_role, 'active'::public.account_status),
+    ('a2000000-0000-0000-0000-000000000003', 'r_test3@temanbicara.test', '081222220003', 'relawan'::public.user_role, 'active'::public.account_status),
     ('a3000000-0000-0000-0000-000000000001', 'adm_test@temanbicara.test', '081233330001', 'admin'::public.user_role, 'active'::public.account_status),
     ('a4000000-0000-0000-0000-000000000001', 'other_test@temanbicara.test', '081244440001', 'psikolog'::public.user_role, 'active'::public.account_status)
 ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, status = EXCLUDED.status;
@@ -63,13 +72,17 @@ VALUES
     ('a1000000-0000-0000-0000-000000000003', 'Pasien Tiga', 'Tiga', 'Keluarga 3', '081200000003', true),
     ('a1000000-0000-0000-0000-000000000004', 'Pasien Empat', 'Empat', 'Keluarga 4', '081200000004', true),
     ('a1000000-0000-0000-0000-000000000005', 'Pasien Lima', 'Lima', 'Keluarga 5', '081200000005', true),
-    ('a1000000-0000-0000-0000-000000000006', 'Pasien Enam', 'Enam', 'Keluarga 6', '081200000006', true)
+    ('a1000000-0000-0000-0000-000000000006', 'Pasien Enam', 'Enam', 'Keluarga 6', '081200000006', true),
+    ('a1000000-0000-0000-0000-000000000007', 'Pasien Tujuh', 'Tujuh', 'Keluarga 7', '081200000007', true),
+    ('a1000000-0000-0000-0000-000000000008', 'Pasien Delapan', 'Delapan', 'Keluarga 8', '081200000008', true),
+    ('a1000000-0000-0000-0000-000000000009', 'Pasien Sembilan', 'Sembilan', 'Keluarga 9', '081200000009', true)
 ON CONFLICT (user_id) DO NOTHING;
 
 INSERT INTO public.relawan_profiles (user_id, nama_lengkap, latar_belakang, dokumen_cv_url, alasan_bergabung, total_sesi, alias_name, is_available, topik_keahlian)
 VALUES
     ('a2000000-0000-0000-0000-000000000001', 'Relawan Satu', 'Psikologi UI', 'https://cv.test/r1.pdf', 'Peduli kesehatan mental', 0, 'Teman Bintang', true, ARRAY['Kesepian', 'Kecemasan']),
-    ('a2000000-0000-0000-0000-000000000002', 'Relawan Dua', 'Psikologi UGM', 'https://cv.test/r2.pdf', 'Suka mendengarkan', 0, 'Teman Awan', true, ARRAY['Stres Akademik', 'Karier'])
+    ('a2000000-0000-0000-0000-000000000002', 'Relawan Dua', 'Psikologi UGM', 'https://cv.test/r2.pdf', 'Suka mendengarkan', 0, 'Teman Awan', true, ARRAY['Stres Akademik', 'Karier']),
+    ('a2000000-0000-0000-0000-000000000003', 'Relawan Tiga', 'Psikologi Unpad', 'https://cv.test/r3.pdf', 'Peduli sesama', 0, 'Teman Hujan', true, ARRAY['Keluarga', 'Karier'])
 ON CONFLICT (user_id) DO NOTHING;
 
 INSERT INTO public.admin_profiles (user_id, nama_lengkap, level)
@@ -156,13 +169,6 @@ CREATE POLICY peer_tickets_select_policy ON public.peer_tickets
     FOR SELECT TO authenticated
     USING (
         auth.uid() = patient_id
-        OR (
-            EXISTS (
-                SELECT 1 FROM public.users u
-                WHERE u.id = auth.uid() AND u.role = 'relawan'::public.user_role AND u.status = 'active'::public.account_status
-            )
-            AND (status = 'open'::public.peer_ticket_status OR claimed_by = auth.uid())
-        )
         OR public.is_admin()
     );
 
@@ -278,7 +284,11 @@ DECLARE
     v_relawan_role public.user_role;
     v_relawan_status public.account_status;
     v_daily_limit INTEGER;
+    v_max_carry_penalty INTEGER;
     v_today DATE;
+    v_yesterday DATE;
+    v_yesterday_consumed INTEGER;
+    v_carry_penalty INTEGER := 0;
     v_quota public.relawan_daily_quota%ROWTYPE;
     v_consumed INTEGER;
 BEGIN
@@ -311,17 +321,37 @@ BEGIN
         RAISE EXCEPTION 'FORBIDDEN_ROLE' USING MESSAGE = 'Hanya relawan aktif yang dapat mengklaim tiket curhat.';
     END IF;
 
-    SELECT COALESCE(
-        (value->>'daily_ticket_quota')::INTEGER,
-        (value->'relawan'->>'daily_ticket_quota')::INTEGER,
-        3
-    )
-    INTO v_daily_limit
+    SELECT
+        COALESCE(
+            (value->>'daily_ticket_quota')::INTEGER,
+            (value->'relawan'->>'daily_ticket_quota')::INTEGER,
+            3
+        ),
+        COALESCE(
+            (value->>'max_carry_penalty')::INTEGER,
+            (value->'relawan'->>'max_carry_penalty')::INTEGER,
+            1
+        )
+    INTO v_daily_limit, v_max_carry_penalty
     FROM public.system_settings
     WHERE key = 'relawan';
 
     v_daily_limit := COALESCE(v_daily_limit, 3);
+    v_max_carry_penalty := COALESCE(v_max_carry_penalty, 1);
     v_today := (pg_catalog.now() AT TIME ZONE 'Asia/Jakarta')::DATE;
+    v_yesterday := v_today - 1;
+
+    SELECT COALESCE(tickets_claimed, 0) + COALESCE(penalty_points, 0)
+    INTO v_yesterday_consumed
+    FROM public.relawan_daily_quota
+    WHERE relawan_id = p_relawan_id AND quota_date = v_yesterday;
+
+    v_yesterday_consumed := COALESCE(v_yesterday_consumed, 0);
+    IF v_yesterday_consumed > v_daily_limit THEN
+        v_carry_penalty := pg_catalog.least(v_yesterday_consumed - v_daily_limit, v_max_carry_penalty);
+    ELSE
+        v_carry_penalty := 0;
+    END IF;
 
     INSERT INTO public.relawan_daily_quota (
         relawan_id,
@@ -342,7 +372,7 @@ BEGIN
     WHERE relawan_id = p_relawan_id AND quota_date = v_today
     FOR UPDATE;
 
-    v_consumed := COALESCE(v_quota.tickets_claimed, 0) + COALESCE(v_quota.penalty_points, 0);
+    v_consumed := COALESCE(v_quota.tickets_claimed, 0) + COALESCE(v_quota.penalty_points, 0) + v_carry_penalty;
     IF v_consumed >= v_daily_limit THEN
         RAISE EXCEPTION 'DAILY_QUOTA_EXHAUSTED' USING MESSAGE = 'Kuota klaim tiket harian relawan sudah habis.';
     END IF;
@@ -438,9 +468,10 @@ BEGIN
             claimed_at = NULL,
             abandoned_by = v_new_abandoned,
             updated_at = pg_catalog.now()
-        WHERE id = p_ticket_id;
+        WHERE id = p_ticket_id
+        RETURNING * INTO v_ticket;
 
-        RAISE EXCEPTION 'CLAIM_RESPONSE_TIMEOUT' USING MESSAGE = 'Batas waktu respon pertama telah terlewati. Tiket dikembalikan ke antrean dan penalti kuota dikenakan.';
+        RETURN v_ticket;
     END IF;
 
     UPDATE public.peer_tickets
@@ -579,6 +610,8 @@ DECLARE
     v_t5 public.peer_tickets;
     v_t6 public.peer_tickets;
     v_t7 public.peer_tickets;
+    v_t8 public.peer_tickets;
+    v_t9 public.peer_tickets;
     v_t_claimed public.peer_tickets;
     v_threw BOOLEAN;
     v_quota public.relawan_daily_quota%ROWTYPE;
@@ -708,30 +741,26 @@ BEGIN
     SET claimed_at = pg_catalog.now() - interval '15 minutes'
     WHERE id = v_t2.id;
 
-    v_threw := false;
-    BEGIN
-        PERFORM public.peer_ticket_first_response(
-            v_t2.id,
-            'a2000000-0000-0000-0000-000000000001'
-        );
-    EXCEPTION WHEN OTHERS THEN
-        IF SQLERRM LIKE '%CLAIM_RESPONSE_TIMEOUT%' OR SQLERRM LIKE '%Batas waktu%' THEN
-            v_threw := true;
-        END IF;
-    END;
-    ASSERT v_threw = true, 'UJI 8a GAGAL: First response timeout seharusnya melempar exception CLAIM_RESPONSE_TIMEOUT';
+    -- Panggil peer_ticket_first_response: TIDAK boleh melempar exception, melainkan return tiket open
+    v_t2 := public.peer_ticket_first_response(
+        v_t2.id,
+        'a2000000-0000-0000-0000-000000000001'
+    );
+    ASSERT v_t2.status = 'open'::public.peer_ticket_status, 'UJI 8a GAGAL: First response timeout harus return status open';
+    ASSERT v_t2.claimed_by IS NULL, 'UJI 8b GAGAL: return claimed_by harus NULL';
+    ASSERT 'a2000000-0000-0000-0000-000000000001'::uuid = ANY(v_t2.abandoned_by), 'UJI 8c GAGAL: return abandoned_by harus memuat Relawan 1';
 
-    -- Cek tiket 2 kembali open, claimed_by NULL, Relawan 1 masuk abandoned_by
+    -- Cek tiket 2 di DB kembali open, claimed_by NULL, Relawan 1 masuk abandoned_by
     SELECT * INTO v_t2 FROM public.peer_tickets WHERE id = v_t2.id;
-    ASSERT v_t2.status = 'open'::public.peer_ticket_status, 'UJI 8b GAGAL: tiket timeout harus kembali open';
-    ASSERT v_t2.claimed_by IS NULL, 'UJI 8c GAGAL: claimed_by harus di-reset ke NULL';
-    ASSERT 'a2000000-0000-0000-0000-000000000001'::uuid = ANY(v_t2.abandoned_by), 'UJI 8d GAGAL: Relawan 1 harus tercatat di abandoned_by';
+    ASSERT v_t2.status = 'open'::public.peer_ticket_status, 'UJI 8d GAGAL: tiket timeout di DB harus open';
+    ASSERT v_t2.claimed_by IS NULL, 'UJI 8e GAGAL: claimed_by di DB harus NULL';
+    ASSERT 'a2000000-0000-0000-0000-000000000001'::uuid = ANY(v_t2.abandoned_by), 'UJI 8f GAGAL: Relawan 1 harus tercatat di abandoned_by di DB';
 
     -- Cek penalty_points Relawan 1 bertambah 1
     SELECT * INTO v_quota
     FROM public.relawan_daily_quota
     WHERE relawan_id = 'a2000000-0000-0000-0000-000000000001' AND quota_date = v_today;
-    ASSERT v_quota.penalty_points = 1, format('UJI 8e GAGAL: penalty_points harus 1, dapat %s', v_quota.penalty_points);
+    ASSERT v_quota.penalty_points = 1, format('UJI 8g GAGAL: penalty_points harus 1, dapat %s', v_quota.penalty_points);
 
     -- UJI 9: Relawan 1 mencoba mengklaim kembali tiket 2 yang pernah ditinggalkan -> TICKET_PREVIOUSLY_ABANDONED
     v_threw := false;
@@ -789,7 +818,35 @@ BEGIN
     ASSERT v_t6.id IS NOT NULL, 'UJI 12 GAGAL: Pasien 5 harus bisa membuat tiket baru saat tiket lama archived';
     ASSERT v_t6.status = 'open'::public.peer_ticket_status, 'UJI 12 GAGAL: status tiket baru harus open';
 
-    RAISE NOTICE 'SKENARIO BISNIS 1-12 LULUS.';
+    -- UJI 13: Penegakan kuota carry penalty hari kemarin (maksimal 1 poin)
+    -- Simulasikan kuota kemarin untuk Relawan 3: 3 klaim + 1 penalti (total 4, selisih 1 -> carry penalty = 1)
+    INSERT INTO public.relawan_daily_quota (relawan_id, quota_date, tickets_claimed, penalty_points)
+    VALUES ('a2000000-0000-0000-0000-000000000003', v_today - 1, 3, 1)
+    ON CONFLICT (relawan_id, quota_date) DO UPDATE SET tickets_claimed = 3, penalty_points = 1;
+
+    -- Buat 3 tiket baru dari Pasien 7, 8, 9
+    v_t7 := public.peer_ticket_create('a1000000-0000-0000-0000-000000000007', 'Kuntum Melati', 'Karier', 'Bingung', 'Bingung memilih arah karier masa depan...', true);
+    v_t8 := public.peer_ticket_create('a1000000-0000-0000-0000-000000000008', 'Anggrek Ungu', 'Pekerjaan', 'Burnout', 'Merasa burnout dengan rutinitas kantor...', true);
+    v_t9 := public.peer_ticket_create('a1000000-0000-0000-0000-000000000009', 'Tulip Kuning', 'Pendidikan', 'Stres', 'Tekanan ujian akhir semester berat...', true);
+
+    -- Klaim 1 Relawan 3 berhasil (konsumsi: 1 tiket + 1 carry penalty = 2 <= 3)
+    PERFORM public.peer_ticket_claim(v_t7.id, 'a2000000-0000-0000-0000-000000000003');
+
+    -- Klaim 2 Relawan 3 berhasil (konsumsi: 2 tiket + 1 carry penalty = 3 <= 3)
+    PERFORM public.peer_ticket_claim(v_t8.id, 'a2000000-0000-0000-0000-000000000003');
+
+    -- Klaim 3 Relawan 3 ditolak DAILY_QUOTA_EXHAUSTED (kuota 3 terpotong 1 carry penalty, jatah hari ini hanya 2)
+    v_threw := false;
+    BEGIN
+        PERFORM public.peer_ticket_claim(v_t9.id, 'a2000000-0000-0000-0000-000000000003');
+    EXCEPTION WHEN OTHERS THEN
+        IF SQLERRM LIKE '%DAILY_QUOTA_EXHAUSTED%' OR SQLERRM LIKE '%habis%' THEN
+            v_threw := true;
+        END IF;
+    END;
+    ASSERT v_threw = true, 'UJI 13 GAGAL: Relawan dengan carry penalty kemarin seharusnya ditolak pada klaim ke-3';
+
+    RAISE NOTICE 'SKENARIO BISNIS 1-13 LULUS.';
 END $$;
 
 -- ========================================================
@@ -814,7 +871,7 @@ END $$;
 
 RESET ROLE;
 
--- UJI RLS 2: Relawan 1 (aktif) melihat tiket open dan tiket claimed/active miliknya
+-- UJI RLS 2: Relawan 1 (aktif) TIDAK dapat membaca tabel peer_tickets secara langsung (privasi patient_id)
 DO $$
 BEGIN
     PERFORM set_config('request.jwt.claims', '{"sub":"a2000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
@@ -825,17 +882,9 @@ SET LOCAL ROLE authenticated;
 DO $$
 DECLARE
     v_count INTEGER;
-    v_non_open_other INTEGER;
 BEGIN
     SELECT count(*) INTO v_count FROM public.peer_tickets;
-    ASSERT v_count > 0, 'UJI RLS 2a GAGAL: Relawan harus bisa melihat antrean tiket open/claimed';
-
-    -- Pastikan tidak dapat melihat tiket yang claimed/active milik relawan lain
-    SELECT count(*) INTO v_non_open_other
-    FROM public.peer_tickets
-    WHERE status IN ('claimed', 'active')
-      AND claimed_by <> 'a2000000-0000-0000-0000-000000000001';
-    ASSERT v_non_open_other = 0, format('UJI RLS 2b GAGAL: Relawan 1 tidak boleh melihat tiket claimed milik relawan lain (ditemukan %s)', v_non_open_other);
+    ASSERT v_count = 0, format('UJI RLS 2 GAGAL: Relawan seharusnya tidak dapat membaca tabel peer_tickets secara langsung (0 baris), ditemukan %s baris', v_count);
 END $$;
 
 RESET ROLE;
