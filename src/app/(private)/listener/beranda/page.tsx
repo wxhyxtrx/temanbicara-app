@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
@@ -16,9 +15,12 @@ import {
 } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
 import { userService } from "@/services/user.service";
+import { peerTicketClient } from "@/services/peer-tickets.client";
 import { usePublicSettings } from "@/hooks/use-public-settings";
 import { notify } from "@/lib/toast";
 import type { RelawanProfile } from "@/types/user-profile";
+import type { RelawanPeerTicketDTO, RelawanQuotaInfo } from "@/types/peer-tickets";
+import { ListenerQueueSummaryCard } from "@/components/views/listener/listener-queue-summary-card";
 
 export default function ListenerBerandaPage() {
   const user = useUserStore((state) => state.user);
@@ -28,6 +30,36 @@ export default function ListenerBerandaPage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [userMe, setUserMe] = useState<{ fullName?: string; email?: string } | null>(null);
   const [isTogglingSiaga, setIsTogglingSiaga] = useState(false);
+
+  // Real Queue & Quota Summary State (PRD-011)
+  const [quota, setQuota] = useState<RelawanQuotaInfo | null>(null);
+  const [poolTickets, setPoolTickets] = useState<RelawanPeerTicketDTO[]>([]);
+  const [loadingQueue, setLoadingQueue] = useState(true);
+  const [queueError, setQueueError] = useState<string | null>(null);
+
+  const loadQueueSummary = useCallback(async () => {
+    try {
+      setLoadingQueue(true);
+      setQueueError(null);
+      const [poolRes, quotaRes] = await Promise.all([
+        peerTicketClient.getPoolTickets(),
+        peerTicketClient.getQuotaInfo(),
+      ]);
+      if (poolRes && poolRes.success && Array.isArray(poolRes.data)) {
+        setPoolTickets(poolRes.data);
+      }
+      if (quotaRes && quotaRes.success && quotaRes.data) {
+        setQuota(quotaRes.data);
+      }
+    } catch (err: unknown) {
+      console.error("Gagal memuat ringkasan antrean relawan:", err);
+      setQueueError(
+        err instanceof Error ? err.message : "Gagal memuat ringkasan antrean relawan"
+      );
+    } finally {
+      setLoadingQueue(false);
+    }
+  }, []);
 
   const handleToggleSiaga = async (checked: boolean) => {
     try {
@@ -73,13 +105,15 @@ export default function ListenerBerandaPage() {
     }
 
     loadData();
+    loadQueueSummary();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadQueueSummary]);
 
-  const dailyQuota = settings?.relawan?.daily_ticket_quota ?? 3;
+  const dailyQuota = quota?.daily_limit ?? settings?.relawan?.daily_ticket_quota ?? 3;
+  const ticketsClaimed = quota?.tickets_claimed ?? 0;
   const isAvailable = Boolean(profile?.is_available);
   const ratingValue = profile?.rating_rata_rata != null ? Number(profile.rating_rata_rata) : null;
   const ratingDisplay = ratingValue != null && !isNaN(ratingValue) ? ratingValue.toFixed(1) : "-";
@@ -145,7 +179,7 @@ export default function ListenerBerandaPage() {
               <div className="space-y-0.5">
                 <p className="text-xs font-bold text-emerald-300">Burnout Guard Relawan</p>
                 <p className="text-[11px] text-teal-100/70 font-nunito">
-                  {`Beban: 0/${dailyQuota} sesi hari ini`}
+                  {`Beban: ${ticketsClaimed}/${dailyQuota} sesi hari ini`}
                 </p>
               </div>
               <Tooltip>
@@ -226,53 +260,21 @@ export default function ListenerBerandaPage() {
 
       {/* 3. Antrean Curhat Masuk & Panduan Pendengar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
-        {/* Left: Antrean Masuk (8 Cols) */}
-        <div className="lg:col-span-8 space-y-6">
-          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-            <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <CardTitle className="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Headphones size={18} className="text-teal-600 dark:text-teal-400" />
-                    Antrean Teman Bicara Membutuhkan Pendengar
-                  </CardTitle>
-                  <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Pilih percakapan yang sesuai dengan kapasitas emosional Anda saat ini
-                  </CardDescription>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 text-xs"
-                >
-                  Segera Hadir
-                </Badge>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-6">
-              <div className="py-12 flex flex-col items-center justify-center text-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                  <Headphones size={24} />
-                </div>
-                <div className="space-y-1">
-                  <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                    Antrean Curhat Hadir di Fase 5
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md font-nunito leading-relaxed">
-                    Sistem tiket curhat sebaya sedang dipersiapkan. Relawan pendengar akan dapat menerima teman bicara dan memulai percakapan empatik setelah fitur ini aktif.
-                  </p>
-                </div>
-                <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2.5 py-1 rounded-full border border-teal-200 dark:border-teal-800">
-                  Fase 5 • Tiket Curhat Sebaya
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Left: Antrean Masuk (8 Cols) - Real Queue Summary Card */}
+        <div className="lg:col-span-8 space-y-6 min-w-0">
+          <ListenerQueueSummaryCard
+            poolTickets={poolTickets}
+            quota={quota}
+            loading={loadingQueue}
+            error={queueError}
+            onRetry={loadQueueSummary}
+            isAvailable={isAvailable}
+          />
         </div>
 
         {/* Right: Golden Rules & Emergency Escalation (4 Cols) */}
-        <div className="lg:col-span-4 space-y-6">
-          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <div className="lg:col-span-4 space-y-6 min-w-0">
+          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs min-w-0">
             <CardHeader className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800">
               <CardTitle className="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <BookOpen size={16} className="text-teal-600 dark:text-teal-400" />
