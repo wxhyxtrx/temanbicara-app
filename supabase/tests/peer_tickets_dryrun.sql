@@ -216,7 +216,7 @@ BEGIN
        OR p_topic IS NULL OR pg_catalog.btrim(p_topic) = ''
        OR p_emotion IS NULL OR pg_catalog.btrim(p_emotion) = ''
        OR p_content IS NULL OR pg_catalog.char_length(pg_catalog.btrim(p_content)) < 10 THEN
-        RAISE EXCEPTION 'INVALID_PARAMETER' USING MESSAGE = 'Parameter tiket tidak valid (konten minimal 10 karakter).';
+        RAISE EXCEPTION 'INVALID_PARAMETER' USING ERRCODE = '22023';
     END IF;
 
     SELECT role, status INTO v_user_role, v_user_status
@@ -224,11 +224,11 @@ BEGIN
     WHERE id = p_patient_id;
 
     IF v_user_role IS NULL THEN
-        RAISE EXCEPTION 'USER_NOT_FOUND' USING MESSAGE = 'Pengguna pasien tidak ditemukan.';
+        RAISE EXCEPTION 'USER_NOT_FOUND' USING ERRCODE = 'P0002';
     END IF;
 
     IF v_user_role <> 'pasien'::public.user_role OR v_user_status <> 'active'::public.account_status THEN
-        RAISE EXCEPTION 'FORBIDDEN_ROLE' USING MESSAGE = 'Hanya pasien aktif yang dapat membuat tiket curhat.';
+        RAISE EXCEPTION 'FORBIDDEN_ROLE' USING ERRCODE = '42501';
     END IF;
 
     IF EXISTS (
@@ -236,7 +236,7 @@ BEGIN
         WHERE patient_id = p_patient_id
           AND status IN ('open'::public.peer_ticket_status, 'claimed'::public.peer_ticket_status, 'active'::public.peer_ticket_status)
     ) THEN
-        RAISE EXCEPTION 'ACTIVE_TICKET_EXISTS' USING MESSAGE = 'Pasien masih memiliki tiket curhat yang sedang aktif.';
+        RAISE EXCEPTION 'ACTIVE_TICKET_EXISTS' USING ERRCODE = 'P0001';
     END IF;
 
     INSERT INTO public.peer_tickets (
@@ -293,7 +293,7 @@ DECLARE
     v_consumed INTEGER;
 BEGIN
     IF p_ticket_id IS NULL OR p_relawan_id IS NULL THEN
-        RAISE EXCEPTION 'INVALID_PARAMETER' USING MESSAGE = 'ID tiket dan ID relawan wajib diisi.';
+        RAISE EXCEPTION 'INVALID_PARAMETER' USING ERRCODE = '22023';
     END IF;
 
     SELECT * INTO v_ticket
@@ -302,11 +302,11 @@ BEGIN
     FOR UPDATE;
 
     IF v_ticket.id IS NULL OR v_ticket.status <> 'open'::public.peer_ticket_status THEN
-        RAISE EXCEPTION 'TICKET_NOT_AVAILABLE' USING MESSAGE = 'Tiket tidak tersedia atau sudah diambil relawan lain.';
+        RAISE EXCEPTION 'TICKET_NOT_AVAILABLE' USING ERRCODE = 'P0001';
     END IF;
 
     IF p_relawan_id = ANY(v_ticket.abandoned_by) THEN
-        RAISE EXCEPTION 'TICKET_PREVIOUSLY_ABANDONED' USING MESSAGE = 'Relawan tidak dapat mengklaim tiket yang pernah ditinggalkan.';
+        RAISE EXCEPTION 'TICKET_PREVIOUSLY_ABANDONED' USING ERRCODE = 'P0001';
     END IF;
 
     SELECT role, status INTO v_relawan_role, v_relawan_status
@@ -314,11 +314,11 @@ BEGIN
     WHERE id = p_relawan_id;
 
     IF v_relawan_role IS NULL THEN
-        RAISE EXCEPTION 'USER_NOT_FOUND' USING MESSAGE = 'Relawan tidak ditemukan.';
+        RAISE EXCEPTION 'USER_NOT_FOUND' USING ERRCODE = 'P0002';
     END IF;
 
     IF v_relawan_role <> 'relawan'::public.user_role OR v_relawan_status <> 'active'::public.account_status THEN
-        RAISE EXCEPTION 'FORBIDDEN_ROLE' USING MESSAGE = 'Hanya relawan aktif yang dapat mengklaim tiket curhat.';
+        RAISE EXCEPTION 'FORBIDDEN_ROLE' USING ERRCODE = '42501';
     END IF;
 
     SELECT
@@ -374,7 +374,7 @@ BEGIN
 
     v_consumed := COALESCE(v_quota.tickets_claimed, 0) + COALESCE(v_quota.penalty_points, 0) + v_carry_penalty;
     IF v_consumed >= v_daily_limit THEN
-        RAISE EXCEPTION 'DAILY_QUOTA_EXHAUSTED' USING MESSAGE = 'Kuota klaim tiket harian relawan sudah habis.';
+        RAISE EXCEPTION 'DAILY_QUOTA_EXHAUSTED' USING ERRCODE = 'P0001';
     END IF;
 
     UPDATE public.relawan_daily_quota
@@ -413,7 +413,7 @@ DECLARE
     v_new_abandoned UUID[];
 BEGIN
     IF p_ticket_id IS NULL OR p_relawan_id IS NULL THEN
-        RAISE EXCEPTION 'INVALID_PARAMETER' USING MESSAGE = 'ID tiket dan ID relawan wajib diisi.';
+        RAISE EXCEPTION 'INVALID_PARAMETER' USING ERRCODE = '22023';
     END IF;
 
     SELECT * INTO v_ticket
@@ -422,7 +422,7 @@ BEGIN
     FOR UPDATE;
 
     IF v_ticket.id IS NULL OR v_ticket.status <> 'claimed'::public.peer_ticket_status OR v_ticket.claimed_by <> p_relawan_id THEN
-        RAISE EXCEPTION 'INVALID_TICKET_STATE' USING MESSAGE = 'Status tiket tidak valid untuk respon pertama.';
+        RAISE EXCEPTION 'INVALID_TICKET_STATE' USING ERRCODE = 'P0001';
     END IF;
 
     SELECT COALESCE(
@@ -649,7 +649,7 @@ BEGIN
             true
         );
     EXCEPTION WHEN OTHERS THEN
-        IF SQLERRM LIKE '%ACTIVE_TICKET_EXISTS%' OR SQLERRM LIKE '%aktif%' THEN
+        IF SQLERRM = 'ACTIVE_TICKET_EXISTS' THEN
             v_threw := true;
         END IF;
     END;
@@ -667,7 +667,7 @@ BEGIN
             true
         );
     EXCEPTION WHEN OTHERS THEN
-        IF SQLERRM LIKE '%FORBIDDEN_ROLE%' OR SQLERRM LIKE '%Hanya pasien%' THEN
+        IF SQLERRM = 'FORBIDDEN_ROLE' THEN
             v_threw := true;
         END IF;
     END;
@@ -695,7 +695,7 @@ BEGIN
             'a2000000-0000-0000-0000-000000000002'
         );
     EXCEPTION WHEN OTHERS THEN
-        IF SQLERRM LIKE '%TICKET_NOT_AVAILABLE%' OR SQLERRM LIKE '%tidak tersedia%' THEN
+        IF SQLERRM = 'TICKET_NOT_AVAILABLE' THEN
             v_threw := true;
         END IF;
     END;
@@ -721,7 +721,7 @@ BEGIN
     BEGIN
         PERFORM public.peer_ticket_claim(v_t4.id, 'a2000000-0000-0000-0000-000000000001');
     EXCEPTION WHEN OTHERS THEN
-        IF SQLERRM LIKE '%DAILY_QUOTA_EXHAUSTED%' OR SQLERRM LIKE '%habis%' THEN
+        IF SQLERRM = 'DAILY_QUOTA_EXHAUSTED' THEN
             v_threw := true;
         END IF;
     END;
@@ -770,7 +770,7 @@ BEGIN
             'a2000000-0000-0000-0000-000000000001'
         );
     EXCEPTION WHEN OTHERS THEN
-        IF SQLERRM LIKE '%TICKET_PREVIOUSLY_ABANDONED%' OR SQLERRM LIKE '%ditinggalkan%' THEN
+        IF SQLERRM = 'TICKET_PREVIOUSLY_ABANDONED' THEN
             v_threw := true;
         END IF;
     END;
@@ -840,7 +840,7 @@ BEGIN
     BEGIN
         PERFORM public.peer_ticket_claim(v_t9.id, 'a2000000-0000-0000-0000-000000000003');
     EXCEPTION WHEN OTHERS THEN
-        IF SQLERRM LIKE '%DAILY_QUOTA_EXHAUSTED%' OR SQLERRM LIKE '%habis%' THEN
+        IF SQLERRM = 'DAILY_QUOTA_EXHAUSTED' THEN
             v_threw := true;
         END IF;
     END;
@@ -988,7 +988,10 @@ END $$;
 
 RESET ROLE;
 
-RAISE NOTICE 'SEMUA PENGUJIAN DRY-RUN PEER TICKETS LULUS.';
+DO $$
+BEGIN
+    RAISE NOTICE 'SEMUA PENGUJIAN DRY-RUN PEER TICKETS LULUS.';
+END $$;
 
 -- ========================================================
 -- ROLLBACK UNTUK MENJAGA DATABASE TEST TETAP BERSIH

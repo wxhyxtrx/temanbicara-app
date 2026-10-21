@@ -145,7 +145,7 @@ BEGIN
        OR p_topic IS NULL OR pg_catalog.btrim(p_topic) = ''
        OR p_emotion IS NULL OR pg_catalog.btrim(p_emotion) = ''
        OR p_content IS NULL OR pg_catalog.char_length(pg_catalog.btrim(p_content)) < 10 THEN
-        RAISE EXCEPTION 'INVALID_PARAMETER' USING MESSAGE = 'Parameter tiket tidak valid (konten minimal 10 karakter).';
+        RAISE EXCEPTION 'INVALID_PARAMETER' USING ERRCODE = '22023';
     END IF;
 
     -- 2. Verifikasi pengguna di public.users (harus pasien aktif)
@@ -154,11 +154,11 @@ BEGIN
     WHERE id = p_patient_id;
 
     IF v_user_role IS NULL THEN
-        RAISE EXCEPTION 'USER_NOT_FOUND' USING MESSAGE = 'Pengguna pasien tidak ditemukan.';
+        RAISE EXCEPTION 'USER_NOT_FOUND' USING ERRCODE = 'P0002';
     END IF;
 
     IF v_user_role <> 'pasien'::public.user_role OR v_user_status <> 'active'::public.account_status THEN
-        RAISE EXCEPTION 'FORBIDDEN_ROLE' USING MESSAGE = 'Hanya pasien aktif yang dapat membuat tiket curhat.';
+        RAISE EXCEPTION 'FORBIDDEN_ROLE' USING ERRCODE = '42501';
     END IF;
 
     -- 3. Cek tiket aktif yang sudah ada (open, claimed, atau active)
@@ -167,7 +167,7 @@ BEGIN
         WHERE patient_id = p_patient_id
           AND status IN ('open'::public.peer_ticket_status, 'claimed'::public.peer_ticket_status, 'active'::public.peer_ticket_status)
     ) THEN
-        RAISE EXCEPTION 'ACTIVE_TICKET_EXISTS' USING MESSAGE = 'Pasien masih memiliki tiket curhat yang sedang aktif.';
+        RAISE EXCEPTION 'ACTIVE_TICKET_EXISTS' USING ERRCODE = 'P0001';
     END IF;
 
     -- 4. Simpan tiket baru
@@ -227,7 +227,7 @@ DECLARE
 BEGIN
     -- 1. Validasi parameter input
     IF p_ticket_id IS NULL OR p_relawan_id IS NULL THEN
-        RAISE EXCEPTION 'INVALID_PARAMETER' USING MESSAGE = 'ID tiket dan ID relawan wajib diisi.';
+        RAISE EXCEPTION 'INVALID_PARAMETER' USING ERRCODE = '22023';
     END IF;
 
     -- 2. Kunci baris tiket dan cek ketersediaan
@@ -237,12 +237,12 @@ BEGIN
     FOR UPDATE;
 
     IF v_ticket.id IS NULL OR v_ticket.status <> 'open'::public.peer_ticket_status THEN
-        RAISE EXCEPTION 'TICKET_NOT_AVAILABLE' USING MESSAGE = 'Tiket tidak tersedia atau sudah diambil relawan lain.';
+        RAISE EXCEPTION 'TICKET_NOT_AVAILABLE' USING ERRCODE = 'P0001';
     END IF;
 
     -- 3. Periksa riwayat abandoned
     IF p_relawan_id = ANY(v_ticket.abandoned_by) THEN
-        RAISE EXCEPTION 'TICKET_PREVIOUSLY_ABANDONED' USING MESSAGE = 'Relawan tidak dapat mengklaim tiket yang pernah ditinggalkan.';
+        RAISE EXCEPTION 'TICKET_PREVIOUSLY_ABANDONED' USING ERRCODE = 'P0001';
     END IF;
 
     -- 4. Verifikasi pengguna relawan di public.users
@@ -251,11 +251,11 @@ BEGIN
     WHERE id = p_relawan_id;
 
     IF v_relawan_role IS NULL THEN
-        RAISE EXCEPTION 'USER_NOT_FOUND' USING MESSAGE = 'Relawan tidak ditemukan.';
+        RAISE EXCEPTION 'USER_NOT_FOUND' USING ERRCODE = 'P0002';
     END IF;
 
     IF v_relawan_role <> 'relawan'::public.user_role OR v_relawan_status <> 'active'::public.account_status THEN
-        RAISE EXCEPTION 'FORBIDDEN_ROLE' USING MESSAGE = 'Hanya relawan aktif yang dapat mengklaim tiket curhat.';
+        RAISE EXCEPTION 'FORBIDDEN_ROLE' USING ERRCODE = '42501';
     END IF;
 
     -- 5. Baca kuota harian & batas carry penalty dari system_settings
@@ -316,7 +316,7 @@ BEGIN
 
     v_consumed := COALESCE(v_quota.tickets_claimed, 0) + COALESCE(v_quota.penalty_points, 0) + v_carry_penalty;
     IF v_consumed >= v_daily_limit THEN
-        RAISE EXCEPTION 'DAILY_QUOTA_EXHAUSTED' USING MESSAGE = 'Kuota klaim tiket harian relawan sudah habis.';
+        RAISE EXCEPTION 'DAILY_QUOTA_EXHAUSTED' USING ERRCODE = 'P0001';
     END IF;
 
     -- 9. Tambah tickets_claimed relawan
@@ -359,7 +359,7 @@ DECLARE
 BEGIN
     -- 1. Validasi parameter
     IF p_ticket_id IS NULL OR p_relawan_id IS NULL THEN
-        RAISE EXCEPTION 'INVALID_PARAMETER' USING MESSAGE = 'ID tiket dan ID relawan wajib diisi.';
+        RAISE EXCEPTION 'INVALID_PARAMETER' USING ERRCODE = '22023';
     END IF;
 
     -- 2. Kunci baris tiket
@@ -369,7 +369,7 @@ BEGIN
     FOR UPDATE;
 
     IF v_ticket.id IS NULL OR v_ticket.status <> 'claimed'::public.peer_ticket_status OR v_ticket.claimed_by <> p_relawan_id THEN
-        RAISE EXCEPTION 'INVALID_TICKET_STATE' USING MESSAGE = 'Status tiket tidak valid untuk respon pertama.';
+        RAISE EXCEPTION 'INVALID_TICKET_STATE' USING ERRCODE = 'P0001';
     END IF;
 
     -- 3. Ambil konfigurasi batas waktu respon (menit)
