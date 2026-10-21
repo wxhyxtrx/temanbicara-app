@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import {
   HeartHandshake,
   Send,
@@ -20,7 +21,7 @@ import {
   Smile,
   AlertCircle,
 } from "lucide-react";
-import { usePeerVentStore } from "@/store/peer-vent-store";
+import { peerTicketClient, PeerTicketApiError } from "@/services/peer-tickets.client";
 import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
 
@@ -41,7 +42,18 @@ const emotionList = [
   { label: "Bingung", color: "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border-teal-200" },
 ];
 
-const pseudonyms = ["Bunga Biru", "Langit Senja", "Rintik Hujan", "Daun Gugur", "Pelangi Sore"];
+const pseudonyms = [
+  "Bunga Biru",
+  "Langit Senja",
+  "Rintik Hujan",
+  "Daun Gugur",
+  "Pelangi Sore",
+  "Awan Putih",
+  "Embun Pagi",
+  "Bintang Kejora",
+  "Angin Semilir",
+  "Lembayung Tenang",
+];
 
 interface VentingModalFormProps {
   open: boolean;
@@ -51,38 +63,95 @@ interface VentingModalFormProps {
 
 export function VentingModalForm({ open, onOpenChange, onSuccess }: VentingModalFormProps) {
   const user = useUserStore((state) => state.user);
-  const createPost = usePeerVentStore((state) => state.createPost);
 
   const [selectedTopic, setSelectedTopic] = useState(topicsList[0]);
   const [selectedEmotion, setSelectedEmotion] = useState(emotionList[0].label);
   const [content, setContent] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(true);
-  const [pseudonym] = useState(() => pseudonyms[Math.floor(Math.random() * pseudonyms.length)]);
+  const [pseudonym, setPseudonym] = useState(() => pseudonyms[Math.floor(Math.random() * pseudonyms.length)]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleRandomizePseudonym = () => {
+    const others = pseudonyms.filter((p) => p !== pseudonym);
+    const next = others[Math.floor(Math.random() * others.length)] || pseudonyms[0];
+    setPseudonym(next);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || content.trim().length < 10) {
-      notify.warning("Cerita Terlalu Singkat", "Harap tuliskan cerita keluh kesah minimal 10 karakter agar pendengar memahami perasaanmu.");
+    const trimmedContent = content.trim();
+    if (!trimmedContent || trimmedContent.length < 10) {
+      notify.warning(
+        "Cerita Terlalu Singkat",
+        "Harap tuliskan cerita keluh kesah minimal 10 karakter agar pendengar memahami perasaanmu."
+      );
+      return;
+    }
+
+    if (trimmedContent.length > 2000) {
+      notify.warning(
+        "Cerita Terlalu Panjang",
+        "Cerita curhat maksimal 2000 karakter."
+      );
+      return;
+    }
+
+    const finalAlias = isAnonymous
+      ? pseudonym.trim()
+      : (user.fullName?.trim() || user.alias?.trim() || pseudonym.trim() || "Sahabat");
+
+    if (isAnonymous && (finalAlias.length < 2 || finalAlias.length > 50)) {
+      notify.warning(
+        "Nama Samaran Tidak Valid",
+        "Nama samaran harus memiliki panjang antara 2 hingga 50 karakter."
+      );
       return;
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      createPost({
+    try {
+      await peerTicketClient.createTicket({
+        patient_alias: finalAlias,
         topic: selectedTopic,
         emotion: selectedEmotion,
-        content: content.trim(),
-        isAnonymous,
-        alias: isAnonymous ? pseudonym : user.fullName || "Wahyu",
+        content: trimmedContent,
+        is_anonymous: isAnonymous,
       });
 
-      notify.info("Curhat Terkirim ke Antrean", "Relawan pendengar sebaya terlatih PFA akan segera menyambut ceritamu.");
-      setIsSubmitting(false);
+      notify.info(
+        "Curhat Terkirim ke Antrean",
+        "Relawan pendengar sebaya terlatih PFA akan segera menyambut ceritamu."
+      );
       setContent("");
       onOpenChange(false);
       if (onSuccess) onSuccess();
-    }, 400);
+    } catch (err: unknown) {
+      if (
+        err instanceof PeerTicketApiError ||
+        (typeof err === "object" && err !== null && "status" in err)
+      ) {
+        const apiErr = err as PeerTicketApiError;
+        if (apiErr.status === 409 || apiErr.code === "ACTIVE_TICKET_EXISTS") {
+          notify.warning(
+            "Tiket Curhat Masih Aktif",
+            "Kamu masih memiliki tiket curhat yang sedang aktif."
+          );
+          onOpenChange(false);
+          if (onSuccess) onSuccess();
+          return;
+        }
+        notify.error(
+          "Gagal Mengirim Curhat",
+          apiErr.message || "Terjadi kesalahan saat membuat tiket curhat."
+        );
+      } else if (err instanceof Error) {
+        notify.error("Gagal Mengirim Curhat", err.message || "Terjadi kesalahan.");
+      } else {
+        notify.error("Gagal Mengirim Curhat", "Terjadi kesalahan tidak terduga.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -183,23 +252,52 @@ export function VentingModalForm({ open, onOpenChange, onSuccess }: VentingModal
           </div>
 
           {/* 4. Opsi Anonim & Privasi */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                <Lock size={13} className="text-teal-600 dark:text-teal-400" />
-                <span>Kirim Sebagai Anonim</span>
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                  <Lock size={13} className="text-teal-600 dark:text-teal-400" />
+                  <span>Kirim Sebagai Anonim</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito">
+                  {isAnonymous
+                    ? "Identitas aslimu disembunyikan dari pendengar sebaya."
+                    : `Akan ditampilkan dengan nama: "${user.fullName || "Kamu"}"`}
+                </p>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito">
-                {isAnonymous
-                  ? `Nama samaranmu di hadapan listener: "${pseudonym}"`
-                  : `Akan ditampilkan dengan nama: "${user.fullName || "Wahyu"}"`}
-              </p>
+              <Switch
+                checked={isAnonymous}
+                onCheckedChange={setIsAnonymous}
+                className="data-[state=checked]:bg-teal-600 shrink-0"
+              />
             </div>
-            <Switch
-              checked={isAnonymous}
-              onCheckedChange={setIsAnonymous}
-              className="data-[state=checked]:bg-teal-600"
-            />
+
+            {isAnonymous && (
+              <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700/70 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    Nama Samaran (2–50 Karakter):
+                  </label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRandomizePseudonym}
+                    className="h-6 px-2 text-[10px] text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950 font-semibold gap-1 cursor-pointer"
+                  >
+                    <Sparkles size={11} />
+                    <span>Acak Nama</span>
+                  </Button>
+                </div>
+                <Input
+                  value={pseudonym}
+                  onChange={(e) => setPseudonym(e.target.value)}
+                  placeholder="Contoh: Bunga Biru, Pelangi Sore..."
+                  maxLength={50}
+                  className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg"
+                />
+              </div>
+            )}
           </div>
 
           {/* Footer Action Buttons */}

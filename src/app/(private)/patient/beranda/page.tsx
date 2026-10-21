@@ -27,7 +27,9 @@ import {
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
-import { usePeerVentStore } from "@/store/peer-vent-store";
+import { peerTicketClient } from "@/services/peer-tickets.client";
+import type { PeerTicketEntity } from "@/types/peer-tickets";
+import { PatientPeerTicketCard } from "@/components/views/patient/patient-peer-ticket-card";
 import { VentingModalForm } from "@/components/views/patient/venting-modal-form";
 import { PsychologistProfileModal } from "@/components/views/patient/psychologist-profile-modal";
 import { PsychologistCard } from "@/components/views/patient/psychologist-card";
@@ -38,13 +40,16 @@ import { bookingClient } from "@/services/booking.client";
 import type { PatientBookingView } from "@/types/booking";
 import type { PasienProfile } from "@/types/user-profile";
 import { formatWibDateFull, formatWibTime, BOOKING_STATUS_CONFIG } from "@/lib/booking-utils";
+import { notify } from "@/lib/toast";
 
 export default function PatientBerandaPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const user = useUserStore((state) => state.user);
   const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
   const [ventingModalOpen, setVentingModalOpen] = useState(false);
-  const myActivePost = usePeerVentStore((state) => state.myActivePost);
+  const [activeTicket, setActiveTicket] = useState<PeerTicketEntity | null>(null);
+  const [loadingActiveTicket, setLoadingActiveTicket] = useState<boolean>(true);
+  const [activeTicketError, setActiveTicketError] = useState<string | null>(null);
 
   // Modal states for psychologist profile & booking
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
@@ -62,6 +67,37 @@ export default function PatientBerandaPage() {
   // Dynamic Upcoming Bookings from API
   const [upcomingBookings, setUpcomingBookings] = useState<PatientBookingView[]>([]);
   const [loadingUpcoming, setLoadingUpcoming] = useState<boolean>(true);
+
+  const loadActiveTicket = React.useCallback(async () => {
+    setLoadingActiveTicket(true);
+    setActiveTicketError(null);
+    try {
+      const res = await peerTicketClient.getMyActiveTicket();
+      if (res && res.success) {
+        setActiveTicket(res.data);
+      } else {
+        setActiveTicket(null);
+      }
+    } catch (err: unknown) {
+      console.error("Gagal memuat tiket aktif pasien:", err);
+      setActiveTicketError(
+        err instanceof Error ? err.message : "Gagal memuat status tiket curhat"
+      );
+    } finally {
+      setLoadingActiveTicket(false);
+    }
+  }, []);
+
+  const handleOpenVentingModal = React.useCallback(() => {
+    if (activeTicket) {
+      notify.warning(
+        "Tiket Curhat Aktif",
+        "Kamu masih memiliki tiket curhat yang sedang aktif."
+      );
+      return;
+    }
+    setVentingModalOpen(true);
+  }, [activeTicket]);
 
   useEffect(() => {
     setMounted(true);
@@ -94,7 +130,8 @@ export default function PatientBerandaPage() {
 
     loadPsychologists();
     loadUpcomingBookings();
-  }, []);
+    loadActiveTicket();
+  }, [loadActiveTicket]);
 
   const isEmergencyContactEmpty = React.useMemo(() => {
     if (!mounted || !isProfileLoaded) return false;
@@ -190,14 +227,16 @@ export default function PatientBerandaPage() {
                   <span>Curhat AI Instan (24/7)</span>
                 </Button>
               </Link>
-              <Button
-                type="button"
-                onClick={() => setVentingModalOpen(true)}
-                className="w-full sm:w-auto border border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 font-semibold rounded-xl px-3.5 xl:px-3 2xl:px-4 h-10 xl:h-10 text-xs sm:text-xs 2xl:text-sm cursor-pointer gap-1.5 sm:gap-2 backdrop-blur-md shadow-xs whitespace-nowrap"
-              >
-                <HeartHandshake size={15} className="text-pink-400" />
-                <span>Curhat Pendengar Sebaya</span>
-              </Button>
+              {!activeTicket && (
+                <Button
+                  type="button"
+                  onClick={handleOpenVentingModal}
+                  className="w-full sm:w-auto border border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 font-semibold rounded-xl px-3.5 xl:px-3 2xl:px-4 h-10 xl:h-10 text-xs sm:text-xs 2xl:text-sm cursor-pointer gap-1.5 sm:gap-2 backdrop-blur-md shadow-xs whitespace-nowrap"
+                >
+                  <HeartHandshake size={15} className="text-pink-400" />
+                  <span>Curhat Pendengar Sebaya</span>
+                </Button>
+              )}
               <Link href="/patient/schedule?booking=true" className="w-full sm:w-auto">
                 <Button variant="outline" className="w-full sm:w-auto border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-3.5 xl:px-3 2xl:px-4 h-10 xl:h-10 text-xs sm:text-xs 2xl:text-sm cursor-pointer gap-1.5 sm:gap-2 whitespace-nowrap">
                   <Calendar size={15} />
@@ -256,92 +295,13 @@ export default function PatientBerandaPage() {
 
 
           {/* Banner: Curhat Pendengar Sebaya (Peer Listener) */}
-          {myActivePost && myActivePost.status === "menunggu" ? (
-            <div className="relative overflow-hidden rounded-2xl border border-amber-200/90 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/80 via-white to-amber-50/40 dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                  <Badge className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 text-[10px] font-semibold">
-                    Status: Menunggu Pendengar Sebaya
-                  </Badge>
-                  <span className="text-[11px] text-slate-400">{myActivePost.createdAt}</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setVentingModalOpen(true)}
-                  className="text-xs border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-xl self-start sm:self-auto"
-                >
-                  Tulis Cerita Baru
-                </Button>
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-bold text-sm text-slate-900 dark:text-white font-heading">
-                  Topik: {myActivePost.topic} ({myActivePost.isAnonymous ? myActivePost.patientAlias : "Kamu"})
-                </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed italic line-clamp-2">
-                  "{myActivePost.content}"
-                </p>
-              </div>
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium pt-1">
-                Relawan PFA sedang meninjau antrean. Kamu akan menerima pemberitahuan begitu ada pendengar yang merespons.
-              </p>
-            </div>
-          ) : myActivePost && myActivePost.status === "ditangani" ? (
-            <div className="relative overflow-hidden rounded-2xl border border-emerald-200/90 dark:border-emerald-900/60 bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/40 dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1.5 max-w-xl">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                  <Badge className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 text-[10px] font-semibold">
-                    Telah Direspons oleh {myActivePost.handledByListenerName || "Dewi"}
-                  </Badge>
-                </div>
-                <h3 className="text-base font-bold font-heading text-slate-900 dark:text-white">
-                  Ruang Curhat Sebaya Sedang Aktif
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito line-clamp-2 leading-relaxed">
-                  Tanggapan pertama: "{myActivePost.firstResponse}"
-                </p>
-              </div>
-              <Link href="/patient/room?type=peer" className="shrink-0 self-start sm:self-center">
-                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl px-4 py-2 text-xs shadow-xs cursor-pointer gap-1.5">
-                  <MessageCircle size={14} />
-                  <span>Masuk Ruang Chat</span>
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="relative overflow-hidden rounded-2xl border border-pink-200/90 dark:border-pink-900/60 bg-gradient-to-br from-pink-50/80 via-white to-rose-50/50 dark:from-pink-950/40 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-2 max-w-xl">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-lg bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300">
-                      <HeartHandshake size={16} />
-                    </span>
-                    <Badge className="bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 border-pink-200 text-[10px] font-semibold">
-                      100% Anonim & Bebas Biaya
-                    </Badge>
-                  </div>
-                  <h3 className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white">
-                    Butuh Teman Cerita Tanpa Takut Dihakimi?
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
-                    Ceritakan beban hari ini kepada Relawan Pendengar Sebaya terlatih PFA (Psychological First Aid). Ruang aman untuk meluapkan uneg-uneg, rasa kesepian, dan burnout kerja.
-                  </p>
-                </div>
-
-                <Button
-                  type="button"
-                  onClick={() => setVentingModalOpen(true)}
-                  className="bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl px-4 py-2.5 text-xs shadow-xs cursor-pointer gap-1.5 shrink-0 self-start sm:self-center"
-                >
-                  <Users size={14} />
-                  <span>Curhat Sebaya Sekarang</span>
-                </Button>
-              </div>
-            </div>
-          )}
+          <PatientPeerTicketCard
+            ticket={activeTicket}
+            loading={loadingActiveTicket}
+            error={activeTicketError}
+            onOpenForm={handleOpenVentingModal}
+            onRetry={loadActiveTicket}
+          />
 
           {/* 3. Upcoming Counseling Sessions Card */}
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
@@ -578,7 +538,11 @@ export default function PatientBerandaPage() {
       </div>
 
       {/* Modal Form: Keluh Kesah Pasien */}
-      <VentingModalForm open={ventingModalOpen} onOpenChange={setVentingModalOpen} />
+      <VentingModalForm
+        open={ventingModalOpen}
+        onOpenChange={setVentingModalOpen}
+        onSuccess={loadActiveTicket}
+      />
 
       {/* Modal Detail Profil Psikolog */}
       <PsychologistProfileModal
