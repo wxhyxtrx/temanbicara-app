@@ -348,7 +348,7 @@ BEGIN
 
     v_yesterday_consumed := COALESCE(v_yesterday_consumed, 0);
     IF v_yesterday_consumed > v_daily_limit THEN
-        v_carry_penalty := pg_catalog.least(v_yesterday_consumed - v_daily_limit, v_max_carry_penalty);
+        v_carry_penalty := LEAST(v_yesterday_consumed - v_daily_limit, v_max_carry_penalty);
     ELSE
         v_carry_penalty := 0;
     END IF;
