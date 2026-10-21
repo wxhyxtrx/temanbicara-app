@@ -39,7 +39,9 @@ export async function getMaintenanceStatus(): Promise<MaintenanceStatus> {
         .eq('key', 'maintenance')
         .maybeSingle();
 
-      if (!error && data?.value) {
+      if (error) {
+        console.error('Gagal mengambil pengaturan maintenance:', error.message);
+      } else if (data?.value) {
         setting = data.value as MaintenanceSetting;
       }
     }
@@ -49,7 +51,7 @@ export async function getMaintenanceStatus(): Promise<MaintenanceStatus> {
     const rawMessage = typeof setting?.message === 'string' ? setting.message.trim() : '';
     const message = rawMessage || DEFAULT_MAINTENANCE_MESSAGE;
 
-    const phase = await SystemSettingsService.calculateMaintenancePhase(scheduled_start);
+    const phase = await SystemSettingsService.calculateMaintenancePhase(scheduled_start, estimated_end);
 
     const result: MaintenanceStatus = {
       phase,

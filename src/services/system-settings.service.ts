@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { DEFAULT_SYSTEM_SETTINGS } from '@/constant/system-settings';
+import { clearMaintenanceCache } from '@/lib/maintenance';
 import {
   systemSettingsValidators,
   type SettingKey,
@@ -17,19 +18,33 @@ import type {
 
 export class SystemSettingsService {
   private static publicCache: { data: PublicSettings; expiresAt: number } | null = null;
-  private static readonly CACHE_TTL_MS = 30_000;
+  private static readonly CACHE_TTL_MS = 5_000;
 
   public static invalidateCache(): void {
     this.publicCache = null;
   }
 
-  public static async calculateMaintenancePhase(scheduledStart: string | null): Promise<MaintenancePhase> {
+  public static async calculateMaintenancePhase(
+    scheduledStart: string | null,
+    estimatedEnd?: string | null
+  ): Promise<MaintenancePhase> {
     if (!scheduledStart) return 'none';
     const startTime = new Date(scheduledStart).getTime();
     if (!Number.isFinite(startTime)) return 'none';
+
+    if (estimatedEnd) {
+      const endTime = new Date(estimatedEnd).getTime();
+      if (Number.isFinite(endTime) && Date.now() >= endTime) {
+        return 'none';
+      }
+    }
+
     if (Date.now() < startTime) return 'scheduled';
 
-    if (!supabaseAdmin) return 'active';
+    if (!supabaseAdmin) {
+      console.error('Database client tidak tersedia untuk calculateMaintenancePhase');
+      return 'none';
+    }
 
     try {
       const { count, error } = await supabaseAdmin
@@ -39,13 +54,13 @@ export class SystemSettingsService {
 
       if (error) {
         console.error('Gagal memeriksa booking in_progress untuk fase maintenance:', error.message);
-        return 'active';
+        return 'none';
       }
 
       return (count ?? 0) > 0 ? 'draining' : 'active';
     } catch (err) {
       console.error('Error calculating maintenance phase:', err);
-      return 'active';
+      return 'none';
     }
   }
 
@@ -67,7 +82,10 @@ export class SystemSettingsService {
       rating: settings.rating,
       maintenance: {
         ...settings.maintenance,
-        phase: await this.calculateMaintenancePhase(settings.maintenance.scheduled_start),
+        phase: await this.calculateMaintenancePhase(
+          settings.maintenance.scheduled_start,
+          settings.maintenance.estimated_end
+        ),
       },
     };
 
@@ -151,6 +169,7 @@ export class SystemSettingsService {
     }
 
     this.invalidateCache();
+    clearMaintenanceCache();
     return { success: true, data: await this.getRawSettingsMap() };
   }
 

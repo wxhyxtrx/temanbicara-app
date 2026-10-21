@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser, fail } from '@/lib/auth/session';
+import { clearMaintenanceCache } from '@/lib/maintenance';
 import { SystemSettingsService } from '@/services/system-settings.service';
 
 export async function GET() {
@@ -58,6 +59,9 @@ export async function PATCH(req: Request) {
         { status: isValidationError ? 422 : 500 }
       );
     }
+
+    SystemSettingsService.invalidateCache();
+    clearMaintenanceCache();
 
     return NextResponse.json({
       success: true,
