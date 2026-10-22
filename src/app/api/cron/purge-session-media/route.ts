@@ -2,24 +2,53 @@ import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail } from '@/lib/auth/session';
+import { isValidPeerMediaPath } from '@/lib/validations/peer-messages';
 
 export const dynamic = 'force-dynamic';
 
 const BATCH_LIMIT = 500;
 const DEFAULT_RETENTION_DAYS = 30;
 
-interface StaleMediaRow {
+interface StaleSessionMediaRow {
   id: string;
   media_path: string | null;
-  bookings: {
-    id: string;
-    ended_at: string | null;
-    cancelled_at: string | null;
-  } | {
-    id: string;
-    ended_at: string | null;
-    cancelled_at: string | null;
-  }[] | null;
+  bookings:
+    | {
+        id: string;
+        ended_at: string | null;
+        cancelled_at: string | null;
+      }
+    | {
+        id: string;
+        ended_at: string | null;
+        cancelled_at: string | null;
+      }[]
+    | null;
+}
+
+interface StalePeerMediaRow {
+  id: string;
+  media_path: string | null;
+  peer_tickets:
+    | {
+        id: string;
+        status: string;
+        closed_at: string | null;
+        archived_at: string | null;
+      }
+    | {
+        id: string;
+        status: string;
+        closed_at: string | null;
+        archived_at: string | null;
+      }[]
+    | null;
+}
+
+interface PurgePipelineResult {
+  scanned: number;
+  deleted: number;
+  failed: number;
 }
 
 /**
@@ -34,7 +63,7 @@ function safeTimingCompare(a: string, b: string): boolean {
 
 /**
  * GET /api/cron/purge-session-media
- * Endpoint Vercel Cron untuk membersihkan media sesi yang melewati masa retensi (default 30 hari).
+ * Endpoint Vercel Cron untuk membersihkan media sesi konseling dan sesi sebaya yang melewati masa retensi (default 30 hari).
  * Dilindungi header Authorization: Bearer <CRON_SECRET>.
  */
 export async function GET(req: Request) {
@@ -81,99 +110,193 @@ export async function GET(req: Request) {
     const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
     const cutoffIso = cutoff.toISOString();
 
-    // 2. Ambil session_messages dengan media_path IS NOT NULL dari booking kadaluwarsa (maks 500)
-    const { data: rows, error: selectError } = await supabaseAdmin
-      .from('session_messages')
-      .select(`
-        id,
-        media_path,
-        bookings!inner (
-          id,
-          ended_at,
-          cancelled_at
-        )
-      `)
-      .not('media_path', 'is', null)
-      .or(`ended_at.lt.${cutoffIso},cancelled_at.lt.${cutoffIso}`, { referencedTable: 'bookings' })
-      .limit(BATCH_LIMIT);
-
-    if (selectError) {
-      return fail(500, 'QUERY_FAILED', selectError.message);
-    }
-
-    // Filter ketat sisi aplikasi untuk memastikan COALESCE(ended_at, cancelled_at) < cutoff
-    const candidates = ((rows || []) as unknown as StaleMediaRow[]).filter((row) => {
-      if (!row.media_path) return false;
-      const booking = Array.isArray(row.bookings) ? row.bookings[0] : row.bookings;
-      if (!booking) return false;
-      const terminalDateStr = booking.ended_at || booking.cancelled_at;
-      if (!terminalDateStr) return false;
-      const terminalTime = new Date(terminalDateStr).getTime();
-      return Number.isFinite(terminalTime) && terminalTime < cutoff.getTime();
-    });
-
-    const scanned = candidates.length;
-    if (scanned === 0) {
-      return NextResponse.json({
-        success: true,
-        scanned: 0,
-        deleted: 0,
-        failed: 0,
-      });
-    }
-
-    // 3. Hapus berkas fisik dari bucket storage 'session-media'
-    const pathsToDelete = Array.from(new Set(candidates.map((c) => c.media_path as string)));
-    const { data: removedFiles, error: storageError } = await supabaseAdmin.storage
-      .from('session-media')
-      .remove(pathsToDelete);
-
-    if (storageError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'STORAGE_DELETE_FAILED',
-          message: storageError.message,
-          scanned,
-          deleted: 0,
-          failed: scanned,
-        },
-        { status: 500 }
-      );
-    }
-
-    // Cocokkan berkas yang terkonfirmasi terhapus dari storage
-    const deletedNameSet = new Set((removedFiles || []).map((f) => f.name.replace(/^\/+/, '')));
-    const isPathDeleted = (path: string): boolean => {
-      const norm = path.replace(/^\/+/, '');
-      if (deletedNameSet.has(norm)) return true;
-      const filename = norm.split('/').pop();
-      return Boolean(filename && deletedNameSet.has(filename));
+    // ========================================================
+    // Pipeline 1: Sesi Konseling Psikolog (session_messages)
+    // ========================================================
+    const sessionResult: PurgePipelineResult = {
+      scanned: 0,
+      deleted: 0,
+      failed: 0,
     };
+    let hasSessionError = false;
 
-    const purgedMsgIds = candidates
-      .filter((c) => c.media_path && isPathDeleted(c.media_path))
-      .map((c) => c.id);
+    try {
+      const { data: sessionRows, error: selectSessionError } = await supabaseAdmin
+        .from('session_messages')
+        .select(`
+          id,
+          media_path,
+          bookings!inner (
+            id,
+            ended_at,
+            cancelled_at
+          )
+        `)
+        .not('media_path', 'is', null)
+        .or(`ended_at.lt.${cutoffIso},cancelled_at.lt.${cutoffIso}`, { referencedTable: 'bookings' })
+        .limit(BATCH_LIMIT);
 
-    // 4. Update baris di session_messages via RPC session_media_mark_purged
-    if (purgedMsgIds.length > 0) {
-      const { error: rpcError } = await supabaseAdmin.rpc('session_media_mark_purged', {
-        p_message_ids: purgedMsgIds,
-      });
+      if (selectSessionError) {
+        console.error('Session media select failed:', selectSessionError.message);
+        hasSessionError = true;
+      } else {
+        const sessionCandidates = ((sessionRows || []) as unknown as StaleSessionMediaRow[]).filter((row) => {
+          if (!row.media_path) return false;
+          const booking = Array.isArray(row.bookings) ? row.bookings[0] : row.bookings;
+          if (!booking) return false;
+          const terminalDateStr = booking.ended_at || booking.cancelled_at;
+          if (!terminalDateStr) return false;
+          const terminalTime = new Date(terminalDateStr).getTime();
+          return Number.isFinite(terminalTime) && terminalTime < cutoff.getTime();
+        });
 
-      if (rpcError) {
-        return fail(500, 'RPC_FAILED', rpcError.message);
+        sessionResult.scanned = sessionCandidates.length;
+
+        if (sessionCandidates.length > 0) {
+          const sessionPathsToDelete = Array.from(new Set(sessionCandidates.map((c) => c.media_path as string)));
+          const { error: storageError } = await supabaseAdmin.storage
+            .from('session-media')
+            .remove(sessionPathsToDelete);
+
+          if (storageError) {
+            console.error('Session media storage delete failed:', storageError.message);
+            sessionResult.failed = sessionResult.scanned;
+            hasSessionError = true;
+          } else {
+            // Berkas fisik berhasil dihapus atau sudah hilang dari storage
+            const sessionMsgIds = sessionCandidates.map((c) => c.id);
+            const { data: updatedCount, error: rpcError } = await supabaseAdmin.rpc(
+              'session_media_mark_purged',
+              {
+                p_message_ids: sessionMsgIds,
+              }
+            );
+
+            if (rpcError) {
+              console.error('Session media RPC session_media_mark_purged failed:', rpcError.message);
+              sessionResult.failed = sessionResult.scanned;
+              hasSessionError = true;
+            } else {
+              const deleted = typeof updatedCount === 'number' ? updatedCount : sessionMsgIds.length;
+              sessionResult.deleted = deleted;
+              sessionResult.failed = Math.max(0, sessionResult.scanned - deleted);
+              if (sessionResult.failed > 0) {
+                hasSessionError = true;
+              }
+            }
+          }
+        }
       }
+    } catch (err) {
+      console.error('Unexpected error in session media purge pipeline:', err);
+      hasSessionError = true;
     }
 
-    const deleted = purgedMsgIds.length;
-    const failed = scanned - deleted;
+    // ========================================================
+    // Pipeline 2: Sesi Sebaya / Ruang Dengar (peer_messages)
+    // ========================================================
+    const peerResult: PurgePipelineResult = {
+      scanned: 0,
+      deleted: 0,
+      failed: 0,
+    };
+    let hasPeerError = false;
+
+    try {
+      const { data: peerRows, error: selectPeerError } = await supabaseAdmin
+        .from('peer_messages')
+        .select(`
+          id,
+          media_path,
+          peer_tickets!inner (
+            id,
+            status,
+            closed_at,
+            archived_at
+          )
+        `)
+        .not('media_path', 'is', null)
+        .in('peer_tickets.status', ['closed', 'archived'])
+        .or(`closed_at.lt.${cutoffIso},archived_at.lt.${cutoffIso}`, { referencedTable: 'peer_tickets' })
+        .limit(BATCH_LIMIT);
+
+      if (selectPeerError) {
+        console.error('Peer media select failed:', selectPeerError.message);
+        hasPeerError = true;
+      } else {
+        const peerCandidates = ((peerRows || []) as unknown as StalePeerMediaRow[]).filter((row) => {
+          if (!row.media_path) return false;
+          const ticket = Array.isArray(row.peer_tickets) ? row.peer_tickets[0] : row.peer_tickets;
+          if (!ticket) return false;
+          if (ticket.status !== 'closed' && ticket.status !== 'archived') return false;
+
+          const terminalDateStr = ticket.closed_at || ticket.archived_at;
+          if (!terminalDateStr) return false;
+          const terminalTime = new Date(terminalDateStr).getTime();
+          if (!Number.isFinite(terminalTime) || terminalTime >= cutoff.getTime()) {
+            return false;
+          }
+
+          return isValidPeerMediaPath(ticket.id, row.media_path);
+        });
+
+        peerResult.scanned = peerCandidates.length;
+
+        if (peerCandidates.length > 0) {
+          const peerPathsToDelete = Array.from(new Set(peerCandidates.map((c) => c.media_path as string)));
+          const { error: storageError } = await supabaseAdmin.storage
+            .from('session-media')
+            .remove(peerPathsToDelete);
+
+          if (storageError) {
+            console.error('Peer media storage delete failed:', storageError.message);
+            peerResult.failed = peerResult.scanned;
+            hasPeerError = true;
+          } else {
+            // Berkas fisik berhasil dihapus atau sudah hilang dari storage
+            const peerMsgIds = peerCandidates.map((c) => c.id);
+            const { data: updatedCount, error: rpcError } = await supabaseAdmin.rpc(
+              'peer_media_mark_purged',
+              {
+                p_message_ids: peerMsgIds,
+              }
+            );
+
+            if (rpcError) {
+              console.error('Peer media RPC peer_media_mark_purged failed:', rpcError.message);
+              peerResult.failed = peerResult.scanned;
+              hasPeerError = true;
+            } else {
+              const deleted = typeof updatedCount === 'number' ? updatedCount : peerMsgIds.length;
+              peerResult.deleted = deleted;
+              peerResult.failed = Math.max(0, peerResult.scanned - deleted);
+              if (peerResult.failed > 0) {
+                hasPeerError = true;
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error in peer media purge pipeline:', err);
+      hasPeerError = true;
+    }
+
+    // ========================================================
+    // Agregasi & Respon JSON
+    // ========================================================
+    const scanned = sessionResult.scanned + peerResult.scanned;
+    const deleted = sessionResult.deleted + peerResult.deleted;
+    const failed = sessionResult.failed + peerResult.failed;
+    const success = !hasSessionError && !hasPeerError && failed === 0;
 
     return NextResponse.json({
-      success: true,
+      success,
       scanned,
       deleted,
       failed,
+      session: sessionResult,
+      peer: peerResult,
     });
   } catch (err: unknown) {
     return fail(
