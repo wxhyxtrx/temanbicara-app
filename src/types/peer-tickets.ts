@@ -1,5 +1,7 @@
 export type PeerTicketStatus = 'open' | 'claimed' | 'active' | 'closed' | 'archived';
 
+export type PeerTicketClosedBy = 'pasien' | 'relawan' | 'system';
+
 export interface PeerTicketEntity {
   id: string;
   patient_id: string;
@@ -13,10 +15,27 @@ export interface PeerTicketEntity {
   claimed_at: string | null;
   first_response_at: string | null;
   closed_at: string | null;
+  closed_by?: PeerTicketClosedBy | null;
   archived_at: string | null;
   abandoned_by: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface PeerReviewEntity {
+  ticket_id: string;
+  patient_id: string;
+  relawan_id: string;
+  rating: number;
+  review: string | null;
+  is_hidden?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PeerRatingSummaryDTO {
+  rating_avg: number | null;
+  rating_count: number;
 }
 
 export interface RelawanDailyQuotaEntity {
@@ -59,6 +78,7 @@ export interface PeerTicketDetailView {
   claimed_at: string | null;
   first_response_at: string | null;
   closed_at: string | null;
+  closed_by?: PeerTicketClosedBy | null;
   archived_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -66,4 +86,3 @@ export interface PeerTicketDetailView {
 }
 
 export type RelawanPeerTicketDetailView = Omit<PeerTicketDetailView, 'patient_id'>;
-

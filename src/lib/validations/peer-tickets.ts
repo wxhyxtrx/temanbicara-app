@@ -44,3 +44,29 @@ export const createPeerTicketSchema = z
   });
 
 export type CreatePeerTicketInput = z.infer<typeof createPeerTicketSchema>;
+
+export const peerReviewSchema = z.object({
+  rating: z
+    .number({ message: 'Rating wajib diisi' })
+    .int('Rating harus berupa bilangan bulat')
+    .min(1, 'Rating minimal 1 bintang')
+    .max(5, 'Rating maksimal 5 bintang'),
+  review: z
+    .string()
+    .trim()
+    .max(500, 'Ulasan maksimal 500 karakter')
+    .nullable()
+    .optional(),
+});
+
+export type PeerReviewInput = z.infer<typeof peerReviewSchema>;
+
+export const peerTipSchema = z.object({
+  coins: z
+    .number({ message: 'Jumlah koin wajib diisi' })
+    .int('Jumlah koin harus berupa bilangan bulat')
+    .positive('Jumlah koin harus lebih dari 0'),
+  tip_id: z.string().uuid('Format tip_id tidak valid').optional(),
+});
+
+export type PeerTipInput = z.infer<typeof peerTipSchema>;
