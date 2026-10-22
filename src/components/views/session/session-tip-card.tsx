@@ -7,20 +7,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { notify } from "@/lib/toast";
 import { bookingClient, BookingApiError } from "@/services/booking.client";
+import { peerTicketClient, PeerTicketApiError } from "@/services/peer-tickets.client";
 import { systemSettingsClient } from "@/services/system-settings.client";
 import { walletClient } from "@/services/wallet.client";
 
-interface SessionTipCardProps {
-  bookingId: string;
+export interface SessionTipCardProps {
+  bookingId?: string;
+  ticketId?: string;
+  source?: "booking" | "ticket";
   compact?: boolean;
   onTipSuccess?: (coins: number) => void;
 }
 
 export function SessionTipCard({
   bookingId,
+  ticketId,
+  source,
   compact = false,
   onTipSuccess,
 }: SessionTipCardProps) {
+  const isTicket = source === "ticket" || Boolean(ticketId && !bookingId);
+  const targetId = isTicket ? ticketId : bookingId;
+
   const [loadingSettings, setLoadingSettings] = useState<boolean>(true);
   const [minCoins, setMinCoins] = useState<number>(1);
   const [maxCoins, setMaxCoins] = useState<number>(50);
@@ -84,6 +92,11 @@ export function SessionTipCard({
 
   const handleSendTip = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!targetId) {
+      setErrorMsg("ID sesi tidak ditemukan.");
+      return;
+    }
+
     const amount = parseInt(customCoins, 10);
     if (isNaN(amount) || amount < minCoins || amount > maxCoins) {
       setErrorMsg(`Jumlah tip harus antara ${minCoins} sampai ${maxCoins} koin.`);
@@ -101,37 +114,67 @@ export function SessionTipCard({
     setIsInsufficientCoins(false);
 
     try {
-      const res = await bookingClient.sendTip(bookingId, { coins: amount });
-      if (res.success) {
-        setAlreadyTipped(true);
-        setTipSuccessAmount(amount);
-        if (userCoins !== null) {
-          setUserCoins((prev) => (prev !== null ? Math.max(0, prev - amount) : null));
+      if (isTicket) {
+        const res = await peerTicketClient.sendTip(targetId, amount);
+        if (res.success) {
+          setAlreadyTipped(true);
+          setTipSuccessAmount(amount);
+          if (userCoins !== null) {
+            setUserCoins((prev) => (prev !== null ? Math.max(0, prev - amount) : null));
+          }
+          notify.success(
+            "Tip Berhasil Dikirim",
+            `Apresiasi sebesar ${amount} Koin telah diteruskan ke relawan sebaya.`
+          );
+          if (onTipSuccess) onTipSuccess(amount);
         }
-        notify.success(
-          "Tip Berhasil Dikirim",
-          `Apresiasi sebesar ${amount} Koin telah diteruskan ke psikolog.`
-        );
-        if (onTipSuccess) onTipSuccess(amount);
+      } else {
+        const res = await bookingClient.sendTip(targetId, { coins: amount });
+        if (res.success) {
+          setAlreadyTipped(true);
+          setTipSuccessAmount(amount);
+          if (userCoins !== null) {
+            setUserCoins((prev) => (prev !== null ? Math.max(0, prev - amount) : null));
+          }
+          notify.success(
+            "Tip Berhasil Dikirim",
+            `Apresiasi sebesar ${amount} Koin telah diteruskan ke psikolog.`
+          );
+          if (onTipSuccess) onTipSuccess(amount);
+        }
       }
     } catch (err: unknown) {
-      if (err instanceof BookingApiError) {
+      if (err instanceof BookingApiError || err instanceof PeerTicketApiError) {
         if (err.status === 409 || err.code === "TIP_ALREADY_GIVEN") {
           setAlreadyTipped(true);
           setErrorMsg("Anda sudah pernah memberikan tip untuk sesi ini (maksimal 1x per sesi).");
-        } else if (err.status === 402 || err.code === "INSUFFICIENT_COINS") {
+        } else if (
+          err.status === 402 ||
+          err.code === "INSUFFICIENT_COINS" ||
+          (err.status === 400 && err.message?.includes("INSUFFICIENT_COINS"))
+        ) {
           setIsInsufficientCoins(true);
           setErrorMsg("Saldo koin Anda tidak mencukupi. Silakan lakukan top up koin terlebih dahulu.");
         } else {
-          setErrorMsg(err.message || "Gagal memberikan tip.");
+          setErrorMsg(err.message || (isTicket ? "Gagal memberikan tip ke relawan." : "Gagal memberikan tip."));
         }
       } else {
-        setErrorMsg(err instanceof Error ? err.message : "Gagal memberikan tip ke psikolog.");
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : isTicket
+              ? "Gagal memberikan tip ke relawan sebaya."
+              : "Gagal memberikan tip ke psikolog."
+        );
       }
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (!targetId) {
+    return null;
+  }
 
   if (loadingSettings) {
     return (
@@ -154,7 +197,9 @@ export function SessionTipCard({
               : "Tip Telah Diberikan"}
           </p>
           <p className="text-[11px] text-emerald-900/80 dark:text-emerald-300/80 leading-relaxed">
-            Terima kasih atas apresiasi Anda kepada psikolog. Tip hanya dapat diberikan 1x untuk setiap sesi konseling.
+            {isTicket
+              ? "Terima kasih atas apresiasi Anda kepada relawan sebaya. Tip hanya dapat diberikan 1x untuk setiap sesi curhat."
+              : "Terima kasih atas apresiasi Anda kepada psikolog. Tip hanya dapat diberikan 1x untuk setiap sesi konseling."}
           </p>
         </div>
       </div>
@@ -176,11 +221,13 @@ export function SessionTipCard({
         <div className="space-y-0.5">
           <h4 className="text-xs sm:text-sm font-bold font-heading text-slate-900 dark:text-white flex items-center gap-1.5">
             <Heart size={15} className="fill-rose-500 text-rose-500" />
-            <span>Beri Tip Apresiasi untuk Psikolog</span>
+            <span>{isTicket ? "Apresiasi Relawan Sebaya" : "Beri Tip Apresiasi untuk Psikolog"}</span>
             <span className="text-[10px] font-normal text-slate-400">(Opsional)</span>
           </h4>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Dukung psikolog dengan tip koin sukarela ({minCoins} - {maxCoins} Koin, 1x per sesi)
+            {isTicket
+              ? `Dukung relawan sebaya dengan tip koin sukarela (${minCoins} - ${maxCoins} Koin, 1x per sesi)`
+              : `Dukung psikolog dengan tip koin sukarela (${minCoins} - ${maxCoins} Koin, 1x per sesi)`}
           </p>
         </div>
 

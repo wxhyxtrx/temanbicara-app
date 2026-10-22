@@ -4,6 +4,8 @@ import type {
   RelawanQuotaInfo,
   CreatePeerTicketPayload,
   PeerTicketDetailView,
+  PeerReviewEntity,
+  PeerRatingSummaryDTO,
 } from '@/types/peer-tickets';
 
 export class PeerTicketApiError extends Error {
@@ -113,5 +115,74 @@ export const peerTicketClient = {
       credentials: 'include',
     });
     return handleResponse<{ success: boolean; data: RelawanQuotaInfo }>(res);
+  },
+
+  /**
+   * Menutup sesi tiket curhat aktif (pasien / relawan)
+   */
+  async closeTicket(
+    ticketId: string
+  ): Promise<{ success: boolean; data: PeerTicketEntity }> {
+    const res = await fetch(`/api/peer-tickets/${encodeURIComponent(ticketId)}/close`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: PeerTicketEntity }>(res);
+  },
+
+  /**
+   * Mengirimkan rating & ulasan untuk sesi tiket yang telah ditutup
+   */
+  async createReview(
+    ticketId: string,
+    payload: { rating: number; review?: string | null }
+  ): Promise<{ success: boolean; data: PeerReviewEntity }> {
+    const res = await fetch(`/api/peer-tickets/${encodeURIComponent(ticketId)}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<{ success: boolean; data: PeerReviewEntity }>(res);
+  },
+
+  /**
+   * Mengambil ulasan yang sudah diberikan pada tiket curhat
+   */
+  async getReview(
+    ticketId: string
+  ): Promise<{ success: boolean; data: PeerReviewEntity | null }> {
+    const res = await fetch(`/api/peer-tickets/${encodeURIComponent(ticketId)}/review`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: PeerReviewEntity | null }>(res);
+  },
+
+  /**
+   * Memberikan tip koin kepada relawan pendamping
+   */
+  async sendTip(
+    ticketId: string,
+    coins: number
+  ): Promise<{ success: boolean; data: { tip_id: string; coins: number } }> {
+    const res = await fetch(`/api/peer-tickets/${encodeURIComponent(ticketId)}/tip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ coins }),
+    });
+    return handleResponse<{ success: boolean; data: { tip_id: string; coins: number } }>(res);
+  },
+
+  /**
+   * Mengambil agregat ringkasan rating & jumlah ulasan relawan
+   */
+  async getRatingSummary(): Promise<{ success: boolean; data: PeerRatingSummaryDTO }> {
+    const res = await fetch('/api/listener/rating-summary', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: PeerRatingSummaryDTO }>(res);
   },
 };

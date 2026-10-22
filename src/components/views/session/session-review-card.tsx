@@ -5,24 +5,33 @@ import { Star, AlertCircle, CheckCircle2, Edit3, Loader2, ShieldAlert } from "lu
 import { Button } from "@/components/ui/button";
 import { notify } from "@/lib/toast";
 import { bookingClient } from "@/services/booking.client";
+import { peerTicketClient } from "@/services/peer-tickets.client";
 import type { SessionReviewEntity } from "@/types/booking";
+import type { PeerReviewEntity } from "@/types/peer-tickets";
 
-interface SessionReviewCardProps {
-  bookingId: string;
+export interface SessionReviewCardProps<T = SessionReviewEntity | PeerReviewEntity> {
+  bookingId?: string;
+  ticketId?: string;
+  source?: "booking" | "ticket";
   endedAt?: string | null;
   compact?: boolean;
-  onReviewSubmitted?: (review: SessionReviewEntity) => void;
+  onReviewSubmitted?: (review: T) => void;
 }
 
-export function SessionReviewCard({
+export function SessionReviewCard<T = SessionReviewEntity | PeerReviewEntity>({
   bookingId,
+  ticketId,
+  source,
   endedAt,
   compact = false,
   onReviewSubmitted,
-}: SessionReviewCardProps) {
+}: SessionReviewCardProps<T>) {
+  const isTicket = source === "ticket" || Boolean(ticketId && !bookingId);
+  const targetId = isTicket ? ticketId : bookingId;
+
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [existingReview, setExistingReview] = useState<SessionReviewEntity | null>(null);
+  const [existingReview, setExistingReview] = useState<SessionReviewEntity | PeerReviewEntity | null>(null);
 
   // Form states
   const [rating, setRating] = useState<number>(5);
@@ -31,7 +40,7 @@ export function SessionReviewCard({
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Calculate 7-day edit window
+  // Calculate 7-day edit window (hanya berlaku untuk sesi booking)
   const isWithin7Days = useCallback(() => {
     const referenceDateStr = existingReview?.created_at || endedAt;
     if (!referenceDateStr) return true;
@@ -42,30 +51,51 @@ export function SessionReviewCard({
   }, [existingReview?.created_at, endedAt]);
 
   const fetchReview = useCallback(async () => {
+    if (!targetId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setErrorMsg(null);
     try {
-      const res = await bookingClient.getReview(bookingId);
-      if (res.success && res.data) {
-        setExistingReview(res.data);
-        if (res.data.rating) setRating(res.data.rating);
-        if (res.data.review) setReviewText(res.data.review);
+      if (isTicket) {
+        const res = await peerTicketClient.getReview(targetId);
+        if (res.success && res.data) {
+          setExistingReview(res.data);
+          if (res.data.rating) setRating(res.data.rating);
+          if (res.data.review) setReviewText(res.data.review);
+        } else {
+          setExistingReview(null);
+        }
+      } else {
+        const res = await bookingClient.getReview(targetId);
+        if (res.success && res.data) {
+          setExistingReview(res.data);
+          if (res.data.rating) setRating(res.data.rating);
+          if (res.data.review) setReviewText(res.data.review);
+        } else {
+          setExistingReview(null);
+        }
       }
     } catch (err: unknown) {
-      console.error("Gagal mengambil review booking:", err);
+      console.error("Gagal mengambil review sesi:", err);
     } finally {
       setLoading(false);
     }
-  }, [bookingId]);
+  }, [targetId, isTicket]);
 
   useEffect(() => {
-    if (bookingId) {
+    if (targetId) {
       fetchReview();
+    } else {
+      setLoading(false);
     }
-  }, [bookingId, fetchReview]);
+  }, [targetId, fetchReview]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!targetId) return;
+
     if (rating < 1 || rating > 5) {
       setErrorMsg("Pilih rating bintang antara 1 sampai 5.");
       return;
@@ -78,19 +108,36 @@ export function SessionReviewCard({
     setSubmitting(true);
     setErrorMsg(null);
     try {
-      const res = await bookingClient.submitReview(bookingId, {
-        rating,
-        review: reviewText.trim() || null,
-      });
+      if (isTicket) {
+        const res = await peerTicketClient.createReview(targetId, {
+          rating,
+          review: reviewText.trim() || null,
+        });
 
-      if (res.success && res.data) {
-        setExistingReview(res.data);
-        setIsEditing(false);
-        notify.success(
-          "Penilaian Berhasil Disimpan",
-          "Terima kasih telah memberikan ulasan untuk konseling ini."
-        );
-        if (onReviewSubmitted) onReviewSubmitted(res.data);
+        if (res.success && res.data) {
+          setExistingReview(res.data);
+          setIsEditing(false);
+          notify.success(
+            "Penilaian Berhasil Disimpan",
+            "Terima kasih telah memberikan ulasan untuk relawan sebaya."
+          );
+          if (onReviewSubmitted) onReviewSubmitted(res.data as unknown as T);
+        }
+      } else {
+        const res = await bookingClient.submitReview(targetId, {
+          rating,
+          review: reviewText.trim() || null,
+        });
+
+        if (res.success && res.data) {
+          setExistingReview(res.data);
+          setIsEditing(false);
+          notify.success(
+            "Penilaian Berhasil Disimpan",
+            "Terima kasih telah memberikan ulasan untuk konseling ini."
+          );
+          if (onReviewSubmitted) onReviewSubmitted(res.data as unknown as T);
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal menyimpan ulasan.";
@@ -100,6 +147,10 @@ export function SessionReviewCard({
       setSubmitting(false);
     }
   };
+
+  if (!targetId) {
+    return null;
+  }
 
   if (loading) {
     return (
@@ -111,7 +162,7 @@ export function SessionReviewCard({
   }
 
   const hasSubmitted = !!existingReview;
-  const canEdit = isWithin7Days();
+  const canEdit = !isTicket && isWithin7Days();
 
   // Mode View Only (Sudah ada review dan tidak sedang mengedit)
   if (hasSubmitted && !isEditing) {
@@ -121,7 +172,7 @@ export function SessionReviewCard({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />
-              <h4 className="text-xs sm:text-sm font-bold font-heading text-slate-900 dark:text-white">
+              <h4 className="text-xs sm:text-sm font-bold font-heading text-slate-900 dark:white">
                 Penilaian Sesi Anda
               </h4>
             </div>
@@ -154,11 +205,11 @@ export function SessionReviewCard({
               <Edit3 size={12} />
               <span>Edit Ulasan</span>
             </Button>
-          ) : (
+          ) : !isTicket ? (
             <span className="text-[11px] text-slate-400 italic">
               Batas edit 7 hari berakhir
             </span>
-          )}
+          ) : null}
         </div>
 
         {existingReview.review ? (
@@ -194,10 +245,18 @@ export function SessionReviewCard({
         <div className="space-y-0.5">
           <h4 className="text-xs sm:text-sm font-bold font-heading text-slate-900 dark:text-white flex items-center gap-1.5">
             <Star size={15} className="fill-amber-400 text-amber-500" />
-            <span>{hasSubmitted ? "Perbarui Penilaian Sesi" : "Beri Penilaian & Ulasan"}</span>
+            <span>
+              {isTicket
+                ? "Beri Penilaian untuk Pendengar Sebaya"
+                : hasSubmitted
+                  ? "Perbarui Penilaian Sesi"
+                  : "Beri Penilaian & Ulasan"}
+            </span>
           </h4>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Penilaian Anda membantu peningkatan kualitas layanan konseling (bisa diedit dalam 7 hari)
+            {isTicket
+              ? "Penilaian Anda membantu apresiasi dan peningkatan kualitas relawan sebaya"
+              : "Penilaian Anda membantu peningkatan kualitas layanan konseling (bisa diedit dalam 7 hari)"}
           </p>
         </div>
 
@@ -260,7 +319,11 @@ export function SessionReviewCard({
           }}
           maxLength={500}
           rows={3}
-          placeholder="Ceritakan pengalaman konseling Anda (opsional)..."
+          placeholder={
+            isTicket
+              ? "Ceritakan pengalaman curhat Anda bersama relawan sebaya (opsional)..."
+              : "Ceritakan pengalaman konseling Anda (opsional)..."
+          }
           className="w-full p-2.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-teal-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
         />
 
@@ -300,7 +363,13 @@ export function SessionReviewCard({
               <span>Menyimpan...</span>
             </>
           ) : (
-            <span>{hasSubmitted ? "Perbarui Ulasan" : "Kirim Ulasan"}</span>
+            <span>
+              {isTicket
+                ? "Kirim Ulasan"
+                : hasSubmitted
+                  ? "Perbarui Ulasan"
+                  : "Kirim Ulasan"}
+            </span>
           )}
         </Button>
       </div>
