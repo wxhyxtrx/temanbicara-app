@@ -3,7 +3,10 @@ import crypto from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { getMaintenanceStatus } from '@/lib/maintenance';
-import { peerMediaUploadSchema } from '@/lib/validations/peer-messages';
+import {
+  peerMediaUploadSchema,
+  isValidPeerMediaPath,
+} from '@/lib/validations/peer-messages';
 import type {
   PeerMediaUploadResponse,
   PeerMediaUrlResponse,
@@ -46,8 +49,7 @@ export async function GET(
       return fail(400, 'INVALID_PAYLOAD', 'Parameter query "path" wajib disertakan');
     }
 
-    // Mencegah path traversal sederhana
-    if (mediaPath.includes('..') || mediaPath.startsWith('/')) {
+    if (!isValidPeerMediaPath(id, mediaPath)) {
       return fail(400, 'INVALID_PATH', 'Format path berkas tidak valid');
     }
 
@@ -76,20 +78,18 @@ export async function GET(
       return fail(403, 'FORBIDDEN', 'Hanya peserta tiket atau admin yang dapat mengakses berkas media ini');
     }
 
-    // Validasi path: harus berawalan peer/<id>/ atau tercatat di peer_messages tiket ini
-    const expectedPrefix = `peer/${id}/`;
-    let isValidPath = mediaPath.startsWith(expectedPrefix);
-    if (!isValidPath) {
-      const { data: msgMatch } = await supabaseAdmin
-        .from('peer_messages')
-        .select('id')
-        .eq('ticket_id', id)
-        .eq('media_path', mediaPath)
-        .maybeSingle();
-      isValidPath = !!msgMatch;
-    }
+    // Validasi keberadaan berkas: path harus tercatat pada peer_messages tiket tersebut
+    const { data: msgMatch, error: msgError } = await supabaseAdmin
+      .from('peer_messages')
+      .select('id')
+      .eq('ticket_id', id)
+      .eq('media_path', mediaPath)
+      .maybeSingle();
 
-    if (!isValidPath) {
+    if (msgError) {
+      return fail(500, 'QUERY_FAILED', msgError.message);
+    }
+    if (!msgMatch) {
       return fail(404, 'MEDIA_NOT_FOUND', 'Berkas media tidak ditemukan pada riwayat obrolan tiket ini');
     }
 
@@ -175,30 +175,30 @@ export async function POST(
     // Cabang B: Generate Signed View URL via POST jika body menyertakan action 'view' atau path
     const bodyObj = rawBody && typeof rawBody === 'object' ? (rawBody as Record<string, unknown>) : {};
     if (bodyObj.action === 'view' || (typeof bodyObj.path === 'string' && !bodyObj.file_name)) {
-      if (!isPatient && !isRelawan && !isAdmin) {
-        return fail(403, 'FORBIDDEN', 'Hanya peserta tiket atau admin yang dapat mengakses berkas media ini');
-      }
       const mediaPath = typeof bodyObj.path === 'string' ? bodyObj.path.trim() : '';
       if (!mediaPath) {
         return fail(400, 'INVALID_PAYLOAD', 'Parameter "path" wajib disertakan');
       }
-      if (mediaPath.includes('..') || mediaPath.startsWith('/')) {
+      if (!isValidPeerMediaPath(id, mediaPath)) {
         return fail(400, 'INVALID_PATH', 'Format path berkas tidak valid');
       }
 
-      const expectedPrefix = `peer/${id}/`;
-      let isValidPath = mediaPath.startsWith(expectedPrefix);
-      if (!isValidPath) {
-        const { data: msgMatch } = await supabaseAdmin
-          .from('peer_messages')
-          .select('id')
-          .eq('ticket_id', id)
-          .eq('media_path', mediaPath)
-          .maybeSingle();
-        isValidPath = !!msgMatch;
+      if (!isPatient && !isRelawan && !isAdmin) {
+        return fail(403, 'FORBIDDEN', 'Hanya peserta tiket atau admin yang dapat mengakses berkas media ini');
       }
 
-      if (!isValidPath) {
+      // Validasi keberadaan berkas: path harus tercatat pada peer_messages tiket tersebut
+      const { data: msgMatch, error: msgError } = await supabaseAdmin
+        .from('peer_messages')
+        .select('id')
+        .eq('ticket_id', id)
+        .eq('media_path', mediaPath)
+        .maybeSingle();
+
+      if (msgError) {
+        return fail(500, 'QUERY_FAILED', msgError.message);
+      }
+      if (!msgMatch) {
         return fail(404, 'MEDIA_NOT_FOUND', 'Berkas media tidak ditemukan pada riwayat obrolan tiket ini');
       }
 

@@ -11,6 +11,31 @@ export const ALLOWED_VOICE_MIME_TYPES = [
   'audio/x-m4a',
 ];
 
+export const PEER_MEDIA_PATH_REGEX = /^peer\/[0-9a-f-]{36}\/[a-zA-Z0-9_.-]+$/i;
+
+/**
+ * Memvalidasi apakah format media_path aman dan terikat pada tiket tertentu:
+ * - Tidak boleh kosong, bukan string, atau hanya spasi
+ * - Tidak boleh mengandung traversal ('..')
+ * - Tidak boleh berawalan slash ('/' atau '\')
+ * - Wajib cocok dengan regex /^peer\/[0-9a-f-]{36}\/[a-zA-Z0-9_.-]+$/i
+ * - UUID pada path wajib persis cocok dengan parameter ticketId
+ */
+export function isValidPeerMediaPath(ticketId: string, mediaPath?: string | null): boolean {
+  if (!mediaPath || typeof mediaPath !== 'string') {
+    return false;
+  }
+  const path = mediaPath.trim();
+  if (!path || path.includes('..') || path.startsWith('/') || path.startsWith('\\')) {
+    return false;
+  }
+  if (!PEER_MEDIA_PATH_REGEX.test(path)) {
+    return false;
+  }
+  const expectedPrefix = `peer/${ticketId.toLowerCase()}/`;
+  return path.toLowerCase().startsWith(expectedPrefix);
+}
+
 export const sendPeerMessageSchema = z
   .object({
     kind: z.enum(['text', 'image', 'voice'], {

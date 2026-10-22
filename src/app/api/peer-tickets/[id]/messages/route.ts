@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { getMaintenanceStatus } from '@/lib/maintenance';
-import { sendPeerMessageSchema } from '@/lib/validations/peer-messages';
+import {
+  sendPeerMessageSchema,
+  isValidPeerMediaPath,
+} from '@/lib/validations/peer-messages';
 import type { PeerMessageEntity, PeerMessageView } from '@/lib/validations/peer-messages';
 import type { PeerTicketEntity } from '@/types/peer-tickets';
 
@@ -152,6 +155,16 @@ export async function POST(
     const parsed = sendPeerMessageSchema.safeParse(rawBody);
     if (!parsed.success) {
       return fail(422, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Data pesan tidak valid');
+    }
+
+    if (parsed.data.media_path || parsed.data.kind === 'image' || parsed.data.kind === 'voice') {
+      if (!isValidPeerMediaPath(id, parsed.data.media_path)) {
+        return fail(
+          400,
+          'INVALID_MEDIA_PATH',
+          'Format media_path tidak valid atau berada di luar tiket ini.'
+        );
+      }
     }
 
     const { data: ticketData, error: ticketError } = await supabaseAdmin
