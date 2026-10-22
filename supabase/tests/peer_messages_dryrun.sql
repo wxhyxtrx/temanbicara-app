@@ -2,13 +2,13 @@
 -- TEMAN BICARA: DRY-RUN TEST MIGRATION 000022 (PEER MESSAGES, REALTIME & RLS)
 -- Path: supabase/tests/peer_messages_dryrun.sql
 -- Scope:
--- 1. Setup fixture auth.users, public.users, public.peer_tickets
--- 2. DDL Salinan persis dari 20261022000022_peer_messages.sql
+-- 1. Setup fixture auth.users, public.users, public.peer_tickets (dengan RLS aktif & policy relawan)
+-- 2. DDL Salinan persis dari 20261022000022_peer_messages.sql (termasuk perbaikan RLS peer_tickets)
 -- 3. Assert Uji 1: Pembuatan pesan teks valid oleh pasien dan relawan (berhasil)
 -- 4. Assert Uji 2: Penolakan pesan teks dengan body kosong / spasi / NULL (chk_peer_messages_content)
 -- 5. Assert Uji 3: Pembuatan pesan gambar dan suara dengan media_path (berhasil)
 -- 6. Assert Uji 4: Penolakan pesan media tanpa media_path (chk_peer_messages_content)
--- 7. Assert Uji 5: RLS SELECT (peserta tiket & admin dapat membaca, user lain melihat 0 baris)
+-- 7. Assert Uji 5: RLS SELECT peer_messages & peer_tickets (peserta tiket & admin membaca, user lain 0 baris)
 -- 8. Assert Uji 6: RLS INSERT (peserta tiket dapat mengirim, non-peserta & pemalsuan sender_id ditolak)
 -- 9. Assert Uji 7: Hak mutasi UPDATE dan DELETE dicabut dari role authenticated
 -- SELURUH UJI BERJALAN DALAM SATU TRANSAKSI DAN OTOMATIS DI-ROLLBACK
@@ -80,6 +80,19 @@ CREATE TABLE IF NOT EXISTS public.peer_tickets (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT pg_catalog.now()
 );
 
+-- Pastikan RLS nyata aktif pada public.peer_tickets (mengeliminasi tabel tiruan tanpa RLS)
+ALTER TABLE public.peer_tickets ENABLE ROW LEVEL SECURITY;
+
+-- Pasang policy SELECT peer_tickets yang mencakup relawan pengklaim (auth.uid() = claimed_by)
+DROP POLICY IF EXISTS peer_tickets_select_policy ON public.peer_tickets;
+CREATE POLICY peer_tickets_select_policy ON public.peer_tickets
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = patient_id
+        OR auth.uid() = claimed_by
+        OR public.is_admin()
+    );
+
 -- Fixture Tiket Sesi Curhat Sebaya
 INSERT INTO public.peer_tickets (
     id,
@@ -115,6 +128,17 @@ ON CONFLICT (id) DO UPDATE SET
 -- ========================================================
 -- 2. DDL MIGRATION: 20261022000022_peer_messages.sql
 -- ========================================================
+
+-- Perbaikan Policy SELECT pada public.peer_tickets agar relawan pengklaim dapat membaca tiket terkait
+-- Dibutuhkan agar subquery RLS pada peer_messages dapat mengevaluasi relawan secara transparan.
+DROP POLICY IF EXISTS peer_tickets_select_policy ON public.peer_tickets;
+CREATE POLICY peer_tickets_select_policy ON public.peer_tickets
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = patient_id
+        OR auth.uid() = claimed_by
+        OR public.is_admin()
+    );
 
 CREATE TABLE IF NOT EXISTS public.peer_messages (
     id UUID PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
@@ -381,6 +405,42 @@ DECLARE
 BEGIN
     SELECT count(*) INTO v_count FROM public.peer_messages;
     ASSERT v_count = 4, format('UJI RLS 5d GAGAL: Admin melihat %s baris pesan (seharusnya 4)', v_count);
+END $$;
+
+RESET ROLE;
+
+-- UJI RLS 5e: Relawan peserta SELECT peer_tickets -> melihat 1 baris tiket yang diklaimnya
+DO $$
+BEGIN
+    PERFORM set_config('request.jwt.claims', '{"sub":"e2000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+END $$;
+
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    SELECT count(*) INTO v_count FROM public.peer_tickets WHERE id = 'f1000000-0000-0000-0000-000000000001';
+    ASSERT v_count = 1, format('UJI RLS 5e GAGAL: Relawan peserta gagal membaca tiket terkait di peer_tickets (ditemukan %s baris)', v_count);
+END $$;
+
+RESET ROLE;
+
+-- UJI RLS 5f: User lain (bukan peserta tiket) SELECT peer_tickets -> melihat 0 baris
+DO $$
+BEGIN
+    PERFORM set_config('request.jwt.claims', '{"sub":"e4000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+END $$;
+
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    SELECT count(*) INTO v_count FROM public.peer_tickets WHERE id = 'f1000000-0000-0000-0000-000000000001';
+    ASSERT v_count = 0, format('UJI RLS 5f GAGAL: User lain melihat tiket di peer_tickets (seharusnya 0, ditemukan %s)', v_count);
 END $$;
 
 RESET ROLE;

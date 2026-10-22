@@ -50,6 +50,18 @@ EXCEPTION
 END $$;
 
 -- 4. ROW LEVEL SECURITY (RLS) & HAK AKSES
+
+-- Perbaikan Policy SELECT pada public.peer_tickets agar relawan pengklaim dapat membaca tiket terkait
+-- Dibutuhkan agar subquery RLS pada peer_messages dapat mengevaluasi relawan secara transparan.
+DROP POLICY IF EXISTS peer_tickets_select_policy ON public.peer_tickets;
+CREATE POLICY peer_tickets_select_policy ON public.peer_tickets
+    FOR SELECT TO authenticated
+    USING (
+        auth.uid() = patient_id
+        OR auth.uid() = claimed_by
+        OR public.is_admin()
+    );
+
 ALTER TABLE public.peer_messages ENABLE ROW LEVEL SECURITY;
 
 -- Policy SELECT: Hanya peserta tiket terkait (patient_id atau claimed_by) atau admin
