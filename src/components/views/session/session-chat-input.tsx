@@ -4,6 +4,7 @@ import React, { useRef } from "react";
 import { Send, Image as ImageIcon, Mic, Square, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { notify } from "@/lib/toast";
 
 interface SessionChatInputProps {
   isReadOnly: boolean;
@@ -18,6 +19,9 @@ interface SessionChatInputProps {
   onStartRecording: () => void;
   onCancelRecording: () => void;
   onStopAndSendVoiceNote: () => void;
+  maxVoiceSeconds?: number;
+  maxMediaMb?: number;
+  placeholder?: string;
 }
 
 export function SessionChatInput({
@@ -33,6 +37,9 @@ export function SessionChatInput({
   onStartRecording,
   onCancelRecording,
   onStopAndSendVoiceNote,
+  maxVoiceSeconds = 180,
+  maxMediaMb = 10,
+  placeholder = "Ketik pesan konsultasi Anda di sini... (Enter untuk kirim)",
 }: SessionChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +47,18 @@ export function SessionChatInput({
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m}:${String(s).padStart(2, "0")}`;
+  };
+
+  const maxMinutes = Math.max(1, Math.round((maxVoiceSeconds || 180) / 60));
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.size > maxMediaMb * 1024 * 1024) {
+      notify.error("Ukuran Berkas Terlalu Besar", `Ukuran maksimal gambar adalah ${maxMediaMb} MB.`);
+      e.target.value = "";
+      return;
+    }
+    onSelectImage(e);
   };
 
   return (
@@ -62,7 +81,7 @@ export function SessionChatInput({
               Merekam: {formatRecordTime(recordSeconds)}
             </span>
             <span className="text-[11px] text-rose-600 dark:text-rose-400 font-normal hidden sm:inline">
-              (Maks. 2 menit)
+              (Maks. {maxMinutes} menit)
             </span>
           </div>
 
@@ -96,7 +115,7 @@ export function SessionChatInput({
             type="file"
             ref={fileInputRef}
             accept="image/jpeg,image/png,image/webp"
-            onChange={onSelectImage}
+            onChange={handleFileChange}
             className="hidden"
           />
 
@@ -107,7 +126,7 @@ export function SessionChatInput({
             disabled={uploadingImage || isSending}
             onClick={() => fileInputRef.current?.click()}
             className="w-9 h-9 p-0 rounded-xl text-slate-500 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
-            title="Kirim Foto (JPG/PNG/WebP)"
+            title={`Kirim Foto (JPG/PNG/WebP, Maks. ${maxMediaMb} MB)`}
           >
             {uploadingImage ? (
               <Loader2 size={18} className="animate-spin text-teal-600" />
@@ -130,7 +149,7 @@ export function SessionChatInput({
 
           <Input
             type="text"
-            placeholder="Ketik pesan konsultasi Anda di sini... (Enter untuk kirim)"
+            placeholder={placeholder}
             value={inputMessage}
             disabled={isSending}
             onChange={(e) => setInputMessage(e.target.value)}

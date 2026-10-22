@@ -5,17 +5,19 @@ import { Play, Pause, Volume2, AlertCircle, Loader2 } from "lucide-react";
 import { bookingClient } from "@/services/booking.client";
 
 interface SessionAudioPlayerProps {
-  bookingId: string;
+  bookingId?: string;
   mediaPath: string;
   durationSeconds?: number | null;
   isMine?: boolean;
+  getViewUrl?: (path: string) => Promise<{ success: boolean; data: { signed_url: string } }>;
 }
 
 export function SessionAudioPlayer({
-  bookingId,
+  bookingId = "",
   mediaPath,
   durationSeconds,
   isMine = false,
+  getViewUrl,
 }: SessionAudioPlayerProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState<boolean>(false);
@@ -34,7 +36,12 @@ export function SessionAudioPlayer({
       try {
         setLoadingUrl(true);
         setUrlError(null);
-        const res = await bookingClient.getSessionMediaDownloadUrl(bookingId, mediaPath);
+        let res: { success?: boolean; data?: { signed_url: string } } | null = null;
+        if (getViewUrl) {
+          res = await getViewUrl(mediaPath);
+        } else if (bookingId) {
+          res = await bookingClient.getSessionMediaDownloadUrl(bookingId, mediaPath);
+        }
         if (!isCancelled && res?.data?.signed_url) {
           setSignedUrl(res.data.signed_url);
         }
@@ -54,7 +61,7 @@ export function SessionAudioPlayer({
     return () => {
       isCancelled = true;
     };
-  }, [bookingId, mediaPath]);
+  }, [bookingId, mediaPath, getViewUrl]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;

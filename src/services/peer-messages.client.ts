@@ -91,4 +91,23 @@ export const peerMessagesClient = {
     );
     return handleResponse<{ success: boolean; data: PeerMediaUrlResponse }>(res);
   },
+
+  /**
+   * Mengunggah file biner langsung ke signed upload URL (storage Supabase)
+   */
+  async uploadMediaBinary(
+    uploadUrl: string,
+    file: Blob | File
+  ): Promise<void> {
+    const res = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream',
+      },
+      body: file,
+    });
+    if (!res.ok) {
+      throw new Error(`Gagal mengunggah berkas ke penyimpanan (${res.status})`);
+    }
+  },
 };

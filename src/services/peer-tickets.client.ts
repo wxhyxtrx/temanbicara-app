@@ -3,6 +3,7 @@ import type {
   RelawanPeerTicketDTO,
   RelawanQuotaInfo,
   CreatePeerTicketPayload,
+  PeerTicketDetailView,
 } from '@/types/peer-tickets';
 
 export class PeerTicketApiError extends Error {
@@ -29,6 +30,19 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 export const peerTicketClient = {
+  /**
+   * Mengambil detail satu tiket curhat sebaya berdasarkan ID
+   */
+  async getTicket(
+    ticketId: string
+  ): Promise<{ success: boolean; data: PeerTicketDetailView }> {
+    const res = await fetch(`/api/peer-tickets/${encodeURIComponent(ticketId)}`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; data: PeerTicketDetailView }>(res);
+  },
+
   /**
    * Membuat tiket curhat baru (pasien)
    */
