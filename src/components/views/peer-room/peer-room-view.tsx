@@ -3,19 +3,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  AlertCircle,
-  ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Headphones,
-  Heart,
-  Loader2,
-  Radio,
-  Shield,
-  ShieldAlert,
+  AlertCircle, ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, Clock,
+  Headphones, Heart, Loader2, Radio, Shield, ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { supabasePublic } from "@/lib/supabase/client";
 import { notify } from "@/lib/toast";
 import { formatWibTime } from "@/lib/booking-utils";
@@ -27,6 +21,8 @@ import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { SessionChatInput } from "@/components/views/session/session-chat-input";
 import { SessionAudioPlayer } from "@/components/views/session/session-audio-player";
 import { SessionImagePreview } from "@/components/views/session/session-image-preview";
+import { SessionReviewCard } from "@/components/views/session/session-review-card";
+import { SessionTipCard } from "@/components/views/session/session-tip-card";
 import type { PeerTicketDetailView } from "@/types/peer-tickets";
 import type { PeerMessageView, PeerMessageEntity } from "@/types/peer-messages";
 
@@ -53,20 +49,8 @@ function getActiveSessionTimer(startTime: string | null, now: number) {
   return { text: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`, isExpired: diffSec <= 0 };
 }
 
-function PeerRoomStateScreen({
-  icon: Icon,
-  iconColor,
-  iconBg,
-  title,
-  desc,
-  action,
-}: {
-  icon: React.ElementType;
-  iconColor: string;
-  iconBg: string;
-  title: string;
-  desc: string;
-  action: React.ReactNode;
+function PeerRoomStateScreen({ icon: Icon, iconColor, iconBg, title, desc, action }: {
+  icon: React.ElementType; iconColor: string; iconBg: string; title: string; desc: string; action: React.ReactNode;
 }) {
   return (
     <div className="min-h-[480px] h-[calc(100dvh-5.5rem)] flex flex-col items-center justify-center p-6 text-center space-y-4 font-nunito max-w-md mx-auto">
@@ -111,7 +95,11 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
   const [isTopicExpanded, setIsTopicExpanded] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
+  const [endSessionDialogOpen, setEndSessionDialogOpen] = useState(false);
+  const [isEndingSession, setIsEndingSession] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const ticketRef = useRef(ticket);
   ticketRef.current = ticket;
   const messagesRef = useRef(messages);
@@ -210,8 +198,12 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
   }, [fetchTicket, fetchMessages]);
 
   useEffect(() => {
-    if (!loadingMessages) scrollToBottom(false);
-  }, [loadingMessages, scrollToBottom]);
+    if (!loadingMessages) {
+      if (!(ticket?.status === "closed" && role === "pasien")) {
+        scrollToBottom(false);
+      }
+    }
+  }, [loadingMessages, scrollToBottom, ticket?.status, role]);
 
   const isTerminalStatus = ticket?.status === "closed" || ticket?.status === "archived";
   const greetingTimer = getGreetingTimer(ticket?.claimed_at ?? null, now);
@@ -305,6 +297,30 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
     const interval = setInterval(fetchTicket, 15000);
     return () => clearInterval(interval);
   }, [isTerminalStatus, ticketId, errorCode, fetchTicket]);
+
+  const handleEndSession = async () => {
+    if (isEndingSession || !ticketId) return;
+    try {
+      setIsEndingSession(true);
+      const res = await peerTicketClient.closeTicket(ticketId);
+      if (res.success && res.data) {
+        setTicket((prev) => (prev ? { ...prev, ...res.data } : prev));
+        notify.success("Sesi Berhasil Diakhiri", "Sesi curhat telah ditutup dan ruang obrolan dikunci.");
+        setEndSessionDialogOpen(false);
+        fetchTicket();
+        if (role === "pasien") {
+          messagesContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }
+    } catch (err: unknown) {
+      notify.error(
+        "Gagal Mengakhiri Sesi",
+        err instanceof Error ? err.message : "Terjadi kesalahan saat menutup sesi curhat."
+      );
+    } finally {
+      setIsEndingSession(false);
+    }
+  };
 
   const handleSendText = async () => {
     const text = inputMessage.trim();
@@ -407,18 +423,9 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
   if (errorCode === 403) {
     return (
       <PeerRoomStateScreen
-        icon={ShieldAlert}
-        iconColor="text-amber-600"
-        iconBg="bg-amber-50 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800"
-        title="Akses Ruang Dengar Ditolak"
-        desc="Kamu bukan peserta dari tiket curhat ini atau tidak memiliki izin untuk mengakses ruang percakapan ini."
-        action={
-          <Link href={homeHref}>
-            <Button variant="default" size="sm" className="text-xs rounded-xl bg-teal-600 hover:bg-teal-700 text-white cursor-pointer px-4">
-              Kembali ke Beranda
-            </Button>
-          </Link>
-        }
+        icon={ShieldAlert} iconColor="text-amber-600" iconBg="bg-amber-50 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800"
+        title="Akses Ruang Dengar Ditolak" desc="Kamu bukan peserta dari tiket curhat ini atau tidak memiliki izin untuk mengakses ruang percakapan ini."
+        action={<Link href={homeHref}><Button variant="default" size="sm" className="text-xs rounded-xl bg-teal-600 hover:bg-teal-700 text-white cursor-pointer px-4">Kembali ke Beranda</Button></Link>}
       />
     );
   }
@@ -426,21 +433,12 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
   if (errorCode === 503) {
     return (
       <PeerRoomStateScreen
-        icon={AlertCircle}
-        iconColor="text-sky-600"
-        iconBg="bg-sky-50 dark:bg-sky-950/80 border-sky-200 dark:border-sky-800"
-        title="Pemeliharaan Sistem"
-        desc="Layanan Ruang Dengar sedang dalam pemeliharaan berkala untuk meningkatkan kenyamanan Anda. Silakan coba kembali beberapa saat lagi."
+        icon={AlertCircle} iconColor="text-sky-600" iconBg="bg-sky-50 dark:bg-sky-950/80 border-sky-200 dark:border-sky-800"
+        title="Pemeliharaan Sistem" desc="Layanan Ruang Dengar sedang dalam pemeliharaan berkala untuk meningkatkan kenyamanan Anda. Silakan coba kembali beberapa saat lagi."
         action={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setErrorCode(null); fetchTicket(); fetchMessages(); }} className="text-xs rounded-xl cursor-pointer">
-              Coba Lagi
-            </Button>
-            <Link href={homeHref}>
-              <Button variant="default" size="sm" className="text-xs rounded-xl bg-teal-600 hover:bg-teal-700 text-white cursor-pointer">
-                Kembali ke Beranda
-              </Button>
-            </Link>
+            <Button variant="outline" size="sm" onClick={() => { setErrorCode(null); fetchTicket(); fetchMessages(); }} className="text-xs rounded-xl cursor-pointer">Coba Lagi</Button>
+            <Link href={homeHref}><Button variant="default" size="sm" className="text-xs rounded-xl bg-teal-600 hover:bg-teal-700 text-white cursor-pointer">Kembali ke Beranda</Button></Link>
           </div>
         }
       />
@@ -459,18 +457,9 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
   if (loadError || !ticket) {
     return (
       <PeerRoomStateScreen
-        icon={AlertCircle}
-        iconColor="text-rose-600"
-        iconBg="bg-rose-50 dark:bg-rose-950/80 border-rose-200 dark:border-rose-800"
-        title="Ruang Dengar Tidak Ditemukan"
-        desc={loadError || "Data tiket curhat tidak dapat dimuat atau sudah tidak aktif."}
-        action={
-          <Link href={homeHref}>
-            <Button variant="outline" size="sm" className="text-xs rounded-xl cursor-pointer">
-              Kembali ke Beranda
-            </Button>
-          </Link>
-        }
+        icon={AlertCircle} iconColor="text-rose-600" iconBg="bg-rose-50 dark:bg-rose-950/80 border-rose-200 dark:border-rose-800"
+        title="Ruang Dengar Tidak Ditemukan" desc={loadError || "Data tiket curhat tidak dapat dimuat atau sudah tidak aktif."}
+        action={<Link href={homeHref}><Button variant="outline" size="sm" className="text-xs rounded-xl cursor-pointer">Kembali ke Beranda</Button></Link>}
       />
     );
   }
@@ -516,6 +505,19 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
               <span>Sesi: {activeTimer.text}</span>
             </div>
           )}
+          {ticket.status === "active" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setEndSessionDialogOpen(true)}
+              className="h-8 px-2 sm:px-2.5 text-xs rounded-xl font-semibold border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/60 cursor-pointer shrink-0"
+              title="Akhiri Sesi Curhat"
+            >
+              <CheckCircle2 size={13} className="text-rose-600 dark:text-rose-400 sm:mr-1 shrink-0" />
+              <span>Akhiri Sesi</span>
+            </Button>
+          )}
           {isTerminalStatus && (
             <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
               <span>Selesai</span>
@@ -544,6 +546,16 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
       )}
 
       {/* Banner Status Dinamis */}
+      {ticket.status === "closed" && (
+        <div className="shrink-0 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 px-3 sm:px-4 py-2 text-xs text-slate-800 dark:text-slate-200 flex items-center gap-2 min-w-0">
+          <CheckCircle2 size={14} className="text-teal-600 dark:text-teal-400 shrink-0" />
+          <span className="font-medium truncate">
+            {ticket.closed_by
+              ? `Sesi curhat telah selesai ditutup oleh ${ticket.closed_by === "system" ? "sistem" : ticket.closed_by}.`
+              : "Sesi curhat telah selesai ditutup."}
+          </span>
+        </div>
+      )}
       {ticket.status === "claimed" && role === "relawan" && !isGreetingExpired && (
         <div className="shrink-0 bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800 px-3 sm:px-4 py-2 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2 min-w-0">
           <span className="truncate">Kirim sapaan pertama untuk mengaktifkan sesi 24 jam (Sisa waktu: {greetingTimer.text})</span>
@@ -561,13 +573,20 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
       )}
 
       {/* Area Daftar Pesan */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-w-0 bg-white dark:bg-slate-900">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-w-0 bg-white dark:bg-slate-900">
         <div className="flex items-center justify-center my-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-[10px] text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700/80">
             <Shield size={11} className="text-teal-600 dark:text-teal-400" />
             <span>Privat & Aman — hanya bisa diakses oleh peserta tiket</span>
           </div>
         </div>
+
+        {ticket.status === "closed" && role === "pasien" && (
+          <div className="max-w-xl mx-auto w-full my-2 space-y-3 min-w-0">
+            <SessionReviewCard ticketId={ticketId} source="ticket" endedAt={ticket.closed_at} />
+            <SessionTipCard ticketId={ticketId} source="ticket" />
+          </div>
+        )}
 
         {loadingMessages ? (
           <div className="flex items-center justify-center py-10 text-xs text-slate-400 gap-2">
@@ -579,9 +598,13 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
             <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto">
               {role === "relawan" ? <Heart size={22} /> : <Headphones size={22} />}
             </div>
-            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">Ruang Dengar Siap</h2>
+            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+              {isTerminalStatus ? "Sesi Selesai" : "Ruang Dengar Siap"}
+            </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-nunito">
-              {role === "relawan"
+              {isTerminalStatus
+                ? "Tidak ada riwayat pesan dalam sesi ini."
+                : role === "relawan"
                 ? `Sambut ${ticket.patient_alias} dengan ramah untuk memulai sesi pendampingan.`
                 : "Menunggu sapaan pertama dari pendengar sebaya. Kamu bisa mencurahkan isi hatimu dengan nyaman di sini."}
             </p>
@@ -624,27 +647,39 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
         </div>
       ) : (
         <SessionChatInput
-          isReadOnly={isReadOnly}
-          inputMessage={inputMessage}
-          setInputMessage={setInputMessage}
-          isSending={isSending}
-          uploadingImage={uploadingImage}
-          isRecording={isRecording}
-          recordSeconds={recordSeconds}
-          onSendText={handleSendText}
-          onSelectImage={handleSelectImage}
-          onStartRecording={startRecording}
-          onCancelRecording={cancelRecording}
-          onStopAndSendVoiceNote={stopRecording}
-          maxVoiceSeconds={voiceMaxSeconds}
-          maxMediaMb={chatMediaMaxMb}
-          placeholder={
-            ticket.status === "claimed" && role === "relawan"
-              ? "Kirim sapaan pertama untuk memulai sesi... (Enter untuk kirim)"
-              : "Ketik pesan curhat Anda di sini... (Enter untuk kirim)"
-          }
+          isReadOnly={isReadOnly} inputMessage={inputMessage} setInputMessage={setInputMessage}
+          isSending={isSending} uploadingImage={uploadingImage} isRecording={isRecording} recordSeconds={recordSeconds}
+          onSendText={handleSendText} onSelectImage={handleSelectImage} onStartRecording={startRecording}
+          onCancelRecording={cancelRecording} onStopAndSendVoiceNote={stopRecording}
+          maxVoiceSeconds={voiceMaxSeconds} maxMediaMb={chatMediaMaxMb}
+          placeholder={ticket.status === "claimed" && role === "relawan" ? "Kirim sapaan pertama untuk memulai sesi... (Enter untuk kirim)" : "Ketik pesan curhat Anda di sini... (Enter untuk kirim)"}
         />
       )}
+
+      {/* Dialog Konfirmasi Penutupan Sesi */}
+      <Dialog open={endSessionDialogOpen} onOpenChange={setEndSessionDialogOpen}>
+        <DialogContent className="max-w-md font-nunito p-5">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2">
+              <CheckCircle2 className="text-rose-600 dark:text-rose-400" size={18} />
+              <span>Akhiri Sesi Curhat</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed pt-2">
+              Apakah kamu yakin ingin mengakhiri sesi curhat ini? Setelah diakhiri, ruang obrolan akan dikunci dan beralih ke mode hanya-baca.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-3">
+            <Button type="button" variant="outline" size="sm" disabled={isEndingSession} onClick={() => setEndSessionDialogOpen(false)} className="text-xs rounded-xl cursor-pointer">
+              Lanjutkan Sesi
+            </Button>
+            <Button type="button" size="sm" disabled={isEndingSession} onClick={handleEndSession} className="text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold shadow-xs cursor-pointer">
+              {isEndingSession ? <Loader2 size={13} className="animate-spin mr-1.5" /> : null}
+              <span>{isEndingSession ? "Menutup..." : "Ya, Akhiri Sesi"}</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
