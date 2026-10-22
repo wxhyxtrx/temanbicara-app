@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,7 +12,6 @@ import {
   AlertCircle,
   RefreshCw,
   Clock,
-  Sparkles,
 } from "lucide-react";
 import type { PeerTicketEntity } from "@/types/peer-tickets";
 import { formatWibTime } from "@/lib/booking-utils";
@@ -198,6 +198,18 @@ export function PatientPeerTicketCard({
         <p className="text-[11px] text-sky-700 dark:text-sky-300 font-medium pt-1">
           Pendengar sebaya telah menerima ceritamu dan sedang bersiap memulai sesi pendampingan empati.
         </p>
+
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-end gap-3 border-t border-sky-100 dark:border-sky-900/50 min-w-0">
+          <Button
+            asChild
+            className="bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl px-4 py-2 text-xs gap-1.5 shrink-0 self-start sm:self-center cursor-pointer shadow-xs"
+          >
+            <Link href={`/patient/peer-room/${ticket.id}`}>
+              <MessageCircle size={14} />
+              <span>Masuk Ruang Chat</span>
+            </Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -232,23 +244,15 @@ export function PatientPeerTicketCard({
           </p>
         </div>
 
-        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-emerald-100 dark:border-emerald-900/50 min-w-0">
-          <Badge
-            variant="outline"
-            className="text-[10px] font-medium border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/40 py-1 px-2.5 self-start sm:self-center"
-          >
-            <Sparkles size={11} className="mr-1 inline text-emerald-600 dark:text-emerald-400" />
-            Ruang Dengar Segera Hadir di PRD-012
-          </Badge>
-
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-end gap-3 border-t border-emerald-100 dark:border-emerald-900/50 min-w-0">
           <Button
-            type="button"
-            disabled
-            className="bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed font-semibold rounded-xl px-4 py-2 text-xs gap-1.5 shrink-0 self-start sm:self-center"
-            title="Fitur ruang dengar interaktif sedang dalam tahap penyelesaian (PRD-012)"
+            asChild
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl px-4 py-2 text-xs gap-1.5 shrink-0 self-start sm:self-center cursor-pointer shadow-xs"
           >
-            <MessageCircle size={14} />
-            <span>Masuk Ruang Chat</span>
+            <Link href={`/patient/peer-room/${ticket.id}`}>
+              <MessageCircle size={14} />
+              <span>Masuk Ruang Chat</span>
+            </Link>
           </Button>
         </div>
       </div>

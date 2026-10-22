@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,6 @@ import {
   Headphones,
   MessageCircle,
   Clock,
-  Sparkles,
   Heart,
   Tag,
   Info,
@@ -149,22 +149,15 @@ export function ListenerActiveTicketCard({
             </span>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 shrink-0">
-            <Button
-              type="button"
-              disabled
-              className="bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-semibold rounded-xl text-xs h-9 px-4 cursor-not-allowed opacity-80 gap-2 shrink-0"
-            >
+          <Button
+            asChild
+            className="bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-xs h-9 px-4 cursor-pointer gap-2 shrink-0 self-start sm:self-center shadow-xs"
+          >
+            <Link href={`/listener/peer-room/${ticket.id}`}>
               <MessageCircle size={15} />
               <span>Masuk Ruang Dengar</span>
-            </Button>
-            <Badge
-              variant="outline"
-              className="border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[11px] font-medium shrink-0"
-            >
-              Ruang Dengar Segera Hadir di PRD-012
-            </Badge>
-          </div>
+            </Link>
+          </Button>
         </div>
       </CardContent>
     </Card>
