@@ -45,3 +45,25 @@ export interface CreatePeerTicketPayload {
   content: string;
   is_anonymous?: boolean;
 }
+
+export interface PeerTicketDetailView {
+  id: string;
+  patient_id?: string; // Hanya untuk pasien dan admin
+  patient_alias: string;
+  topic: string;
+  emotion: string;
+  content: string;
+  is_anonymous: boolean;
+  status: PeerTicketStatus;
+  claimed_by: string | null;
+  claimed_at: string | null;
+  first_response_at: string | null;
+  closed_at: string | null;
+  archived_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  relawan_alias: string | null;
+}
+
+export type RelawanPeerTicketDetailView = Omit<PeerTicketDetailView, 'patient_id'>;
+
