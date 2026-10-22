@@ -7,9 +7,7 @@ import {
   Headphones, Heart, Loader2, Radio, Shield, ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabasePublic } from "@/lib/supabase/client";
 import { notify } from "@/lib/toast";
 import { formatWibTime } from "@/lib/booking-utils";
@@ -114,9 +112,7 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
     return url;
   }, []);
   const revokeTrackedObjectURL = useCallback((url: string) => {
-    try {
-      URL.revokeObjectURL(url);
-    } catch {}
+    try { URL.revokeObjectURL(url); } catch {}
     pendingUrlsRef.current.delete(url);
   }, []);
 
@@ -146,13 +142,9 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
       if (res.success && res.data) setTicket(res.data);
     } catch (err: unknown) {
       const status = (err as { status?: number })?.status;
-      if (status === 403 || (err instanceof PeerTicketApiError && err.status === 403)) {
-        setErrorCode(403);
-      } else if (status === 503 || (err instanceof PeerTicketApiError && err.status === 503)) {
-        setErrorCode(503);
-      } else if (!ticketRef.current) {
-        setLoadError(err instanceof Error ? err.message : "Gagal memuat detail tiket curhat");
-      }
+      if (status === 403 || (err instanceof PeerTicketApiError && err.status === 403)) setErrorCode(403);
+      else if (status === 503 || (err instanceof PeerTicketApiError && err.status === 503)) setErrorCode(503);
+      else if (!ticketRef.current) setLoadError(err instanceof Error ? err.message : "Gagal memuat detail tiket curhat");
     } finally {
       setLoadingTicket(false);
     }
@@ -181,11 +173,8 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
       }
     } catch (err: unknown) {
       const status = (err as { status?: number })?.status;
-      if (status === 403 || (err instanceof PeerMessageApiError && err.status === 403)) {
-        setErrorCode(403);
-      } else if (status === 503 || (err instanceof PeerMessageApiError && err.status === 503)) {
-        setErrorCode(503);
-      }
+      if (status === 403 || (err instanceof PeerMessageApiError && err.status === 403)) setErrorCode(403);
+      else if (status === 503 || (err instanceof PeerMessageApiError && err.status === 503)) setErrorCode(503);
     } finally {
       setLoadingMessages(false);
       initialMessagesLoadedRef.current = true;
@@ -612,19 +601,38 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
         ) : (
           messages.map((msg) => {
             const isMine = msg.is_mine;
+            const isMediaPurged =
+              (msg.kind === "text" && msg.body === "[media dihapus]") ||
+              ((msg.kind === "image" || msg.kind === "voice") && !msg.media_path) ||
+              msg.body === "[media dihapus]";
+
             return (
               <div key={msg.id} className={`flex flex-col min-w-0 ${isMine ? "items-end" : "items-start"}`}>
                 <div className="flex items-baseline gap-1.5 mb-1 px-1">
                   <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">{isMine ? "Anda" : msg.sender_name}</span>
                   <span className="text-[10px] text-slate-400 font-mono">{formatWibTime(msg.created_at)}</span>
                 </div>
-                <div className={`rounded-2xl px-3.5 py-2 text-xs leading-relaxed max-w-[88%] sm:max-w-[75%] break-words shadow-2xs min-w-0 ${isMine ? "bg-teal-600 text-white rounded-br-xs" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-xs border border-slate-200/80 dark:border-slate-700/80"}`}>
-                  {msg.kind === "text" && <p className="whitespace-pre-wrap break-words">{msg.body}</p>}
-                  {msg.kind === "image" && msg.media_path && (
-                    <SessionImagePreview mediaPath={msg.media_path} caption={msg.body} isMine={isMine} getViewUrl={handleGetMediaViewUrl} />
-                  )}
-                  {msg.kind === "voice" && msg.media_path && (
-                    <SessionAudioPlayer mediaPath={msg.media_path} durationSeconds={msg.duration_seconds} isMine={isMine} getViewUrl={handleGetMediaViewUrl} />
+                <div
+                  className={`rounded-2xl px-3.5 py-2 text-xs leading-relaxed max-w-[88%] sm:max-w-[75%] break-words shadow-2xs min-w-0 ${
+                    isMediaPurged
+                      ? `bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200/80 dark:border-slate-700/80 ${isMine ? "rounded-br-xs" : "rounded-bl-xs"}`
+                      : isMine
+                      ? "bg-teal-600 text-white rounded-br-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-xs border border-slate-200/80 dark:border-slate-700/80"
+                  }`}
+                >
+                  {isMediaPurged ? (
+                    <p className="italic text-slate-400 dark:text-slate-500 font-normal">Media sudah dihapus</p>
+                  ) : (
+                    <>
+                      {msg.kind === "text" && <p className="whitespace-pre-wrap break-words">{msg.body}</p>}
+                      {msg.kind === "image" && msg.media_path && (
+                        <SessionImagePreview mediaPath={msg.media_path} caption={msg.body} isMine={isMine} getViewUrl={handleGetMediaViewUrl} />
+                      )}
+                      {msg.kind === "voice" && msg.media_path && (
+                        <SessionAudioPlayer mediaPath={msg.media_path} durationSeconds={msg.duration_seconds} isMine={isMine} getViewUrl={handleGetMediaViewUrl} />
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -670,9 +678,7 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
           </DialogHeader>
 
           <DialogFooter className="gap-2 sm:gap-0 pt-3">
-            <Button type="button" variant="outline" size="sm" disabled={isEndingSession} onClick={() => setEndSessionDialogOpen(false)} className="text-xs rounded-xl cursor-pointer">
-              Lanjutkan Sesi
-            </Button>
+            <Button type="button" variant="outline" size="sm" disabled={isEndingSession} onClick={() => setEndSessionDialogOpen(false)} className="text-xs rounded-xl cursor-pointer">Lanjutkan Sesi</Button>
             <Button type="button" size="sm" disabled={isEndingSession} onClick={handleEndSession} className="text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold shadow-xs cursor-pointer">
               {isEndingSession ? <Loader2 size={13} className="animate-spin mr-1.5" /> : null}
               <span>{isEndingSession ? "Menutup..." : "Ya, Akhiri Sesi"}</span>
