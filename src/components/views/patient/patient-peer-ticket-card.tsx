@@ -12,6 +12,8 @@ import {
   AlertCircle,
   RefreshCw,
   Clock,
+  PhoneCall,
+  Calendar,
 } from "lucide-react";
 import type { PeerTicketEntity } from "@/types/peer-tickets";
 import { formatWibTime } from "@/lib/booking-utils";
@@ -22,6 +24,7 @@ interface PatientPeerTicketCardProps {
   error: string | null;
   onOpenForm: () => void;
   onRetry: () => void;
+  onDismissArchived?: () => void;
 }
 
 const emotionStyles: Record<string, string> = {
@@ -38,6 +41,7 @@ export function PatientPeerTicketCard({
   error,
   onOpenForm,
   onRetry,
+  onDismissArchived,
 }: PatientPeerTicketCardProps) {
   // 1. Loading Skeleton State
   if (loading) {
@@ -253,6 +257,81 @@ export function PatientPeerTicketCard({
               <MessageCircle size={14} />
               <span>Masuk Ruang Chat</span>
             </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 5. Archived Ticket State (Kedaluwarsa tanpa klaim) -> Kartu Empati & Rujukan Krisis
+  if (ticket.status === "archived") {
+    return (
+      <div className="relative overflow-hidden rounded-2xl border border-amber-200/90 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/70 via-white to-rose-50/40 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900 p-5 sm:p-6 shadow-xs space-y-4 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
+            <Badge className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800 text-[10px] font-semibold">
+              Status: Tiket Kedaluwarsa Tanpa Klaim
+            </Badge>
+            {ticket.emotion && (
+              <Badge variant="outline" className={`text-[10px] font-semibold ${emotionBadgeClass}`}>
+                {ticket.emotion}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
+            <Clock size={12} className="shrink-0" />
+            <span>{formatWibTime(ticket.archived_at || ticket.created_at)}</span>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 min-w-0">
+          <h4 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white font-heading">
+            Belum Ada Pendengar Sebaya yang Siaga Saat Ini
+          </h4>
+          <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
+            Bebanmu valid dan kamu tidak sendirian. Semua relawan kami sedang mendampingi sesi lain saat tiketmu dibuat sehingga antrean terlewati. Kamu dapat membuat curhat baru, menjadwalkan konsultasi dengan psikolog profesional, atau menghubungi hotline krisis bebas pulsa kapan pun kamu butuh pertolongan segera.
+          </p>
+        </div>
+
+        <div className="pt-2 flex flex-wrap items-center gap-2.5 border-t border-amber-100 dark:border-amber-900/50 min-w-0">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded-xl text-xs h-8 px-3 gap-1.5 shrink-0"
+          >
+            <a href="tel:119">
+              <PhoneCall size={13} className="text-rose-600 dark:text-rose-400" />
+              <span>Hotline SEJIWA 119 ext. 8</span>
+            </a>
+          </Button>
+
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="border-teal-300 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/30 text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900/50 rounded-xl text-xs h-8 px-3 gap-1.5 shrink-0"
+          >
+            <Link href="/patient/schedule?booking=true">
+              <Calendar size={13} className="text-teal-600 dark:text-teal-400" />
+              <span>Reservasi Psikolog</span>
+            </Link>
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              if (onDismissArchived) {
+                onDismissArchived();
+              }
+              onOpenForm();
+            }}
+            className="bg-pink-600 hover:bg-pink-700 text-white font-semibold rounded-xl text-xs h-8 px-3.5 gap-1.5 shadow-xs cursor-pointer shrink-0"
+          >
+            <HeartHandshake size={14} />
+            <span>Tutup / Buat Curhat Baru</span>
           </Button>
         </div>
       </div>

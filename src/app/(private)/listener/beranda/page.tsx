@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ import { peerTicketClient } from "@/services/peer-tickets.client";
 import { usePublicSettings } from "@/hooks/use-public-settings";
 import { notify } from "@/lib/toast";
 import type { RelawanProfile } from "@/types/user-profile";
-import type { RelawanPeerTicketDTO, RelawanQuotaInfo } from "@/types/peer-tickets";
+import type { RelawanPeerTicketDTO, RelawanQuotaInfo, PeerRatingSummaryDTO } from "@/types/peer-tickets";
 import { ListenerQueueSummaryCard } from "@/components/views/listener/listener-queue-summary-card";
 
 export default function ListenerBerandaPage() {
@@ -36,6 +36,10 @@ export default function ListenerBerandaPage() {
   const [poolTickets, setPoolTickets] = useState<RelawanPeerTicketDTO[]>([]);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [queueError, setQueueError] = useState<string | null>(null);
+
+  // Rating & Review Summary State (PRD-016)
+  const [ratingSummary, setRatingSummary] = useState<PeerRatingSummaryDTO | null>(null);
+  const [loadingRating, setLoadingRating] = useState(true);
 
   const loadQueueSummary = useCallback(async () => {
     try {
@@ -89,18 +93,33 @@ export default function ListenerBerandaPage() {
 
     async function loadData() {
       try {
-        const res = await userService.getMe();
+        const [res, ratingRes] = await Promise.all([
+          userService.getMe().catch((err) => {
+            console.error("Gagal memuat profil relawan:", err);
+            return null;
+          }),
+          peerTicketClient.getRatingSummary().catch((err) => {
+            console.error("Gagal memuat ringkasan rating relawan:", err);
+            return null;
+          }),
+        ]);
         if (!isMounted) return;
-        if (res.success && res.data) {
+        if (res && res.success && res.data) {
           setUserMe(res.data.user);
           if (res.data.profile) {
             setProfile(res.data.profile as RelawanProfile);
           }
         }
+        if (ratingRes && ratingRes.success && ratingRes.data) {
+          setRatingSummary(ratingRes.data);
+        }
       } catch (err) {
-        console.error("Gagal memuat profil relawan:", err);
+        console.error("Gagal memuat data relawan:", err);
       } finally {
-        if (isMounted) setLoadingProfile(false);
+        if (isMounted) {
+          setLoadingProfile(false);
+          setLoadingRating(false);
+        }
       }
     }
 
@@ -115,8 +134,21 @@ export default function ListenerBerandaPage() {
   const dailyQuota = quota?.daily_limit ?? settings?.relawan?.daily_ticket_quota ?? 3;
   const ticketsClaimed = quota?.tickets_claimed ?? 0;
   const isAvailable = Boolean(profile?.is_available);
-  const ratingValue = profile?.rating_rata_rata != null ? Number(profile.rating_rata_rata) : null;
-  const ratingDisplay = ratingValue != null && !isNaN(ratingValue) ? ratingValue.toFixed(1) : "-";
+
+  const ratingDisplay = useMemo(() => {
+    if (ratingSummary) {
+      return ratingSummary.rating_avg != null
+        ? Number(ratingSummary.rating_avg).toFixed(1)
+        : "-";
+    }
+    if (profile?.rating_rata_rata != null) {
+      const val = Number(profile.rating_rata_rata);
+      return !isNaN(val) ? val.toFixed(1) : "-";
+    }
+    return "-";
+  }, [ratingSummary, profile?.rating_rata_rata]);
+
+  const reviewCount = ratingSummary?.rating_count ?? 0;
   const totalSesi = profile?.total_sesi ?? user.listenerData?.sessionsCompleted ?? 0;
 
   const displayName =
@@ -201,7 +233,7 @@ export default function ListenerBerandaPage() {
             <div className="pt-2 border-t border-teal-800/80 flex items-center justify-between text-[11px] text-teal-300">
               <span>Batas Aman: {dailyQuota} Sesi/Hari</span>
               <span className="flex items-center gap-1 text-amber-300 font-bold">
-                <Star size={12} className="fill-amber-300" /> {ratingDisplay}
+                <Star size={12} className="fill-amber-300" /> {loadingRating ? "..." : ratingDisplay}
               </span>
             </div>
           </div>
@@ -211,7 +243,7 @@ export default function ListenerBerandaPage() {
       {/* 2. KPI Stat Cards (2 Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* Card 1: Jiwa Didampingi */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5 min-w-0">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Jiwa Didampingi</span>
             <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-400">
@@ -233,7 +265,7 @@ export default function ListenerBerandaPage() {
         </div>
 
         {/* Card 2: Skor Kehangatan (Rating) */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5 min-w-0">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Skor Kehangatan</span>
             <span className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400">
@@ -241,7 +273,7 @@ export default function ListenerBerandaPage() {
             </span>
           </div>
           <p className="text-xl sm:text-2xl font-bold font-heading text-amber-700 dark:text-amber-400">
-            {loadingProfile ? (
+            {loadingRating ? (
               <span className="text-base text-slate-400 font-normal">Memuat...</span>
             ) : ratingDisplay === "-" ? (
               <span className="text-slate-900 dark:text-white">-</span>
@@ -253,7 +285,9 @@ export default function ListenerBerandaPage() {
             )}
           </p>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
-            Evaluasi apresiasi anonim
+            {loadingRating
+              ? "Memuat ringkasan ulasan..."
+              : `Berdasarkan ${reviewCount} ulasan apresiasi anonim`}
           </span>
         </div>
       </div>

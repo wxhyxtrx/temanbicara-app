@@ -16,7 +16,12 @@ export default function PatientRoomPage() {
         const res = await peerTicketClient.getMyActiveTicket();
         if (!isMounted) return;
 
-        if (res?.success && res.data?.id) {
+        if (
+          res?.success &&
+          res.data?.id &&
+          res.data.status !== "archived" &&
+          res.data.status !== "closed"
+        ) {
           router.replace(`/patient/peer-room/${res.data.id}`);
         } else {
           router.replace("/patient/beranda");

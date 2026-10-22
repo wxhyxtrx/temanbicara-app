@@ -89,15 +89,22 @@ export default function PatientBerandaPage() {
   }, []);
 
   const handleOpenVentingModal = React.useCallback(() => {
-    if (activeTicket) {
+    if (activeTicket && activeTicket.status !== "archived") {
       notify.warning(
         "Tiket Curhat Aktif",
         "Kamu masih memiliki tiket curhat yang sedang aktif."
       );
       return;
     }
+    if (activeTicket?.status === "archived") {
+      setActiveTicket(null);
+    }
     setVentingModalOpen(true);
   }, [activeTicket]);
+
+  const handleDismissArchived = React.useCallback(() => {
+    setActiveTicket(null);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -227,7 +234,7 @@ export default function PatientBerandaPage() {
                   <span>Curhat AI Instan (24/7)</span>
                 </Button>
               </Link>
-              {!activeTicket && (
+              {(!activeTicket || activeTicket.status === "archived") && (
                 <Button
                   type="button"
                   onClick={handleOpenVentingModal}
@@ -301,6 +308,7 @@ export default function PatientBerandaPage() {
             error={activeTicketError}
             onOpenForm={handleOpenVentingModal}
             onRetry={loadActiveTicket}
+            onDismissArchived={handleDismissArchived}
           />
 
           {/* 3. Upcoming Counseling Sessions Card */}
