@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   AlertTriangle,
   Star,
+  HeartHandshake,
   LucideIcon,
 } from "lucide-react";
 import { UserRole } from "./mock-users";
@@ -48,11 +49,10 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         icon: Home,
       },
       {
-        title: "Teman Bicara",
-        description: "Curhat AI & psikolog klinis",
-        url: "/patient/room",
-        icon: MessageCircle,
-        badge: "15",
+        title: "Curhat Sebaya",
+        description: "Dukungan teman sebaya empatik",
+        url: "/patient/beranda",
+        icon: HeartHandshake,
       },
       {
         title: "Jadwal Bicara",

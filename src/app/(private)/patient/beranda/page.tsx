@@ -224,16 +224,10 @@ export default function PatientBerandaPage() {
             </h1>
 
             <p className="text-sm sm:text-base text-teal-100/80 leading-relaxed max-w-xl">
-              Setiap emosi yang kamu rasakan adalah valid. Ambil jeda, tarik napas perlahan, dan ketahuilah bahwa kamu tidak sendirian. Psikolog klinis dan AI empatik kami siap mendampingimu.
+              Setiap emosi yang kamu rasakan adalah valid. Ambil jeda, tarik napas perlahan, dan ketahuilah bahwa kamu tidak sendirian. Psikolog klinis dan pendengar sebaya kami siap mendampingimu.
             </p>
 
             <div className="flex flex-wrap xl:flex-nowrap items-center gap-2 xl:gap-2 2xl:gap-2.5 pt-2">
-              <Link href="/patient/room" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-3.5 xl:px-3 2xl:px-4 h-10 xl:h-10 text-xs sm:text-xs 2xl:text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-1.5 sm:gap-2 whitespace-nowrap">
-                  <MessageCircle size={15} />
-                  <span>Curhat AI Instan (24/7)</span>
-                </Button>
-              </Link>
               {(!activeTicket || activeTicket.status === "archived") && (
                 <Button
                   type="button"

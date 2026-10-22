@@ -12,6 +12,7 @@ import {
   Compass,
   Sparkles,
   Phone,
+  Calendar,
 } from "lucide-react";
 import { Logo } from "@/components/shared/atoms/Logo";
 
@@ -87,13 +88,13 @@ export default function NotFound() {
                 </Button>
               </Link>
 
-              <Link href="/patient/room" className="w-full sm:w-auto">
+              <Link href="/patient/schedule?booking=true" className="w-full sm:w-auto">
                 <Button
                   variant="outline"
                   className="w-full sm:w-auto border-slate-200 dark:border-slate-800 hover:border-teal-200 text-slate-700 dark:text-slate-200 hover:text-teal-800 dark:hover:text-white hover:bg-teal-50/50 dark:hover:bg-slate-900 bg-white dark:bg-slate-900/80 rounded-xl px-5 py-2.5 h-10 text-xs font-semibold shadow-2xs gap-2 cursor-pointer"
                 >
-                  <MessageCircle size={15} className="text-teal-600 dark:text-teal-400" />
-                  <span>Ruang Curhat AI</span>
+                  <Calendar size={15} className="text-teal-600 dark:text-teal-400" />
+                  <span>Reservasi Psikolog</span>
                 </Button>
               </Link>
             </div>
