@@ -1,15 +1,31 @@
 -- ========================================================
--- TEMAN BICARA: DRY-RUN TEST MIGRATION 000026 (DATABASE PERMISSIONS HARDENING)
+-- TEMAN BICARA: DRY-RUN TEST MIGRATION 000026 (DATABASE PERMISSIONS HARDENING & RLS HELPER)
 -- Path: supabase/tests/database_permissions_hardening_dryrun.sql
 -- Scope:
 -- 1. Setup role & fixture data: auth.users, public.users, relawan_profiles,
 --    system_settings, peer_tickets, bookings, peer_messages, session_messages, notifications
--- 2. DDL Salinan persis dari 20261022000026_database_permissions_hardening.sql
--- 3. Uji 1: Penolakan mutasi tulis/truncate tabel users/bookings/system_settings/relawan_profiles oleh authenticated (42501)
--- 4. Uji 2: Penolakan eksekusi langsung fungsi trigger security definer oleh authenticated (42501) & has_function_privilege
--- 5. Uji 3: Penolakan SELECT patient_id pada peer_tickets oleh authenticated (42501)
--- 6. Uji 4: Kelulusan SELECT kolom non-sensitif peer_tickets oleh authenticated
--- 7. Uji 5: Kelulusan SELECT peer_messages/session_messages/notifications oleh authenticated (Realtime aman)
+-- 2. DDL 8 Blok Salinan persis dari 20261022000026_database_permissions_hardening.sql:
+--    - Blok 1: Penguatan public.is_admin() (SECURITY DEFINER)
+--    - Blok 2: Helper public.is_peer_ticket_participant (SECURITY DEFINER)
+--    - Blok 3: Pembaruan policy peer_messages_select_participant via helper
+--    - Blok 4: Proteksi kolom patient_id & batasan 16 kolom non-sensitif peer_tickets
+--    - Blok 5: Pencabutan hak tulis/truncate seluruh tabel public dari anon/authenticated
+--    - Blok 6: Pencabutan eksekusi fungsi trigger security definer
+--    - Blok 7: ALTER DEFAULT PRIVILEGES (postgres & supabase_admin)
+--    - Blok 8: Jaring pengaman hak akses service_role
+-- 3. Uji 1: Penolakan mutasi tulis/truncate tabel public oleh authenticated (error 42501)
+-- 4. Uji 2: Penolakan eksekusi langsung fungsi trigger security definer oleh authenticated (42501) & has_function_privilege false
+-- 5. Uji 3: Penolakan SELECT patient_id & SELECT * pada peer_tickets oleh authenticated (42501) & has_column_privilege false
+-- 6. Uji 4: Kelulusan SELECT 16 kolom non-sensitif peer_tickets oleh authenticated & has_column_privilege true
+-- 7. Uji 5: Kasus Positif & Negatif RLS peer_messages (Inti Temuan QA PRD-020):
+--    - 5a: Kasus Positif Pasien Peserta membaca pesan (>= 1 baris, tanpa error 42501)
+--    - 5b: Kasus Positif Relawan Peserta membaca pesan (>= 1 baris, tanpa error 42501)
+--    - 5c: Kasus Negatif Non-Peserta membaca pesan (tepat 0 baris, tanpa error 42501)
+--    - 5d: Kasus Admin membaca pesan (>= 1 baris)
+--    - 5e: Pembacaan session_messages oleh peserta booking (>= 1 baris)
+--    - 5f: Pembacaan notifications oleh penerima (>= 1 baris)
+--    - 5g-5i: Hak SELECT tabel pada peer_messages, session_messages, notifications
+--    - 5j-5k: Hak eksekusi helper is_peer_ticket_participant & is_admin
 -- 8. Uji 6: Kelulusan operasi mutasi via service_role / superuser 100%
 -- SELURUH UJI BERJALAN DALAM SATU TRANSAKSI DAN OTOMATIS DI-ROLLBACK
 -- ========================================================
@@ -61,24 +77,7 @@ VALUES
     ('d8000000-0000-0000-0000-000000000005', 'd8_admin@temanbicara.test', '081277770005', 'admin'::public.user_role, 'active'::public.account_status)
 ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, status = EXCLUDED.status;
 
--- Helper is_admin() untuk verifikasi RLS
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM public.users
-        WHERE id = auth.uid() AND role = 'admin'::public.user_role
-    );
-$$;
-
-REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated, service_role;
-
--- Profil Relawan
+-- Profil Relawan Fixture
 INSERT INTO public.relawan_profiles (user_id, alias_name, topik_keahlian, is_available)
 VALUES (
     'd8000000-0000-0000-0000-000000000003',
@@ -88,14 +87,14 @@ VALUES (
 )
 ON CONFLICT (user_id) DO UPDATE SET alias_name = EXCLUDED.alias_name;
 
--- System Settings
+-- System Settings Fixture
 INSERT INTO public.system_settings (key, value)
 VALUES
     ('relawan', '{"daily_ticket_quota": 3, "claim_response_minutes": 10, "unclaimed_archive_hours": 24}'::jsonb),
     ('rating', '{"window_days": 7, "min_count_to_show": 3}'::jsonb)
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
--- Peer Ticket Aktif
+-- Peer Ticket Aktif Fixture
 INSERT INTO public.peer_tickets (
     id, patient_id, patient_alias, topic, emotion, content, is_anonymous,
     status, claimed_by, claimed_at, first_response_at
@@ -118,7 +117,7 @@ ON CONFLICT (id) DO UPDATE SET
     status = EXCLUDED.status,
     claimed_by = EXCLUDED.claimed_by;
 
--- Booking Sesi Aktif
+-- Booking Sesi Aktif Fixture
 INSERT INTO public.bookings (
     id, patient_id, psikolog_id, start_at, status, keluhan,
     price_coins, mitra_share_bps, extension_price_coins, refund_policy,
@@ -198,30 +197,54 @@ $$;
 GRANT EXECUTE ON FUNCTION public.trg_audit_system_setting() TO PUBLIC, anon, authenticated;
 
 -- ========================================================
--- 3. DDL MIGRATION: 20261022000026_database_permissions_hardening.sql
+-- 3. DDL MIGRATION: 20261022000026_database_permissions_hardening.sql (8 BLOK LENGKAP)
 -- ========================================================
 
--- 1. Pencabutan Menyeluruh Hak Tulis & Truncate
-REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+-- Blok 1: Pemeriksaan & Penguatan Fungsi public.is_admin()
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.users
+        WHERE id = auth.uid() AND role = 'admin'::public.user_role
+    );
+$$;
 
--- 2. Pencabutan Eksekusi Khusus Fungsi Trigger (Security Definer)
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    FOR r IN
-        SELECT p.oid::regprocedure AS func_name
-        FROM pg_proc p
-        JOIN pg_namespace n ON p.pronamespace = n.oid
-        WHERE n.nspname = 'public'
-          AND p.prorettype = 'trigger'::regtype
-          AND p.prosecdef = true
-    LOOP
-        EXECUTE 'REVOKE ALL ON FUNCTION ' || r.func_name || ' FROM PUBLIC, anon, authenticated;';
-    END LOOP;
-END $$;
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated, service_role;
 
--- 3. Proteksi Kolom patient_id pada public.peer_tickets
+-- Blok 2: Helper Kepesertaan Tiket public.is_peer_ticket_participant(p_ticket_id UUID)
+CREATE OR REPLACE FUNCTION public.is_peer_ticket_participant(p_ticket_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.peer_tickets
+        WHERE id = p_ticket_id
+          AND (patient_id = auth.uid() OR claimed_by = auth.uid())
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_peer_ticket_participant(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_peer_ticket_participant(UUID) TO authenticated, service_role;
+
+-- Blok 3: Pembaruan Policy RLS peer_messages_select_participant
+DROP POLICY IF EXISTS peer_messages_select_participant ON public.peer_messages;
+CREATE POLICY peer_messages_select_participant ON public.peer_messages
+    FOR SELECT TO authenticated
+    USING (
+        public.is_peer_ticket_participant(ticket_id)
+        OR public.is_admin()
+    );
+
+-- Blok 4: Proteksi Kolom patient_id pada public.peer_tickets
 REVOKE SELECT ON public.peer_tickets FROM authenticated, anon;
 
 GRANT SELECT (
@@ -243,7 +266,27 @@ GRANT SELECT (
     updated_at
 ) ON public.peer_tickets TO authenticated;
 
--- 4. ALTER DEFAULT PRIVILEGES Eksplisit per Pemilik
+-- Blok 5: Pencabutan Menyeluruh Hak Tulis & Truncate
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+
+-- Blok 6: Pencabutan Eksekusi Khusus Fungsi Trigger (Security Definer)
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN
+        SELECT p.oid::regprocedure AS func_name
+        FROM pg_proc p
+        JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE n.nspname = 'public'
+          AND p.prorettype = 'trigger'::regtype
+          AND p.prosecdef = true
+    LOOP
+        EXECUTE 'REVOKE ALL ON FUNCTION ' || r.func_name || ' FROM PUBLIC, anon, authenticated;';
+    END LOOP;
+END $$;
+
+-- Blok 7: ALTER DEFAULT PRIVILEGES Eksplisit per Pemilik
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
@@ -252,7 +295,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE INSERT,
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 
--- 5. Jaring Pengaman service_role
+-- Blok 8: Jaring Pengaman service_role
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
@@ -508,11 +551,11 @@ BEGIN
 END $$;
 
 -- --------------------------------------------------------
--- UJI 5: Kelulusan SELECT peer_messages, session_messages, dan notifications
--- oleh role authenticated (Supabase Realtime aman)
+-- UJI 5: Kasus Positif & Negatif RLS peer_messages (Inti Temuan QA PRD-020)
+-- & Realtime session_messages, notifications
 -- --------------------------------------------------------
 
--- 5a: peer_messages oleh peserta
+-- 5a: Kasus Positif 1 - Pasien Peserta membaca peer_messages
 DO $$
 BEGIN
     PERFORM set_config('request.jwt.claims', '{"sub":"d8000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
@@ -528,12 +571,75 @@ BEGIN
     FROM public.peer_messages
     WHERE ticket_id = 'e8000000-0000-0000-0000-000000000001';
 
-    ASSERT v_count >= 1, format('UJI 5a GAGAL: Peserta gagal membaca peer_messages (%s baris)', v_count);
+    ASSERT v_count >= 1, format('UJI 5a GAGAL: Pasien peserta wajib dapat membaca peer_messages (%s baris)', v_count);
 END $$;
 
 RESET ROLE;
 
--- 5b: session_messages oleh peserta
+-- 5b: Kasus Positif 2 - Relawan Peserta membaca peer_messages
+DO $$
+BEGIN
+    PERFORM set_config('request.jwt.claims', '{"sub":"d8000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+END $$;
+
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    SELECT count(*) INTO v_count
+    FROM public.peer_messages
+    WHERE ticket_id = 'e8000000-0000-0000-0000-000000000001';
+
+    ASSERT v_count >= 1, format('UJI 5b GAGAL: Relawan peserta wajib dapat membaca peer_messages (%s baris)', v_count);
+END $$;
+
+RESET ROLE;
+
+-- 5c: Kasus Negatif - Non-Peserta membaca peer_messages (Isolasi RLS: tepat 0 baris, tanpa error 42501)
+DO $$
+BEGIN
+    PERFORM set_config('request.jwt.claims', '{"sub":"d8000000-0000-0000-0000-000000000004","role":"authenticated"}', true);
+END $$;
+
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    SELECT count(*) INTO v_count
+    FROM public.peer_messages
+    WHERE ticket_id = 'e8000000-0000-0000-0000-000000000001';
+
+    ASSERT v_count = 0, format('UJI 5c GAGAL: Non-peserta wajib mengembalikan tepat 0 baris pada peer_messages (%s baris)', v_count);
+END $$;
+
+RESET ROLE;
+
+-- 5d: Kasus Admin - Admin membaca peer_messages
+DO $$
+BEGIN
+    PERFORM set_config('request.jwt.claims', '{"sub":"d8000000-0000-0000-0000-000000000005","role":"authenticated"}', true);
+END $$;
+
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    SELECT count(*) INTO v_count
+    FROM public.peer_messages
+    WHERE ticket_id = 'e8000000-0000-0000-0000-000000000001';
+
+    ASSERT v_count >= 1, format('UJI 5d GAGAL: Admin wajib dapat membaca peer_messages (%s baris)', v_count);
+END $$;
+
+RESET ROLE;
+
+-- 5e: session_messages oleh peserta booking
 DO $$
 BEGIN
     PERFORM set_config('request.jwt.claims', '{"sub":"d8000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
@@ -549,12 +655,12 @@ BEGIN
     FROM public.session_messages
     WHERE booking_id = 'c8000000-0000-0000-0000-000000000001';
 
-    ASSERT v_count >= 1, format('UJI 5b GAGAL: Peserta gagal membaca session_messages (%s baris)', v_count);
+    ASSERT v_count >= 1, format('UJI 5e GAGAL: Peserta gagal membaca session_messages (%s baris)', v_count);
 END $$;
 
 RESET ROLE;
 
--- 5c: notifications oleh penerima
+-- 5f: notifications oleh penerima
 DO $$
 BEGIN
     PERFORM set_config('request.jwt.claims', '{"sub":"d8000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
@@ -570,20 +676,46 @@ BEGIN
     FROM public.notifications
     WHERE user_id = 'd8000000-0000-0000-0000-000000000001';
 
-    ASSERT v_count >= 1, format('UJI 5c GAGAL: Penerima gagal membaca notifications (%s baris)', v_count);
+    ASSERT v_count >= 1, format('UJI 5f GAGAL: Penerima gagal membaca notifications (%s baris)', v_count);
 END $$;
 
 RESET ROLE;
 
--- 5d: Verifikasi hak SELECT tabel pada ketiga tabel
+-- 5g-5i: Verifikasi hak SELECT tabel pada ketiga tabel
 DO $$
 BEGIN
     ASSERT has_table_privilege('authenticated', 'public.peer_messages', 'SELECT') = true,
-        'UJI 5d GAGAL: authenticated wajib memiliki hak SELECT pada peer_messages';
+        'UJI 5g GAGAL: authenticated wajib memiliki hak SELECT pada peer_messages';
     ASSERT has_table_privilege('authenticated', 'public.session_messages', 'SELECT') = true,
-        'UJI 5e GAGAL: authenticated wajib memiliki hak SELECT pada session_messages';
+        'UJI 5h GAGAL: authenticated wajib memiliki hak SELECT pada session_messages';
     ASSERT has_table_privilege('authenticated', 'public.notifications', 'SELECT') = true,
-        'UJI 5f GAGAL: authenticated wajib memiliki hak SELECT pada notifications';
+        'UJI 5i GAGAL: authenticated wajib memiliki hak SELECT pada notifications';
+END $$;
+
+-- 5j: Verifikasi hak eksekusi helper is_peer_ticket_participant
+DO $$
+BEGIN
+    ASSERT has_function_privilege('authenticated', 'public.is_peer_ticket_participant(uuid)', 'EXECUTE') = true,
+        'UJI 5j GAGAL: authenticated wajib memiliki hak EXECUTE pada is_peer_ticket_participant';
+    ASSERT has_function_privilege('service_role', 'public.is_peer_ticket_participant(uuid)', 'EXECUTE') = true,
+        'UJI 5j GAGAL: service_role wajib memiliki hak EXECUTE pada is_peer_ticket_participant';
+    ASSERT has_function_privilege('anon', 'public.is_peer_ticket_participant(uuid)', 'EXECUTE') = false,
+        'UJI 5j GAGAL: anon dilarang memiliki hak EXECUTE pada is_peer_ticket_participant';
+    ASSERT has_function_privilege('public', 'public.is_peer_ticket_participant(uuid)', 'EXECUTE') = false,
+        'UJI 5j GAGAL: public dilarang memiliki hak EXECUTE pada is_peer_ticket_participant';
+END $$;
+
+-- 5k: Verifikasi hak eksekusi helper is_admin
+DO $$
+BEGIN
+    ASSERT has_function_privilege('authenticated', 'public.is_admin()', 'EXECUTE') = true,
+        'UJI 5k GAGAL: authenticated wajib memiliki hak EXECUTE pada is_admin';
+    ASSERT has_function_privilege('service_role', 'public.is_admin()', 'EXECUTE') = true,
+        'UJI 5k GAGAL: service_role wajib memiliki hak EXECUTE pada is_admin';
+    ASSERT has_function_privilege('anon', 'public.is_admin()', 'EXECUTE') = false,
+        'UJI 5k GAGAL: anon dilarang memiliki hak EXECUTE pada is_admin';
+    ASSERT has_function_privilege('public', 'public.is_admin()', 'EXECUTE') = false,
+        'UJI 5k GAGAL: public dilarang memiliki hak EXECUTE pada is_admin';
 END $$;
 
 -- --------------------------------------------------------
