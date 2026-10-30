@@ -1,5 +1,5 @@
 -- ========================================================
--- TEMAN BICARA: PENGERASAN IZIN DATABASE & PROTEKSI KOLOM ANONIM (PRD-019 & PRD-020)
+-- TEMAN BICARA: PENGERASAN IZIN DATABASE & PROTEKSI KOLOM ANONIM (PRD-019, PRD-020, & PRD-021)
 -- Migration: 20261022000026_database_permissions_hardening.sql
 -- Urutan Eksekusi Atomik:
 -- 1. Pemeriksaan & Penguatan Fungsi public.is_admin() (SECURITY DEFINER)
@@ -8,7 +8,7 @@
 -- 4. Pencabutan SELECT Penuh & Proteksi Kolom patient_id pada public.peer_tickets (16 kolom)
 -- 5. Pencabutan Menyeluruh Hak Tulis & Truncate Semua Tabel Public dari anon & authenticated
 -- 6. Pencabutan Eksekusi Khusus Fungsi Trigger (Security Definer) via Loop PL/pgSQL
--- 7. ALTER DEFAULT PRIVILEGES Eksplisit per Pemilik (postgres & supabase_admin)
+-- 7. ALTER DEFAULT PRIVILEGES Eksplisit per Pemilik (postgres)
 -- 8. Jaring Pengaman Hak Akses service_role
 -- ========================================================
 
@@ -114,19 +114,15 @@ BEGIN
     END LOOP;
 END $$;
 
--- 7. ALTER DEFAULT PRIVILEGES EKSPLISIT PER PEMILIK (postgres & supabase_admin)
+-- 7. ALTER DEFAULT PRIVILEGES EKSPLISIT PER PEMILIK (postgres)
 -- Mengunci pembuatan tabel, fungsi, dan sequence di masa mendatang pada skema public
 -- agar tidak kembali terbuka secara otomatis untuk anon dan authenticated
 
 -- Untuk role postgres
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM anon, authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
-
--- Untuk role supabase_admin
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM anon, authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 
 -- 8. JARING PENGAMAN service_role
 -- Menjamin seluruh operasi backend API, admin, cron, dan migrasi tetap memiliki hak akses penuh

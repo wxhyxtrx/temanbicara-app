@@ -1,8 +1,9 @@
 -- ========================================================
--- TEMAN BICARA: DRY-RUN TEST MIGRATION 000026 (DATABASE PERMISSIONS HARDENING & RLS HELPER)
+-- TEMAN BICARA: DRY-RUN TEST MIGRATION 000026 (DATABASE PERMISSIONS HARDENING & RLS HELPER & PRD-021)
 -- Path: supabase/tests/database_permissions_hardening_dryrun.sql
 -- Scope:
--- 1. Setup role & fixture data: auth.users, public.users, relawan_profiles,
+-- 1. Setup role & simulasi default privileges Supabase (mencegah hijau palsu)
+--    Fixture data: auth.users, public.users, relawan_profiles,
 --    system_settings, peer_tickets, bookings, peer_messages, session_messages, notifications
 -- 2. DDL 8 Blok Salinan persis dari 20261022000026_database_permissions_hardening.sql:
 --    - Blok 1: Penguatan public.is_admin() (SECURITY DEFINER)
@@ -11,7 +12,7 @@
 --    - Blok 4: Proteksi kolom patient_id & batasan 16 kolom non-sensitif peer_tickets
 --    - Blok 5: Pencabutan hak tulis/truncate seluruh tabel public dari anon/authenticated
 --    - Blok 6: Pencabutan eksekusi fungsi trigger security definer
---    - Blok 7: ALTER DEFAULT PRIVILEGES (postgres & supabase_admin)
+--    - Blok 7: ALTER DEFAULT PRIVILEGES (postgres)
 --    - Blok 8: Jaring pengaman hak akses service_role
 -- 3. Uji 1: Penolakan mutasi tulis/truncate tabel public oleh authenticated (error 42501)
 -- 4. Uji 2: Penolakan eksekusi langsung fungsi trigger security definer oleh authenticated (42501) & has_function_privilege false
@@ -27,13 +28,14 @@
 --    - 5g-5i: Hak SELECT tabel pada peer_messages, session_messages, notifications
 --    - 5j-5k: Hak eksekusi helper is_peer_ticket_participant & is_admin
 -- 8. Uji 6: Kelulusan operasi mutasi via service_role / superuser 100%
+-- 9. Uji 7: Verifikasi default privileges objek baru (tabel, fungsi, sequence) untuk authenticated, anon, dan service_role (PRD-021)
 -- SELURUH UJI BERJALAN DALAM SATU TRANSAKSI DAN OTOMATIS DI-ROLLBACK
 -- ========================================================
 
 BEGIN;
 
 -- ========================================================
--- 1. SETUP ROLE (MEMASTIKAN ROLE STANDARD SUPABASE TERSEDIA)
+-- 1. SETUP ROLE & SIMULASI DEFAULT PRIVILEGES SUPABASE
 -- ========================================================
 
 DO $$
@@ -47,10 +49,12 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
         CREATE ROLE service_role BYPASSRLS;
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
-        CREATE ROLE supabase_admin;
-    END IF;
 END $$;
+
+-- Simulasi default privileges bawaan Supabase sebelum hardening (mencegah hijau palsu)
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 
 -- ========================================================
 -- 2. SETUP FIXTURE DATA: auth.users & public.users
@@ -288,12 +292,9 @@ END $$;
 
 -- Blok 7: ALTER DEFAULT PRIVILEGES Eksplisit per Pemilik
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM anon, authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLES FROM anon, authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 
 -- Blok 8: Jaring Pengaman service_role
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
@@ -798,6 +799,84 @@ BEGIN
     ASSERT has_table_privilege('service_role', 'public.peer_tickets', 'INSERT') = true, 'UJI 6g GAGAL: service_role INSERT peer_tickets';
     ASSERT has_table_privilege('service_role', 'public.peer_tickets', 'UPDATE') = true, 'UJI 6g GAGAL: service_role UPDATE peer_tickets';
     ASSERT has_table_privilege('service_role', 'public.peer_tickets', 'DELETE') = true, 'UJI 6g GAGAL: service_role DELETE peer_tickets';
+END $$;
+
+-- --------------------------------------------------------
+-- UJI 7: Verifikasi default privileges objek baru (tabel, fungsi, sequence)
+-- Memastikan objek baru yang dibuat oleh role postgres tidak terbuka untuk authenticated & anon,
+-- serta tetap dapat diakses oleh service_role (PRD-021)
+-- --------------------------------------------------------
+CREATE TABLE public.test_prd021_default_privs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    label text
+);
+
+CREATE OR REPLACE FUNCTION public.test_prd021_default_func()
+RETURNS text
+LANGUAGE sql
+AS $$
+    SELECT 'test';
+$$;
+
+CREATE SEQUENCE public.test_prd021_default_seq;
+
+-- 7a-7b: Verifikasi penolakan mutasi tabel baru untuk authenticated dan anon
+DO $$
+BEGIN
+    ASSERT has_table_privilege('authenticated', 'public.test_prd021_default_privs', 'INSERT') = false,
+        'UJI 7a GAGAL: authenticated tidak boleh punya hak INSERT pada tabel baru';
+    ASSERT has_table_privilege('authenticated', 'public.test_prd021_default_privs', 'UPDATE') = false,
+        'UJI 7a GAGAL: authenticated tidak boleh punya hak UPDATE pada tabel baru';
+    ASSERT has_table_privilege('authenticated', 'public.test_prd021_default_privs', 'DELETE') = false,
+        'UJI 7a GAGAL: authenticated tidak boleh punya hak DELETE pada tabel baru';
+    ASSERT has_table_privilege('authenticated', 'public.test_prd021_default_privs', 'TRUNCATE') = false,
+        'UJI 7a GAGAL: authenticated tidak boleh punya hak TRUNCATE pada tabel baru';
+
+    ASSERT has_table_privilege('anon', 'public.test_prd021_default_privs', 'INSERT') = false,
+        'UJI 7b GAGAL: anon tidak boleh punya hak INSERT pada tabel baru';
+    ASSERT has_table_privilege('anon', 'public.test_prd021_default_privs', 'UPDATE') = false,
+        'UJI 7b GAGAL: anon tidak boleh punya hak UPDATE pada tabel baru';
+    ASSERT has_table_privilege('anon', 'public.test_prd021_default_privs', 'DELETE') = false,
+        'UJI 7b GAGAL: anon tidak boleh punya hak DELETE pada tabel baru';
+    ASSERT has_table_privilege('anon', 'public.test_prd021_default_privs', 'TRUNCATE') = false,
+        'UJI 7b GAGAL: anon tidak boleh punya hak TRUNCATE pada tabel baru';
+END $$;
+
+-- 7c: Verifikasi penolakan eksekusi fungsi baru untuk authenticated dan anon
+DO $$
+BEGIN
+    ASSERT has_function_privilege('authenticated', 'public.test_prd021_default_func()', 'EXECUTE') = false,
+        'UJI 7c GAGAL: authenticated tidak boleh punya hak EXECUTE pada fungsi baru';
+    ASSERT has_function_privilege('anon', 'public.test_prd021_default_func()', 'EXECUTE') = false,
+        'UJI 7c GAGAL: anon tidak boleh punya hak EXECUTE pada fungsi baru';
+END $$;
+
+-- 7d: Verifikasi penolakan hak akses sequence baru untuk authenticated dan anon
+DO $$
+BEGIN
+    ASSERT has_sequence_privilege('authenticated', 'public.test_prd021_default_seq', 'USAGE') = false,
+        'UJI 7d GAGAL: authenticated tidak boleh punya hak USAGE pada sequence baru';
+    ASSERT has_sequence_privilege('anon', 'public.test_prd021_default_seq', 'USAGE') = false,
+        'UJI 7d GAGAL: anon tidak boleh punya hak USAGE pada sequence baru';
+END $$;
+
+-- 7e: Verifikasi hak akses service_role pada tabel, fungsi, dan sequence baru
+DO $$
+BEGIN
+    ASSERT has_table_privilege('service_role', 'public.test_prd021_default_privs', 'SELECT') = true,
+        'UJI 7e GAGAL: service_role wajib punya hak SELECT pada tabel baru';
+    ASSERT has_table_privilege('service_role', 'public.test_prd021_default_privs', 'INSERT') = true,
+        'UJI 7e GAGAL: service_role wajib punya hak INSERT pada tabel baru';
+    ASSERT has_table_privilege('service_role', 'public.test_prd021_default_privs', 'UPDATE') = true,
+        'UJI 7e GAGAL: service_role wajib punya hak UPDATE pada tabel baru';
+    ASSERT has_table_privilege('service_role', 'public.test_prd021_default_privs', 'DELETE') = true,
+        'UJI 7e GAGAL: service_role wajib punya hak DELETE pada tabel baru';
+    ASSERT has_table_privilege('service_role', 'public.test_prd021_default_privs', 'TRUNCATE') = true,
+        'UJI 7e GAGAL: service_role wajib punya hak TRUNCATE pada tabel baru';
+    ASSERT has_function_privilege('service_role', 'public.test_prd021_default_func()', 'EXECUTE') = true,
+        'UJI 7e GAGAL: service_role wajib punya hak EXECUTE pada fungsi baru';
+    ASSERT has_sequence_privilege('service_role', 'public.test_prd021_default_seq', 'USAGE') = true,
+        'UJI 7e GAGAL: service_role wajib punya hak USAGE pada sequence baru';
 END $$;
 
 -- ========================================================
