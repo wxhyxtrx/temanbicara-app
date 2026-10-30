@@ -1,6 +1,6 @@
 # Status fitur per halaman (gap list)
 
-Status per 2026-10-20 · master/dev `758296a`. Label:
+Status per 2026-10-30 · dev (setelah Fase 4 & Fase 5). Label:
 - **Nyata** = memakai API/DB sungguhan.
 - **Tiruan** = data dummy dari store lokal (Zustand mock) — perlu diganti atau disembunyikan.
 - **Segera hadir** = sudah diberi label "Coming Soon"/`ComingSoon`, belum ada fungsi.
@@ -15,7 +15,7 @@ Kolom "Rencana" merujuk tahap di roadmap (`README.md`): Fase 4, Fase 5, Pelengka
 | Landing, pusat bantuan | Nyata (statis) | — |
 | Login (email + Google), register pasien/psikolog/relawan, halaman status akun | Nyata | — |
 | Lupa password / reset password | Belum ada | Pelengkap |
-| Mode maintenance | Belum ada (kunci `maintenance` ada di settings, belum ditegakkan) | Fase 4 (middleware) |
+| Mode maintenance | Nyata | 4 fase: none, scheduled, draining, active; proteksi middleware, rute guard, banner WIB, bypass cron/webhook/admin/login |
 
 ## Admin (`/admin`)
 
@@ -26,7 +26,7 @@ Kolom "Rencana" merujuk tahap di roadmap (`README.md`): Fase 4, Fase 5, Pelengka
 | Transaksi (top-up, payout) | Nyata | — |
 | Ulasan | Nyata | — |
 | Pengaturan sistem + audit | Nyata | — |
-| Crisis feed | **Tiruan** (`useCrisisStore`) | Fase 5 / sembunyikan sebelum Rilis |
+| Crisis feed | Segera hadir (`ComingSoon`) | Data tiruan lokal (`useCrisisStore`) telah dibersihkan (PRD-017) |
 | Log aktivitas admin | Belum ada | Pelengkap |
 | Kelola paket top-up | Belum ada (paket di-hardcode di `patient/top-up/page.tsx`) | Pelengkap |
 
@@ -46,9 +46,9 @@ Kolom "Rencana" merujuk tahap di roadmap (`README.md`): Fase 4, Fase 5, Pelengka
 
 | Halaman | Status | Catatan / Rencana |
 | --- | --- | --- |
-| Beranda | Nyata (profil) + antrean Segera hadir | Fase 5 |
-| Antrean tiket curhat | Segera hadir (`ComingSoon`) | Fase 5 |
-| Ruang Dengar (room 24 jam) | Belum ada | Fase 5 |
+| Beranda | Nyata | profil & statistik rating mitra (`peer_rating_summary`) |
+| Antrean tiket curhat (`/listener/queue`) | Nyata | antrean pool, kuota 3/hari, timeout klaim 10m, arsip 24j |
+| Ruang Dengar (room 24 jam) (`/listener/room/[id]`) | Nyata | chat realtime, lampiran media gambar & VN, penutupan sesi |
 | Pedoman | Nyata (statis) | — |
 | Pendapatan (tip) | Nyata (`MitraEarningsView`) | — |
 | Pengaturan profil | Nyata | — |
@@ -59,9 +59,10 @@ Kolom "Rencana" merujuk tahap di roadmap (`README.md`): Fase 4, Fase 5, Pelengka
 | Halaman | Status | Catatan / Rencana |
 | --- | --- | --- |
 | Beranda — booking, saldo, kontak darurat | Nyata | — |
-| Beranda — "Curhat AI Instan (24/7)" | **Tiruan** | belum dijadwalkan; sembunyikan sebelum Rilis |
-| Beranda — curhat sebaya (`usePeerVentStore`) | **Tiruan** | Fase 5 |
-| `/patient/room` (UI chat AI/sebaya lama, `useChatStore`) | **Tiruan** — bukan ruang sesi psikolog | Fase 5 / hapus |
+| Beranda — "Curhat AI Instan (24/7)" | Dihapus | dihapus dari UI beranda |
+| Beranda — curhat sebaya | Nyata | form curhat sebaya, kartu status tiket aktif, kartu empati tiket kedaluwarsa |
+| `/patient/room` | Dihapus | rute telah dihapus dan dialihkan ke `/patient/beranda` |
+| `/patient/peer/[id]` | Nyata | Ruang Dengar sebaya untuk pasien: chat realtime, lampiran media gambar & VN, penutupan sesi, rating 1–5, tip koin via `tip_create` |
 | Cari & booking psikolog | Nyata | — |
 | Jadwal (mendatang / riwayat) | Nyata | — |
 | Ruang sesi `/patient/session/[id]` | Nyata | — |
@@ -77,5 +78,5 @@ Kolom "Rencana" merujuk tahap di roadmap (`README.md`): Fase 4, Fase 5, Pelengka
 | --- | --- |
 | `/api/auth/refresh` memakai client `supabasePublic` bersama → jadikan per-request | Pelengkap |
 | Kolom legacy `psikolog_profiles.saldo` & enum legacy → drop | Pelengkap |
-| Hapus sisa store tiruan (`useCrisisStore`, `usePeerVentStore`, `useChatStore`, `useNotificationStore`) setelah penggantinya ada | Fase 5 / Pelengkap |
+| Pembersihan 6 mock store (`chat-store`, `peer-vent-store`, `crisis-store`, `review-store`, `schedule-store`, `clinical-records-store`) | Selesai dibersihkan (PRD-017) |
 | Supabase produksi baru, env Vercel lengkap, uji keamanan manual (Postman) | Rilis |

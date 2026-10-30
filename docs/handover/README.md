@@ -20,8 +20,8 @@ TemanBicara adalah aplikasi telekonseling kesehatan mental dengan 4 role (pasien
 | 3 | Rapikan admin & pasien | Selesai |
 | 4 | Rapikan psikolog & relawan | Selesai |
 | 5 | Fase 3 — booking & sesi psikolog | Selesai, menunggu cek akhir owner |
-| 6 | Fase 4 — mode maintenance (middleware) | Belum mulai (owner minta tahan dulu) |
-| 7 | Fase 5 — relawan & curhat sebaya (tiket, kuota, room 24 jam) | Belum mulai |
+| 6 | Fase 4 — mode maintenance (middleware) | Selesai (PRD-003 s.d. PRD-005) |
+| 7 | Fase 5 — relawan & curhat sebaya (tiket, kuota, room 24 jam) | Selesai (PRD-006 s.d. PRD-021) |
 | 8 | Pelengkap (lihat bagian PM) | Belum mulai |
 | 9 | Rilis: Supabase produksi, env, tes keamanan Postman | Belum mulai |
 
@@ -57,7 +57,7 @@ Koin adalah kredit layanan tertutup: pasien tidak pernah bisa mencairkan koin ke
 - Notifikasi hanya in-app (lonceng realtime), termasuk pengingat 60 dan 10 menit.
 - Teks privasi harus jujur: tidak ada enkripsi end-to-end. Gunakan "Percakapan hanya bisa diakses kamu dan psikologmu".
 
-**Relawan (Fase 5, belum dibangun)**: kuota 3 tiket/hari, klaim tak dijawab 10 menit kembali ke antrean dan memotong kuota, tiket tak diklaim 24 jam diarsipkan dengan saran ke psikolog + hotline.
+**Relawan (Fase 5, selesai dibangun & aktif)**: sistem antrean, kuota 3 tiket/hari, klaim tak dijawab 10 menit kembali ke antrean dan memotong kuota, tiket tak diklaim 24 jam diarsipkan dengan saran ke psikolog + hotline, Ruang Dengar chat realtime, lampiran media gambar & VN, penutupan sesi, ulasan rating 1–5, dan tip koin via `tip_create`.
 
 **Backlog Pelengkap** (diputuskan owner 2026-10-19)
 
@@ -165,9 +165,9 @@ Semua halaman login ada di `src/app/(private)/<role>/`; data selalu dari API (`s
 
 | Role | Halaman | Catatan |
 | --- | --- | --- |
-| Pasien | `beranda`, `schedule`, `session/[id]`, `settings`, `top-up`, `top-up/history`, `room` | `room` = fitur lama DASS-21 (bukan ruang sesi). Ruang sesi = `session/[id]` |
+| Pasien | `beranda`, `schedule`, `session/[id]`, `settings`, `top-up`, `top-up/history`, `peer/[id]` | `room` dihapus & dialihkan ke `beranda`. Ruang Dengar sebaya = `peer/[id]`. Ruang sesi psikolog = `session/[id]` |
 | Psikolog | `beranda`, `schedule`, `room?booking=<id>`, `clients`, `earnings`, `settings` | `room` tanpa query = tab Sesi Aktif / Riwayat |
-| Relawan | `beranda`, `queue`, `guidelines`, `earnings`, `settings` | Ruang Dengar & antrean = "Segera Hadir" (Fase 5) |
+| Relawan | `beranda`, `queue`, `room/[id]`, `guidelines`, `earnings`, `settings` | Ruang Dengar (`room/[id]`) & antrean (`queue`) sudah selesai (Fase 5) |
 | Admin | `beranda`, `users`, `verifications`, `transactions`, `reviews`, `settings`, `crisis-feed` | menu `reviews` bernama "Ulasan" |
 | Publik | `/`, `login`, `register` (+ `counselor`, `listener`), `status`, `help-center` | |
 
@@ -204,6 +204,9 @@ Satu tugas = satu branch dari `master`; hanya fast-forward ke `master`, lalu pus
 5. Merge: bila `git merge-base --is-ancestor master <branch>` → `git fetch . <branch>:master && git push origin master`. Bila master sudah maju dan file tidak bentrok, minta agen `git rebase master` (atau cherry-pick di worktree sementara path pendek, mis. `C:/tbmw`).
 6. Cek deployment Vercel sampai `READY`, lalu laporkan ke owner: apa yang selesai dan apa yang perlu dicek.
 
+**Standarisasi Pembaruan Dokumen Handover:**
+Setiap fase baru selesai, Tech Lead dan PM wajib memperbarui `status-fitur.md` dan `sdd.md` sebelum fase berikutnya dimulai.
+
 **Agen QwenPaw**
 
 - Kirim tugas: `qwenpaw agents chat --background --from-agent default --to-agent backend-leader|frontend-leader --text "..."` → dapat `task-id`; cek: `qwenpaw agents chat --background --task-id <id>`.
@@ -230,8 +233,7 @@ Bug paling mahal sejauh ini adalah force-logout dalam hitungan menit (2026-10-18
 
 **Isu terbuka**
 
-- Fase 4 (mode maintenance) belum dimulai — owner minta ditahan sampai ada keputusan.
-- Fitur relawan inti (Ruang Dengar, antrean tiket) = Fase 5.
+- Fase 4 (mode maintenance) dan Fase 5 (relawan & curhat sebaya) telah selesai dibangun.
 - Backlog Pelengkap ada di bagian 2; rilis produksi butuh Supabase baru + pengujian keamanan endpoint (Postman) sesuai rencana tahap 9.
 - Dokumen desain & rencana Fase 3 lengkap: `docs/specs/2026-10-17-fase3-booking-sesi-design.md` dan `docs/superpowers/plans/2026-10-17-fase3-booking-sesi.md`; catatan UAT: `docs/qa/2026-10-18-temuan-uat-fase3.md` (saat ini hanya di laptop owner, di luar git).
 
