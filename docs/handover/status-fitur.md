@@ -48,7 +48,7 @@ Kolom "Rencana" merujuk tahap di roadmap (`README.md`): Fase 4, Fase 5, Pelengka
 | --- | --- | --- |
 | Beranda | Nyata | profil & statistik rating mitra (`peer_rating_summary`) |
 | Antrean tiket curhat (`/listener/queue`) | Nyata | antrean pool, kuota 3/hari, timeout klaim 10m, arsip 24j |
-| Ruang Dengar (room 24 jam) (`/listener/room/[id]`) | Nyata | chat realtime, lampiran media gambar & VN, penutupan sesi |
+| Ruang Dengar (room 24 jam) (`/listener/peer-room/[id]`) | Nyata | chat realtime, lampiran media gambar & VN, penutupan sesi |
 | Pedoman | Nyata (statis) | — |
 | Pendapatan (tip) | Nyata (`MitraEarningsView`) | — |
 | Pengaturan profil | Nyata | — |
@@ -62,7 +62,7 @@ Kolom "Rencana" merujuk tahap di roadmap (`README.md`): Fase 4, Fase 5, Pelengka
 | Beranda — "Curhat AI Instan (24/7)" | Dihapus | dihapus dari UI beranda |
 | Beranda — curhat sebaya | Nyata | form curhat sebaya, kartu status tiket aktif, kartu empati tiket kedaluwarsa |
 | `/patient/room` | Dihapus | rute telah dihapus dan dialihkan ke `/patient/beranda` |
-| `/patient/peer/[id]` | Nyata | Ruang Dengar sebaya untuk pasien: chat realtime, lampiran media gambar & VN, penutupan sesi, rating 1–5, tip koin via `tip_create` |
+| `/patient/peer-room/[id]` | Nyata | Ruang Dengar sebaya untuk pasien: chat realtime, lampiran media gambar & VN, penutupan sesi, rating 1–5, tip koin via `tip_create` |
 | Cari & booking psikolog | Nyata | — |
 | Jadwal (mendatang / riwayat) | Nyata | — |
 | Ruang sesi `/patient/session/[id]` | Nyata | — |

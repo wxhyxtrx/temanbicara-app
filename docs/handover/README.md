@@ -165,9 +165,9 @@ Semua halaman login ada di `src/app/(private)/<role>/`; data selalu dari API (`s
 
 | Role | Halaman | Catatan |
 | --- | --- | --- |
-| Pasien | `beranda`, `schedule`, `session/[id]`, `settings`, `top-up`, `top-up/history`, `peer/[id]` | `room` dihapus & dialihkan ke `beranda`. Ruang Dengar sebaya = `peer/[id]`. Ruang sesi psikolog = `session/[id]` |
+| Pasien | `beranda`, `schedule`, `session/[id]`, `settings`, `top-up`, `top-up/history`, `peer-room/[id]` | `room` dihapus & dialihkan ke `beranda`. Ruang Dengar sebaya = `peer-room/[id]`. Ruang sesi psikolog = `session/[id]` |
 | Psikolog | `beranda`, `schedule`, `room?booking=<id>`, `clients`, `earnings`, `settings` | `room` tanpa query = tab Sesi Aktif / Riwayat |
-| Relawan | `beranda`, `queue`, `room/[id]`, `guidelines`, `earnings`, `settings` | Ruang Dengar (`room/[id]`) & antrean (`queue`) sudah selesai (Fase 5) |
+| Relawan | `beranda`, `queue`, `peer-room/[id]`, `guidelines`, `earnings`, `settings` | Ruang Dengar (`peer-room/[id]`) & antrean (`queue`) sudah selesai (Fase 5) |
 | Admin | `beranda`, `users`, `verifications`, `transactions`, `reviews`, `settings`, `crisis-feed` | menu `reviews` bernama "Ulasan" |
 | Publik | `/`, `login`, `register` (+ `counselor`, `listener`), `status`, `help-center` | |
 

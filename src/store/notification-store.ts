@@ -41,7 +41,7 @@ const initialNotifications: NotificationItem[] = [
     createdAt: Date.now() - 3 * 60 * 60 * 1000,
     read: true,
     type: "chat",
-    actionUrl: "/room",
+    actionUrl: "/patient/beranda",
   },
   {
     id: "notif-04",
