@@ -2,11 +2,13 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SettingsAuditTab } from "@/components/views/admin/settings/settings-audit-tab";
+import { PasswordForm } from "@/components/views/settings/password-form";
 import {
   FLAT_GROUPS,
   type FlatGroup,
@@ -31,10 +33,12 @@ import {
   CheckCircle2,
   Clock,
   History,
+  Lock,
   Percent,
   RefreshCw,
   Save,
   Server,
+  ShieldCheck,
   SlidersHorizontal,
   Undo2,
   Users,
@@ -403,6 +407,10 @@ export default function AdminSettingsPage() {
             <History size={14} />
             Riwayat Audit
           </TabsTrigger>
+          <TabsTrigger value="security" className="cursor-pointer text-xs sm:text-sm">
+            <Lock size={14} />
+            Keamanan Akun
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="settings" className="space-y-6">
@@ -632,6 +640,23 @@ export default function AdminSettingsPage() {
 
         <TabsContent value="audit">
           <SettingsAuditTab />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs min-w-0">
+            <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800 min-w-0">
+              <CardTitle className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
+                <ShieldCheck size={18} className="text-teal-600 dark:text-teal-400 shrink-0" />
+                <span>Keamanan Akun Administrator</span>
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito min-w-0">
+                Kelola kata sandi akun administrator untuk mengamankan akses panel sistem
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 min-w-0">
+              <PasswordForm />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
