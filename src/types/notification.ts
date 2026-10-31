@@ -1,5 +1,6 @@
 export type NotificationType =
   | 'booking_new'
+  | 'booking_confirmed'
   | 'booking_cancelled'
   | 'psikolog_cancelled_choice'
   | 'session_reminder_60'
@@ -16,6 +17,7 @@ export type NotificationType =
   | 'strike_added'
   | 'suspended'
   | 'peer_pool_new_ticket'
+  | 'peer_ticket_created'
   | 'peer_ticket_claimed'
   | 'peer_session_started'
   | 'peer_greeting_reminder_3'
