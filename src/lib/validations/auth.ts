@@ -253,4 +253,18 @@ export const resetPasswordSchema = z
 
 export type ResetPasswordDTO = z.infer<typeof resetPasswordSchema>;
 
+// 12. RESET PASSWORD API (VERIFIKASI TOKEN & PEMBARUAN PASSWORD)
+export const resetPasswordApiSchema = z.object({
+  access_token: z
+    .string({ message: 'Token pemulihan wajib disertakan' })
+    .min(1, 'Token pemulihan tidak boleh kosong'),
+  password: z
+    .string({ message: 'Kata sandi baru wajib diisi' })
+    .min(8, 'Kata sandi baru minimal 8 karakter.')
+    .max(72, 'Kata sandi baru maksimal 72 karakter.'),
+});
+
+export type ResetPasswordApiDTO = z.infer<typeof resetPasswordApiSchema>;
+
+
 
