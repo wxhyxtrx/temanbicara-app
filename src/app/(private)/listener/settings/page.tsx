@@ -26,6 +26,7 @@ import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
 import { userService, UserApiError } from "@/services/user.service";
 import type { RelawanProfile, UpdateMeRelawanPayload } from "@/types/user-profile";
+import { PasswordForm } from "@/components/views/settings/password-form";
 
 const SUGGESTED_TOPICS = [
   "Stres Akademik & Skripsi",
@@ -202,8 +203,9 @@ export default function ListenerSettingsPage() {
           </Card>
         </div>
       ) : (
-        <form onSubmit={handleSave} className="space-y-6">
-        <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <div className="space-y-6">
+          <form onSubmit={handleSave} className="space-y-6">
+            <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
           <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Headphones size={18} className="text-teal-600 dark:text-teal-400" />
@@ -408,6 +410,23 @@ export default function ListenerSettingsPage() {
           </Button>
         </div>
       </form>
+
+      {/* Card 3: Keamanan Akun */}
+      <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs min-w-0">
+        <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
+            <ShieldCheck size={18} className="text-teal-600 dark:text-teal-400 shrink-0" />
+            <span>Keamanan Akun</span>
+          </CardTitle>
+          <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito min-w-0">
+            Kelola kata sandi akun untuk mengamankan akses relawan pendengar Anda
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 min-w-0">
+          <PasswordForm />
+        </CardContent>
+      </Card>
+      </div>
       )}
     </div>
   );
