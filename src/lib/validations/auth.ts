@@ -224,3 +224,33 @@ export function passwordFormSchema(hasPassword: boolean): z.ZodType<PasswordForm
     });
 }
 
+// 10. LUPA PASSWORD (PERMINTAAN TAUTAN PEMULIHAN)
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string({ message: 'Alamat email wajib diisi' })
+    .trim()
+    .min(1, 'Alamat email wajib diisi')
+    .email('Format email tidak valid (contoh: nama@email.com)'),
+});
+
+export type ForgotPasswordDTO = z.infer<typeof forgotPasswordSchema>;
+
+// 11. BUAT KATA SANDI BARU (RESET PASSWORD)
+export const resetPasswordSchema = z
+  .object({
+    password: z
+      .string({ message: 'Kata sandi baru wajib diisi' })
+      .min(8, 'Kata sandi baru minimal 8 karakter.')
+      .max(72, 'Kata sandi baru maksimal 72 karakter.'),
+    confirm_password: z
+      .string({ message: 'Konfirmasi kata sandi wajib diisi' })
+      .min(1, 'Konfirmasi kata sandi wajib diisi'),
+  })
+  .refine((data) => data.password === data.confirm_password, {
+    message: 'Konfirmasi kata sandi tidak cocok.',
+    path: ['confirm_password'],
+  });
+
+export type ResetPasswordDTO = z.infer<typeof resetPasswordSchema>;
+
+

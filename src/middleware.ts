@@ -3,6 +3,7 @@ import { verifyRole, getJwtSub } from '@/lib/auth/role-cookie';
 import { getMaintenanceStatus } from '@/lib/maintenance';
 
 const AUTH_PAGES = ['/login', '/register', '/register/counselor', '/register/listener'];
+const PASSWORD_RECOVERY_PAGES = ['/forgot-password', '/reset-password'];
 
 const ROLE_DASHBOARDS: Record<string, string> = {
   pasien: '/patient/beranda',
@@ -92,6 +93,15 @@ export async function middleware(req: NextRequest) {
       normalizedPath.startsWith('/register/');
 
     if (isRegisterPage) {
+      return NextResponse.redirect(new URL('/maintenance', req.url), 307);
+    }
+
+    // Rute pemulihan kata sandi dialihkan ke /maintenance saat fase active untuk non-admin
+    const isPasswordRecoveryPage = PASSWORD_RECOVERY_PAGES.some(
+      (page) => normalizedPath === page || normalizedPath.startsWith(`${page}/`)
+    );
+
+    if (!isAdmin && isPasswordRecoveryPage) {
       return NextResponse.redirect(new URL('/maintenance', req.url), 307);
     }
 
