@@ -9,17 +9,19 @@ import { setSessionCookies, clearSessionCookies, SESSION_MAX_AGE } from '@/lib/a
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
+const ALLOWED_ROLES: readonly string[] = ['pasien', 'psikolog', 'relawan', 'admin'];
+
 export async function GET() {
   try {
     const session = await getSessionUser();
     if (session.response) return session.response;
 
-    if (session.user.role !== 'pasien' && session.user.role !== 'psikolog') {
+    if (!ALLOWED_ROLES.includes(session.user.role)) {
       return NextResponse.json(
         {
           success: false,
           error: 'FORBIDDEN_ROLE',
-          message: 'Fitur ini hanya untuk pasien dan psikolog.',
+          message: 'Fitur ini hanya untuk pasien, psikolog, relawan, dan admin.',
         },
         { status: 403 }
       );
@@ -51,12 +53,12 @@ export async function POST(req: Request) {
     const session = await getSessionUser();
     if (session.response) return session.response;
 
-    if (session.user.role !== 'pasien' && session.user.role !== 'psikolog') {
+    if (!ALLOWED_ROLES.includes(session.user.role)) {
       return NextResponse.json(
         {
           success: false,
           error: 'FORBIDDEN_ROLE',
-          message: 'Fitur ini hanya untuk pasien dan psikolog.',
+          message: 'Fitur ini hanya untuk pasien, psikolog, relawan, dan admin.',
         },
         { status: 403 }
       );
