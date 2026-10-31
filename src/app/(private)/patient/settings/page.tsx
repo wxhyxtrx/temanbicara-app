@@ -280,12 +280,6 @@ export default function PatientSettingsPage() {
           >
             <Lock size={15} />
             <span>Keamanan Akun</span>
-            <Badge
-              variant="outline"
-              className="ml-1 text-[9px] px-1.5 py-0 bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-            >
-              Coming Soon
-            </Badge>
           </TabsTrigger>
         </TabsList>
 
@@ -623,8 +617,8 @@ export default function PatientSettingsPage() {
                 </div>
                 <Switch
                   checked={sessionReminder}
-                  onCheckedChange={setSessionReminder}
-                  className="cursor-pointer"
+                  disabled={true}
+                  className="cursor-not-allowed opacity-60"
                 />
               </div>
 
@@ -639,8 +633,8 @@ export default function PatientSettingsPage() {
                 </div>
                 <Switch
                   checked={psychologistMessageAlert}
-                  onCheckedChange={setPsychologistMessageAlert}
-                  className="cursor-pointer"
+                  disabled={true}
+                  className="cursor-not-allowed opacity-60"
                 />
               </div>
             </CardContent>
@@ -676,29 +670,31 @@ export default function PatientSettingsPage() {
                   <Lock size={18} className="text-teal-600 dark:text-teal-400" />
                   Keamanan & Autentikasi
                 </CardTitle>
-                <Badge
-                  variant="outline"
-                  className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                >
-                  Coming Soon
-                </Badge>
               </div>
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-4">
               <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="space-y-0.5">
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Autentikasi Dua Langkah (2FA)
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
+                      Autentikasi Dua Langkah (2FA)
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] px-1.5 py-0 bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                    >
+                      Coming Soon
+                    </Badge>
+                  </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
                     Amankan akunmu dengan kode OTP WhatsApp saat login dari perangkat baru.
                   </p>
                 </div>
                 <Switch
                   checked={twoFactorAuth}
-                  onCheckedChange={setTwoFactorAuth}
-                  className="cursor-pointer"
+                  disabled={true}
+                  className="cursor-not-allowed opacity-60"
                 />
               </div>
 

@@ -51,7 +51,7 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
       {
         title: "Curhat Sebaya",
         description: "Dukungan teman sebaya empatik",
-        url: "/patient/beranda",
+        url: "/patient/curhat",
         icon: HeartHandshake,
       },
       {

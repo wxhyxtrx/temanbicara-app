@@ -105,19 +105,29 @@ export function AppSidebar() {
   const currentRole = getEffectiveRole();
   const menuConfig = getMenuItemsByRole(currentRole);
 
-  const activeUrl = React.useMemo(() => {
+  const activeItem = React.useMemo(() => {
     if (!pathname) return null;
     const currentPath = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
     const allNavItems = [...menuConfig.mainItems, ...menuConfig.utilityItems];
-    return allNavItems
-      .filter((item) => {
-        const itemPath = item.url.length > 1 && item.url.endsWith("/") ? item.url.slice(0, -1) : item.url;
-        return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
-      })
-      .reduce<string | null>((longest, item) => {
-        if (!longest) return item.url;
-        return item.url.length > longest.length ? item.url : longest;
-      }, null);
+
+    // 1. Exact match diprioritaskan agar rute spesifik tidak menduplikasi menu lain
+    const exactMatch = allNavItems.find((item) => {
+      const itemPath = item.url.length > 1 && item.url.endsWith("/") ? item.url.slice(0, -1) : item.url;
+      return currentPath === itemPath;
+    });
+    if (exactMatch) return exactMatch;
+
+    // 2. Prefix match untuk sub-rute bertingkat (pilih URL terpanjang yang cocok)
+    const prefixMatches = allNavItems.filter((item) => {
+      const itemPath = item.url.length > 1 && item.url.endsWith("/") ? item.url.slice(0, -1) : item.url;
+      return currentPath.startsWith(`${itemPath}/`);
+    });
+
+    if (prefixMatches.length === 0) return null;
+
+    return prefixMatches.reduce((longest, item) => {
+      return item.url.length > longest.url.length ? item : longest;
+    }, prefixMatches[0]);
   }, [menuConfig, pathname]);
 
   const defaultFallbackUser = mockUsers[currentRole] || mockUsers.patient;
@@ -288,7 +298,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {menuConfig.mainItems.map((item) => {
-                const isActive = item.url === activeUrl;
+                const isActive = activeItem ? (item.title === activeItem.title && item.url === activeItem.url) : false;
                 const Icon = item.icon;
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -349,7 +359,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {menuConfig.utilityItems.map((item) => {
-                const isActive = item.url === activeUrl;
+                const isActive = activeItem ? (item.title === activeItem.title && item.url === activeItem.url) : false;
                 const Icon = item.icon;
                 return (
                   <SidebarMenuItem key={item.title}>
