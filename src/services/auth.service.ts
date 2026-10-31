@@ -70,6 +70,11 @@ export interface PresignedUrlResponse {
   };
 }
 
+export interface RequestPasswordResetResponse {
+  success: boolean;
+  message: string;
+}
+
 export interface ApiErrorResponse {
   error?: string;
   message?: string;
@@ -146,6 +151,15 @@ export const authService = {
     if (!res.ok) {
       throw new Error('Gagal mengunggah berkas ke penyimpanan.');
     }
+  },
+
+  async requestPasswordReset(email: string): Promise<RequestPasswordResetResponse> {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    return handleResponse<RequestPasswordResetResponse>(res);
   },
 
   async logout(): Promise<void> {

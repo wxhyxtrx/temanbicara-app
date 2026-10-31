@@ -241,16 +241,12 @@ export default function Login() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Kata Sandi</label>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  notify.info("Pemulihan Akun", "Tautan pemulihan kata sandi telah dikirim ke email terdaftar Anda.");
-                }}
+              <Link
+                href="/forgot-password"
                 className="text-[11px] text-teal-700 dark:text-teal-400 hover:underline font-semibold"
               >
                 Lupa kata sandi?
-              </a>
+              </Link>
             </div>
             <PasswordInput
               placeholder="••••••••"
