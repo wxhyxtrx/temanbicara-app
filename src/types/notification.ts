@@ -14,7 +14,19 @@ export type NotificationType =
   | 'extension_declined'
   | 'tip_received'
   | 'strike_added'
-  | 'suspended';
+  | 'suspended'
+  | 'peer_pool_new_ticket'
+  | 'peer_ticket_claimed'
+  | 'peer_session_started'
+  | 'peer_greeting_reminder_3'
+  | 'peer_new_message'
+  | 'peer_ticket_reopened'
+  | 'peer_claim_timeout'
+  | 'peer_session_closed'
+  | 'peer_session_closed_by_patient'
+  | 'peer_ticket_archived'
+  | 'peer_review_received'
+  | 'peer_tip_received';
 
 export interface NotificationEntity {
   id: string;

@@ -18,6 +18,7 @@ export interface PeerTicketEntity {
   closed_by?: PeerTicketClosedBy | null;
   archived_at: string | null;
   abandoned_by: string[];
+  greeting_reminded_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -80,6 +81,7 @@ export interface PeerTicketDetailView {
   closed_at: string | null;
   closed_by?: PeerTicketClosedBy | null;
   archived_at?: string | null;
+  greeting_reminded_at?: string | null;
   created_at: string;
   updated_at: string;
   relawan_alias: string | null;
