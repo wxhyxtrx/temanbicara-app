@@ -79,6 +79,9 @@ export function CancelBookingModal({
           refundCoins: refunded,
           burnedCoins: burned,
         });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("wallet:refresh"));
+        }
       }
     } catch (err: unknown) {
       console.error("Gagal membatalkan booking:", err);

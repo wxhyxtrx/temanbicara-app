@@ -122,6 +122,9 @@ export function SessionTipCard({
           if (userCoins !== null) {
             setUserCoins((prev) => (prev !== null ? Math.max(0, prev - amount) : null));
           }
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("wallet:refresh"));
+          }
           notify.success(
             "Tip Berhasil Dikirim",
             `Apresiasi sebesar ${amount} Koin telah diteruskan ke relawan sebaya.`
@@ -135,6 +138,9 @@ export function SessionTipCard({
           setTipSuccessAmount(amount);
           if (userCoins !== null) {
             setUserCoins((prev) => (prev !== null ? Math.max(0, prev - amount) : null));
+          }
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("wallet:refresh"));
           }
           notify.success(
             "Tip Berhasil Dikirim",

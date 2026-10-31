@@ -243,6 +243,9 @@ export function BookingModal({
             activeSlotIso
           )} (${formatWibTime(activeSlotIso)}) berhasil dijadwalkan.`
         );
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("wallet:refresh"));
+        }
         onClose();
         if (onSuccess) onSuccess();
         router.push("/patient/schedule");

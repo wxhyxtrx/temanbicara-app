@@ -48,15 +48,18 @@ export function AppSidebar() {
   const [patientCoins, setPatientCoins] = React.useState<number | null>(null);
 
   const refreshCoins = React.useCallback(() => {
-    if (user?.role === "patient" || !user?.role) {
+    if (user?.role === "patient" || !user?.role || pathname?.startsWith("/patient")) {
       walletClient
         .getWalletMe()
-        .then((data) => setPatientCoins(data.coin_balance))
+        .then((data) => {
+          setPatientCoins(data.coin_balance);
+          useUserStore.getState().updateCoins(data.coin_balance, false);
+        })
         .catch(() => {
           setPatientCoins(0);
         });
     }
-  }, [user?.role]);
+  }, [user?.role, pathname]);
 
   React.useEffect(() => {
     setMounted(true);

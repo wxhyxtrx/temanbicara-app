@@ -61,6 +61,7 @@ function formatRelativeTime(dateStr: string): string {
 function getCategoryIcon(type: string) {
   switch (type) {
     case "booking_new":
+    case "booking_confirmed":
     case "session_reminder_60":
     case "session_reminder_10":
     case "session_started":
@@ -69,6 +70,7 @@ function getCategoryIcon(type: string) {
     case "jadwal":
       return <Calendar size={15} className="text-teal-700 dark:text-teal-300" />;
     case "peer_pool_new_ticket":
+    case "peer_ticket_created":
       return <Inbox size={15} className="text-teal-700 dark:text-teal-300" />;
     case "peer_session_closed":
     case "peer_session_closed_by_patient":
@@ -108,6 +110,7 @@ function getCategoryIcon(type: string) {
 function getCategoryBg(type: string) {
   switch (type) {
     case "booking_new":
+    case "booking_confirmed":
     case "session_reminder_60":
     case "session_reminder_10":
     case "session_started":
@@ -115,6 +118,7 @@ function getCategoryBg(type: string) {
     case "reschedule":
     case "jadwal":
     case "peer_pool_new_ticket":
+    case "peer_ticket_created":
     case "peer_session_closed":
     case "peer_session_closed_by_patient":
       return "bg-teal-50 dark:bg-teal-950/70 border-teal-200 dark:border-teal-800";
@@ -220,6 +224,22 @@ export function NotificationDropdown() {
                 return [newRow, ...prev];
               });
               setUnreadCount((c) => c + 1);
+
+              const walletMutationTypes = [
+                "booking_confirmed",
+                "booking_cancelled",
+                "tip_received",
+                "peer_tip_received",
+                "auto_cancelled_late",
+                "completed",
+                "psikolog_cancelled_choice",
+                "transaksi",
+              ];
+              if (walletMutationTypes.includes(newRow.type)) {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("wallet:refresh"));
+                }
+              }
             }
           }
         )
