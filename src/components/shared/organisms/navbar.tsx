@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Layouts from "@/components/shared/layouts";
 import { Logo } from "@/components/shared/atoms/Logo";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Menu, X, HeartPulse, LayoutDashboard, ArrowRight } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
 
 export function Navbar() {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -30,6 +32,20 @@ export function Navbar() {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleNavClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    sectionId: string
+  ) => {
+    setMobileMenuOpen(false);
+    if (pathname === "/") {
+      e.preventDefault();
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -80,33 +96,42 @@ export function Navbar() {
       <Layouts>
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <div
+          <Link
+            href="/"
+            onClick={(e) => {
+              if (pathname === "/") {
+                e.preventDefault();
+                scrollToSection("hero");
+              }
+            }}
             className="cursor-pointer"
-            onClick={() => scrollToSection("hero")}
           >
             <Logo showTagline size="md" />
-          </div>
+          </Link>
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-7 lg:gap-9 font-medium text-sm text-slate-600 dark:text-slate-300 font-heading">
-            <span
+            <Link
+              href={pathname === "/" ? "#features" : "/#features"}
+              onClick={(e) => handleNavClick(e, "features")}
               className="cursor-pointer hover:text-teal-700 dark:hover:text-teal-400 transition-colors"
-              onClick={() => scrollToSection("features")}
             >
               Layanan Terapi
-            </span>
-            <span
+            </Link>
+            <Link
+              href={pathname === "/" ? "#testimonial" : "/#testimonial"}
+              onClick={(e) => handleNavClick(e, "testimonial")}
               className="cursor-pointer hover:text-teal-700 dark:hover:text-teal-400 transition-colors"
-              onClick={() => scrollToSection("testimonial")}
             >
               Kisah Klien
-            </span>
-            <span
+            </Link>
+            <Link
+              href={pathname === "/" ? "#join" : "/#join"}
+              onClick={(e) => handleNavClick(e, "join")}
               className="cursor-pointer hover:text-teal-700 dark:hover:text-teal-400 transition-colors"
-              onClick={() => scrollToSection("join")}
             >
               Tentang Kami
-            </span>
+            </Link>
             <Link
               href="/help-center"
               className="hover:text-teal-700 dark:hover:text-teal-400 transition-colors"
@@ -192,26 +217,30 @@ export function Navbar() {
         {mobileMenuOpen && (
           <div className="md:hidden pt-4 pb-6 px-2 border-t border-slate-200 dark:border-slate-800 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="flex flex-col space-y-3 font-heading text-slate-800 dark:text-slate-200 text-sm">
-              <span
+              <Link
+                href={pathname === "/" ? "#features" : "/#features"}
+                onClick={(e) => handleNavClick(e, "features")}
                 className="cursor-pointer hover:text-teal-700 dark:hover:text-teal-400 transition-colors py-2 px-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900"
-                onClick={() => scrollToSection("features")}
               >
                 Layanan Terapi
-              </span>
-              <span
+              </Link>
+              <Link
+                href={pathname === "/" ? "#testimonial" : "/#testimonial"}
+                onClick={(e) => handleNavClick(e, "testimonial")}
                 className="cursor-pointer hover:text-teal-700 dark:hover:text-teal-400 transition-colors py-2 px-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900"
-                onClick={() => scrollToSection("testimonial")}
               >
                 Kisah Klien
-              </span>
-              <span
+              </Link>
+              <Link
+                href={pathname === "/" ? "#join" : "/#join"}
+                onClick={(e) => handleNavClick(e, "join")}
                 className="cursor-pointer hover:text-teal-700 dark:hover:text-teal-400 transition-colors py-2 px-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900"
-                onClick={() => scrollToSection("join")}
               >
                 Tentang Kami
-              </span>
+              </Link>
               <Link
                 href="/help-center"
+                onClick={() => setMobileMenuOpen(false)}
                 className="hover:text-teal-700 dark:hover:text-teal-400 transition-colors py-2 px-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900"
               >
                 Pusat Bantuan

@@ -41,6 +41,43 @@ export default function PublicHelpCenterPage() {
     setMounted(true);
   }, []);
 
+  const getPortalHome = (role?: string) => {
+    switch (role) {
+      case "counselor":
+      case "psikolog":
+        return "/counselor/beranda";
+      case "peer_listener":
+      case "relawan":
+        return "/listener/beranda";
+      case "admin":
+        return "/admin/beranda";
+      case "patient":
+      case "pasien":
+      default:
+        return "/patient/beranda";
+    }
+  };
+
+  const getPortalLabel = (role?: string) => {
+    switch (role) {
+      case "counselor":
+      case "psikolog":
+        return "Ke Beranda Praktik";
+      case "peer_listener":
+      case "relawan":
+        return "Ke Beranda Relawan";
+      case "admin":
+        return "Ke Beranda Admin";
+      case "patient":
+      case "pasien":
+      default:
+        return "Ke Beranda Pasien";
+    }
+  };
+
+  const targetHref = mounted && isAuthenticated ? getPortalHome(user?.role) : "/";
+  const targetLabel = mounted && isAuthenticated ? getPortalLabel(user?.role) : "Ke Halaman Utama";
+
   // Kategori FAQ Konseling & Layanan Psikologi
   const faqCategories = [
     {
@@ -160,7 +197,7 @@ export default function PublicHelpCenterPage() {
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-8">
         {/* 1. Page Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
               Pusat Bantuan & Panduan Pasien
             </h1>
@@ -169,14 +206,12 @@ export default function PublicHelpCenterPage() {
             </p>
           </div>
 
-          {mounted && isAuthenticated && (
-            <Link href="/patient/beranda">
-              <Button className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs px-4 h-9 font-semibold gap-1.5 shadow-xs cursor-pointer">
-                <span>Ke Beranda Pasien</span>
-                <ArrowRight size={14} />
-              </Button>
-            </Link>
-          )}
+          <Link href={targetHref} className="shrink-0">
+            <Button className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs px-4 h-9 font-semibold gap-1.5 shadow-xs cursor-pointer">
+              <span>{targetLabel}</span>
+              <ArrowRight size={14} />
+            </Button>
+          </Link>
         </div>
 
         {/* 2. Top Emergency Crisis Hotlines Banner */}
@@ -408,24 +443,6 @@ export default function PublicHelpCenterPage() {
                   </h4>
 
                   <div className="space-y-3 text-xs">
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                      <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 shrink-0">
-                        <MessageCircle size={16} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900 dark:text-white font-heading">WhatsApp Layanan Klien</p>
-                        <p className="text-slate-500 dark:text-slate-400 text-[11px]">Respon dalam 15-30 menit</p>
-                        <a
-                          href="https://wa.me/6281234567890"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-teal-700 dark:text-teal-400 font-semibold text-xs hover:underline mt-1 inline-block"
-                        >
-                          +62 812-3456-7890 (Chat)
-                        </a>
-                      </div>
-                    </div>
-
                     <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
                       <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 shrink-0">
                         <Mail size={16} />

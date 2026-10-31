@@ -21,15 +21,12 @@ import {
   LogOut,
   RefreshCw,
   ExternalLink,
-  MessageCircle,
 } from "lucide-react";
 
 interface NextStep {
   title: string;
   description: string;
 }
-
-const SUPPORT_WA = "6281234567890";
 
 const PENDING_STEPS: NextStep[] = [
   { title: "Verifikasi Dokumen", description: "Estimasi proses review 1 - 3 hari kerja" },
@@ -372,29 +369,6 @@ function StatusContent() {
                 </Button>
               )}
             </>
-          )}
-
-          {activeConfig.contactSupport && (
-            <a
-              href={`https://wa.me/${SUPPORT_WA}?text=${encodeURIComponent(
-                activeConfig.supportMessage ||
-                  "Halo Admin TemanBicara, saya ingin menanyakan status verifikasi akun saya.",
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full"
-            >
-              <Button
-                variant="outline"
-                className="w-full h-10 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold gap-2 cursor-pointer"
-              >
-                <MessageCircle
-                  size={15}
-                  className="text-emerald-600 dark:text-emerald-400"
-                />
-                <span>Hubungi Layanan Bantuan (WhatsApp)</span>
-              </Button>
-            </a>
           )}
 
           {/* Exit / Logout Action */}
