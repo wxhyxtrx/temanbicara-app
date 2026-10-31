@@ -69,7 +69,8 @@ Kolom "Rencana" merujuk tahap di roadmap (`README.md`): Fase 4, Fase 5, Pelengka
 | Top-up & riwayat transaksi | Nyata | — |
 | Pengaturan profil + anonimitas + kontak darurat | Nyata | — |
 | Pengaturan → Notifikasi sesi | Segera hadir (`useNotificationStore` mock) | Pelengkap |
-| Pengaturan → Keamanan akun (ganti password, 2FA) | Segera hadir | Pelengkap |
+| Pengaturan → Keamanan akun (ganti password) | Nyata | Selesai dibangun (PRD-001 & PRD-002) untuk pasien & psikolog |
+| Pengaturan → Keamanan akun (2FA) | Segera hadir | Pelengkap |
 | Pengaturan → Ekspor PDF | Segera hadir | Pelengkap |
 
 ## Utang teknis

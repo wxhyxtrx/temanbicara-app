@@ -12,49 +12,6 @@ export interface NotificationItem {
   actionUrl?: string;
 }
 
-const initialNotifications: NotificationItem[] = [
-  {
-    id: "notif-01",
-    title: "Sesi Konseling Mendatang",
-    message: "Janji temu bersama Dr. Anita Wijaya, M.Psi. terjadwal hari ini pukul 14:00 WIB.",
-    time: "10 menit lalu",
-    createdAt: Date.now() - 10 * 60 * 1000,
-    read: false,
-    type: "jadwal",
-    actionUrl: "/schedule",
-  },
-  {
-    id: "notif-02",
-    title: "Top Up Koin Berhasil",
-    message: "Pembelian 50 Koin telah diverifikasi dan masuk ke dompet konseling Anda.",
-    time: "1 jam lalu",
-    createdAt: Date.now() - 60 * 60 * 1000,
-    read: false,
-    type: "transaksi",
-    actionUrl: "/top-up/history",
-  },
-  {
-    id: "notif-03",
-    title: "Catatan Refleksi Diterima",
-    message: "Dr. Anita Wijaya telah memperbarui catatan latihan pernapasan harianmu.",
-    time: "3 jam lalu",
-    createdAt: Date.now() - 3 * 60 * 60 * 1000,
-    read: true,
-    type: "chat",
-    actionUrl: "/patient/beranda",
-  },
-  {
-    id: "notif-04",
-    title: "Akun Terverifikasi",
-    message: "Data identitas pasien TB-88219 terlindungi kode etik kerahasiaan HIMPSI.",
-    time: "Kemarin",
-    createdAt: Date.now() - 24 * 60 * 60 * 1000,
-    read: true,
-    type: "sistem",
-    actionUrl: "/settings",
-  },
-];
-
 export interface NotificationState {
   notifications: NotificationItem[];
   addNotification: (params: {
@@ -72,7 +29,7 @@ export interface NotificationState {
 export const useNotificationStore = create<NotificationState>()(
   persist(
     (set, get) => ({
-      notifications: initialNotifications,
+      notifications: [],
 
       addNotification: ({ title, message, type, actionUrl }) => {
         const newItem: NotificationItem = {

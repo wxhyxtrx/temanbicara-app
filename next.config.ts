@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/beranda", destination: "/patient/beranda", permanent: true },
       { source: "/room", destination: "/patient/beranda", permanent: true },
+      { source: "/patient/room", destination: "/patient/beranda", permanent: true },
       { source: "/schedule", destination: "/patient/schedule", permanent: true },
       { source: "/top-up", destination: "/patient/top-up", permanent: true },
       { source: "/top-up/history", destination: "/patient/top-up/history", permanent: true },
