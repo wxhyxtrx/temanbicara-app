@@ -90,21 +90,33 @@ export async function POST(req: Request) {
     const user = authData.user;
 
     const jwtPayload = parseJwtPayload(parsed.data.access_token);
-    const isRecovery =
+    const isOtpSession =
       Array.isArray(jwtPayload?.amr) &&
       jwtPayload.amr.some((entry: unknown) => {
-        if (typeof entry === 'string') return entry === 'recovery';
+        if (typeof entry === 'string') return entry === 'otp';
         if (entry && typeof entry === 'object' && 'method' in entry) {
-          return (entry as { method: string }).method === 'recovery';
+          return (entry as { method: string }).method === 'otp';
         }
         return false;
       });
 
-    if (!isRecovery) {
+    const hasNonOtpLoginMethod =
+      Array.isArray(jwtPayload?.amr) &&
+      jwtPayload.amr.some((entry: unknown) => {
+        const method =
+          typeof entry === 'string'
+            ? entry
+            : entry && typeof entry === 'object' && 'method' in entry
+              ? (entry as { method: string }).method
+              : null;
+        return method === 'password' || method === 'oauth';
+      });
+
+    if (!isOtpSession || hasNonOtpLoginMethod) {
       return NextResponse.json(
         {
           success: false,
-          error: 'INVALID_RECOVERY_SESSION',
+          error: 'INVALID_OTP_SESSION',
           message: 'Sesi tidak valid atau bukan berasal dari tautan pemulihan kata sandi.',
         },
         { status: 401 }
