@@ -162,6 +162,19 @@ export const authService = {
     return handleResponse<RequestPasswordResetResponse>(res);
   },
 
+  async resetPassword(payload: { access_token: string; password: string }): Promise<{ success: boolean; message: string }> {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || 'Gagal memperbarui kata sandi. Silakan coba beberapa saat lagi.');
+    }
+    return data;
+  },
+
   async logout(): Promise<void> {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });

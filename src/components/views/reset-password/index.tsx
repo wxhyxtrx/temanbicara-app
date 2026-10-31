@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPasswordSchema, ResetPasswordDTO } from "@/lib/validations/auth";
-import { supabasePublic } from "@/lib/supabase/client";
+import { authService } from "@/services/auth.service";
 import { notify } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -28,8 +28,10 @@ export default function ResetPasswordView() {
   const searchParams = useSearchParams();
 
   const [linkStatus, setLinkStatus] = useState<LinkStatus>("CHECKING");
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const hasExtractedRef = useRef(false);
 
   const {
     register,
@@ -44,134 +46,105 @@ export default function ResetPasswordView() {
   });
 
   useEffect(() => {
-    let isMounted = true;
+    if (hasExtractedRef.current) return;
+    hasExtractedRef.current = true;
 
-    const verifyTokenAndSession = async () => {
-      try {
-        // 1. Periksa parameter error pada searchParams atau hash URL
-        const errorParam = searchParams.get("error") || searchParams.get("error_code");
-        const hash = typeof window !== "undefined" ? window.location.hash : "";
-        const hasHashError = hash.includes("error=") || hash.includes("error_code=");
+    // 1. Periksa parameter error pada searchParams URL
+    const errorParam = searchParams.get("error") || searchParams.get("error_code");
+    if (errorParam) {
+      setLinkStatus("INVALID_LINK");
+      return;
+    }
 
-        if (errorParam || hasHashError) {
-          if (isMounted) setLinkStatus("INVALID_LINK");
-          return;
-        }
+    if (typeof window === "undefined") return;
 
-        // 2. Periksa token_hash via verifyOtp
-        const tokenHash = searchParams.get("token_hash");
-        const type = searchParams.get("type") || "recovery";
-        if (tokenHash) {
-          const { data, error } = await supabasePublic.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: type === "recovery" ? "recovery" : (type as "recovery" | "email" | "signup" | "invite"),
-          });
-          if (error || (!data?.user && !data?.session)) {
-            if (isMounted) setLinkStatus("INVALID_LINK");
-          } else {
-            if (isMounted) setLinkStatus("READY");
-          }
-          return;
-        }
+    // 2. Ekstrak token dari hash URL murni
+    const rawHash = window.location.hash;
+    if (!rawHash) {
+      setLinkStatus("INVALID_LINK");
+      return;
+    }
 
-        // 3. Periksa query param 'code' via exchangeCodeForSession
-        const code = searchParams.get("code");
-        if (code) {
-          const { data, error } = await supabasePublic.auth.exchangeCodeForSession(code);
-          if (error || (!data?.user && !data?.session)) {
-            if (isMounted) setLinkStatus("INVALID_LINK");
-          } else {
-            if (isMounted) setLinkStatus("READY");
-          }
-          return;
-        }
+    const hashString = rawHash.replace(/^#/, "");
+    const hashParams = new URLSearchParams(hashString);
 
-        // 4. Periksa hash fragment URL atau sesi pemulihan aktif
-        const { data: sessionData } = await supabasePublic.auth.getSession();
-        if (sessionData?.session) {
-          if (isMounted) setLinkStatus("READY");
-          return;
-        }
+    // Cek apakah hash memuat error
+    if (hashParams.get("error") || hashParams.get("error_code")) {
+      setLinkStatus("INVALID_LINK");
+      return;
+    }
 
-        // Jika hash memuat token recovery namun client Supabase sedang memproses secara asinkron
-        if (hash && (hash.includes("access_token=") || hash.includes("type=recovery"))) {
-          await new Promise((resolve) => setTimeout(resolve, 300));
-          const { data: retrySession } = await supabasePublic.auth.getSession();
-          if (retrySession?.session) {
-            if (isMounted) setLinkStatus("READY");
-            return;
-          }
-        }
+    const accessToken = hashParams.get("access_token");
+    const type = hashParams.get("type");
 
-        // 5. Tidak ada token atau sesi valid yang terdeteksi
-        if (isMounted) {
-          setLinkStatus("INVALID_LINK");
-        }
-      } catch {
-        if (isMounted) setLinkStatus("INVALID_LINK");
-      }
-    };
+    // Jika token tidak ada atau tipe bukan recovery (bila disertakan)
+    if (!accessToken || (type && type !== "recovery")) {
+      setLinkStatus("INVALID_LINK");
+      return;
+    }
 
-    // Dengarkan event onAuthStateChange (khususnya PASSWORD_RECOVERY atau SIGNED_IN)
-    const {
-      data: { subscription },
-    } = supabasePublic.auth.onAuthStateChange((event, session) => {
-      const hash = typeof window !== "undefined" ? window.location.hash : "";
-      if (searchParams.get("error") || hash.includes("error=")) {
-        if (isMounted) setLinkStatus("INVALID_LINK");
-        return;
-      }
-      if (event === "PASSWORD_RECOVERY") {
-        if (isMounted) setLinkStatus("READY");
-      } else if (event === "SIGNED_IN" && session) {
-        if (isMounted) setLinkStatus("READY");
-      }
-    });
+    // Token recovery valid ditemukan di hash
+    setToken(accessToken);
+    setLinkStatus("READY");
 
-    verifyTokenAndSession();
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
+    // 3. Segera bersihkan hash dari browser history
+    try {
+      window.history.replaceState(null, "", window.location.pathname);
+    } catch {
+      // Fallback aman bila browser membatasi replaceState
+    }
   }, [searchParams]);
 
   const onSubmit = async (data: ResetPasswordDTO) => {
+    if (!token) {
+      setServerError("Tautan pemulihan tidak valid atau sudah kedaluwarsa.");
+      setLinkStatus("INVALID_LINK");
+      return;
+    }
+
     setLoading(true);
     setServerError(null);
 
     try {
-      // 1. Simpan kata sandi baru ke Supabase Auth
-      const { error: updateError } = await supabasePublic.auth.updateUser({
+      await authService.resetPassword({
+        access_token: token,
         password: data.password,
       });
 
-      if (updateError) {
-        throw updateError;
-      }
-
-      // 2. Pencegahan login diam-diam: segera tutup sesi pemulihan via signOut({ scope: 'local' })
-      try {
-        await supabasePublic.auth.signOut({ scope: "local" });
-      } catch {
-        // Abaikan jika sesi telah ditutup
-      }
-
-      // 3. Tampilkan toast sukses informatif
       notify.success(
         "Kata Sandi Berhasil Diperbarui",
         "Silakan masuk dengan kata sandi baru Anda."
       );
 
-      // 4. Arahkan pengguna ke halaman login
       router.push("/login");
     } catch (err: unknown) {
-      const message =
+      let message =
         err instanceof Error
           ? err.message
           : "Gagal memperbarui kata sandi. Silakan coba beberapa saat lagi.";
+
+      // Sanitasi pesan teknis agar tetap ramah bahasa Indonesia
+      if (
+        message.includes("Server configuration error") ||
+        message.includes("supabase") ||
+        message.includes("PGRST") ||
+        message.includes("fetch failed")
+      ) {
+        message = "Gagal memperbarui kata sandi. Silakan coba beberapa saat lagi.";
+      }
+
       setServerError(message);
       notify.error("Gagal Memperbarui Kata Sandi", message);
+
+      const lowerMessage = message.toLowerCase();
+      if (
+        lowerMessage.includes("tidak valid") ||
+        lowerMessage.includes("kedaluwarsa") ||
+        lowerMessage.includes("invalid") ||
+        lowerMessage.includes("expired")
+      ) {
+        setLinkStatus("INVALID_LINK");
+      }
     } finally {
       setLoading(false);
     }
