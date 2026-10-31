@@ -19,6 +19,10 @@ import {
   ShieldAlert,
   Inbox,
   Loader2,
+  HeartHandshake,
+  Clock,
+  Star,
+  CheckCircle2,
 } from "lucide-react";
 import { supabasePublic } from "@/lib/supabase/client";
 import { useUserStore } from "@/store/user-store";
@@ -64,20 +68,37 @@ function getCategoryIcon(type: string) {
     case "reschedule":
     case "jadwal":
       return <Calendar size={15} className="text-teal-700 dark:text-teal-300" />;
+    case "peer_pool_new_ticket":
+      return <Inbox size={15} className="text-teal-700 dark:text-teal-300" />;
+    case "peer_session_closed":
+    case "peer_session_closed_by_patient":
+      return <CheckCircle2 size={15} className="text-teal-700 dark:text-teal-300" />;
     case "tip_received":
+    case "peer_tip_received":
     case "transaksi":
       return <Coins size={15} className="text-emerald-700 dark:text-emerald-300" />;
+    case "peer_ticket_claimed":
+    case "peer_session_started":
+      return <HeartHandshake size={15} className="text-sky-700 dark:text-sky-300" />;
     case "extension_requested":
     case "extension_approved":
     case "extension_declined":
     case "chat":
+    case "peer_new_message":
       return <MessageCircle size={15} className="text-sky-700 dark:text-sky-300" />;
+    case "peer_greeting_reminder_3":
+      return <Clock size={15} className="text-amber-700 dark:text-amber-300" />;
+    case "peer_review_received":
+      return <Star size={15} className="text-amber-700 dark:text-amber-300" />;
     case "booking_cancelled":
     case "psikolog_cancelled_choice":
     case "auto_cancelled_late":
     case "no_show":
     case "strike_added":
     case "suspended":
+    case "peer_ticket_reopened":
+    case "peer_claim_timeout":
+    case "peer_ticket_archived":
       return <ShieldAlert size={15} className="text-rose-700 dark:text-rose-300" />;
     default:
       return <ShieldCheck size={15} className="text-amber-700 dark:text-amber-300" />;
@@ -93,21 +114,34 @@ function getCategoryBg(type: string) {
     case "completed":
     case "reschedule":
     case "jadwal":
+    case "peer_pool_new_ticket":
+    case "peer_session_closed":
+    case "peer_session_closed_by_patient":
       return "bg-teal-50 dark:bg-teal-950/70 border-teal-200 dark:border-teal-800";
     case "tip_received":
+    case "peer_tip_received":
     case "transaksi":
       return "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-200 dark:border-emerald-800";
     case "extension_requested":
     case "extension_approved":
     case "extension_declined":
     case "chat":
+    case "peer_ticket_claimed":
+    case "peer_session_started":
+    case "peer_new_message":
       return "bg-sky-50 dark:bg-sky-950/70 border-sky-200 dark:border-sky-800";
+    case "peer_greeting_reminder_3":
+    case "peer_review_received":
+      return "bg-amber-50 dark:bg-amber-950/70 border-amber-200 dark:border-amber-800";
     case "booking_cancelled":
     case "psikolog_cancelled_choice":
     case "auto_cancelled_late":
     case "no_show":
     case "strike_added":
     case "suspended":
+    case "peer_ticket_reopened":
+    case "peer_claim_timeout":
+    case "peer_ticket_archived":
       return "bg-rose-50 dark:bg-rose-950/70 border-rose-200 dark:border-rose-900";
     default:
       return "bg-amber-50 dark:bg-amber-950/70 border-amber-200 dark:border-amber-800";
@@ -282,7 +316,7 @@ export function NotificationDropdown() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[360px] sm:w-[400px] p-0 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden font-nunito text-slate-900 dark:text-slate-100"
+        className="w-[360px] sm:w-[400px] max-w-[calc(100vw-1rem)] p-0 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden font-nunito text-slate-900 dark:text-slate-100"
       >
         {/* 1. Header Popover */}
         <div className="p-4 bg-slate-50/80 dark:bg-slate-900/90 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
