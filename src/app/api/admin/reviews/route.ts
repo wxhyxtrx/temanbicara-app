@@ -59,7 +59,8 @@ export async function GET(req: Request) {
     const { data: reviews, error: reviewsError, count } = queryResult;
 
     if (reviewsError) {
-      return fail(500, 'QUERY_FAILED', reviewsError.message);
+      console.error('[ADMIN_REVIEWS_QUERY_ERROR]:', reviewsError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat ulasan sesi');
     }
 
     const stats = {
@@ -152,6 +153,7 @@ export async function GET(req: Request) {
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[ADMIN_REVIEWS_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat ulasan');
   }
 }

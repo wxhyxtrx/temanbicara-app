@@ -37,7 +37,8 @@ export async function GET(
       .maybeSingle();
 
     if (bookingError) {
-      return fail(500, 'QUERY_FAILED', bookingError.message);
+      console.error('[BOOKING_REVIEW_QUERY_BOOKING_ERROR]:', bookingError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat booking sesi');
     }
     if (!booking) {
       return fail(404, 'NOT_FOUND', 'Booking sesi tidak ditemukan');
@@ -58,7 +59,8 @@ export async function GET(
       .maybeSingle();
 
     if (reviewError) {
-      return fail(500, 'QUERY_FAILED', reviewError.message);
+      console.error('[BOOKING_REVIEW_QUERY_REVIEW_ERROR]:', reviewError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat ulasan sesi');
     }
 
     return NextResponse.json({
@@ -66,7 +68,8 @@ export async function GET(
       data: (review as SessionReviewEntity | null) ?? null,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_REVIEW_GET_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat ulasan');
   }
 }
 
@@ -142,6 +145,7 @@ export async function PUT(
       data: review as SessionReviewEntity,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_REVIEW_PUT_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat menyimpan ulasan');
   }
 }

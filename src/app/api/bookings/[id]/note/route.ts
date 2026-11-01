@@ -44,7 +44,8 @@ export async function GET(
       .maybeSingle();
 
     if (bookingError) {
-      return fail(500, 'QUERY_FAILED', bookingError.message);
+      console.error('[BOOKING_NOTE_QUERY_BOOKING_ERROR]:', bookingError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat booking sesi');
     }
     if (!booking) {
       return fail(404, 'NOT_FOUND', 'Booking sesi tidak ditemukan');
@@ -63,7 +64,8 @@ export async function GET(
       .maybeSingle();
 
     if (noteError) {
-      return fail(500, 'QUERY_FAILED', noteError.message);
+      console.error('[BOOKING_NOTE_QUERY_NOTE_ERROR]:', noteError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat catatan sesi');
     }
 
     return NextResponse.json({
@@ -72,7 +74,8 @@ export async function GET(
       patient_id: bookingRow.patient_id,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_NOTE_GET_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat catatan');
   }
 }
 
@@ -141,6 +144,7 @@ export async function PUT(
       data: note as ClientNoteEntity,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_NOTE_PUT_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat menyimpan catatan');
   }
 }

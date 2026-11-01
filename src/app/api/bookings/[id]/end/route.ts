@@ -57,6 +57,7 @@ export async function POST(
       message: 'Sesi konseling berhasil diakhiri',
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_END_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat mengakhiri sesi');
   }
 }

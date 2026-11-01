@@ -39,7 +39,8 @@ export async function GET(
       .maybeSingle();
 
     if (bookingError) {
-      return fail(500, 'QUERY_FAILED', bookingError.message);
+      console.error('[BOOKING_MESSAGES_QUERY_ERROR]:', bookingError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat booking sesi');
     }
     if (!booking) {
       return fail(404, 'NOT_FOUND', 'Booking sesi tidak ditemukan');
@@ -68,7 +69,8 @@ export async function GET(
     ]);
 
     if (messagesRes.error) {
-      return fail(500, 'QUERY_FAILED', messagesRes.error.message);
+      console.error('[BOOKING_MESSAGES_LIST_ERROR]:', messagesRes.error);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat pesan sesi');
     }
 
     const psikologName = profileRes.data?.nama_lengkap_gelar || 'Psikolog';
@@ -98,10 +100,11 @@ export async function GET(
       data: messagesView,
     });
   } catch (err: unknown) {
+    console.error('[BOOKING_MESSAGES_INTERNAL_ERROR]:', err);
     return fail(
       500,
       'INTERNAL_SERVER_ERROR',
-      err instanceof Error ? err.message : 'Gagal memuat pesan sesi'
+      'Terjadi kesalahan sistem saat memuat pesan sesi'
     );
   }
 }
@@ -157,7 +160,8 @@ export async function POST(
       .maybeSingle();
 
     if (bookingError) {
-      return fail(500, 'QUERY_FAILED', bookingError.message);
+      console.error('[BOOKING_MESSAGES_POST_QUERY_ERROR]:', bookingError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat booking sesi');
     }
     if (!bookingData) {
       return fail(404, 'NOT_FOUND', 'Booking sesi tidak ditemukan');
@@ -245,7 +249,8 @@ export async function POST(
       .single();
 
     if (insertError) {
-      return fail(500, 'INSERT_FAILED', insertError.message);
+      console.error('[BOOKING_MESSAGES_INSERT_ERROR]:', insertError);
+      return fail(500, 'INSERT_FAILED', 'Gagal mengirim pesan sesi');
     }
 
     const insertedEntity = newMsg as SessionMessageEntity;
@@ -283,10 +288,11 @@ export async function POST(
       { status: 201 }
     );
   } catch (err: unknown) {
+    console.error('[BOOKING_MESSAGES_POST_INTERNAL_ERROR]:', err);
     return fail(
       500,
       'INTERNAL_SERVER_ERROR',
-      err instanceof Error ? err.message : 'Gagal mengirim pesan sesi'
+      'Terjadi kesalahan sistem saat mengirim pesan sesi'
     );
   }
 }

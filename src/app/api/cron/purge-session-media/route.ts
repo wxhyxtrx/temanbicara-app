@@ -299,10 +299,11 @@ export async function GET(req: Request) {
       peer: peerResult,
     });
   } catch (err: unknown) {
+    console.error('[CRON_PURGE_SESSION_MEDIA_INTERNAL_ERROR]:', err);
     return fail(
       500,
       'INTERNAL_SERVER_ERROR',
-      err instanceof Error ? err.message : 'Terjadi kesalahan sistem'
+      'Terjadi kesalahan sistem saat pembersihan berkas media'
     );
   }
 }

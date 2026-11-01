@@ -58,6 +58,7 @@ export async function POST(
       message: 'Ulasan berhasil dilaporkan untuk ditinjau oleh admin',
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_REVIEW_REPORT_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat melaporkan ulasan');
   }
 }

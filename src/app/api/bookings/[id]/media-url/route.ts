@@ -51,7 +51,8 @@ export async function GET(
       .maybeSingle();
 
     if (bookingError) {
-      return fail(500, 'QUERY_FAILED', bookingError.message);
+      console.error('[BOOKING_MEDIA_URL_ERROR]:', bookingError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memproses berkas media sesi konseling');
     }
     if (!booking) {
       return fail(404, 'NOT_FOUND', 'Booking sesi tidak ditemukan');
@@ -74,7 +75,8 @@ export async function GET(
       .maybeSingle();
 
     if (matchError) {
-      return fail(500, 'QUERY_FAILED', matchError.message);
+      console.error('[BOOKING_MEDIA_MATCH_ERROR]:', matchError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memverifikasi berkas media sesi konseling');
     }
     if (!msgMatch) {
       return fail(404, 'MEDIA_NOT_FOUND', 'Berkas media tidak ditemukan pada riwayat obrolan sesi ini');
@@ -86,10 +88,11 @@ export async function GET(
       .createSignedUrl(mediaPath, SIGNED_URL_EXPIRES_IN_SECONDS);
 
     if (signError || !signedData?.signedUrl) {
+      console.error('[BOOKING_MEDIA_SIGN_ERROR]:', signError);
       return fail(
         500,
         'STORAGE_ERROR',
-        signError?.message || 'Gagal menghasilkan signed URL media'
+        'Gagal menghasilkan tautan berkas media'
       );
     }
 
@@ -103,10 +106,11 @@ export async function GET(
       data: responseData,
     });
   } catch (err: unknown) {
+    console.error('[BOOKING_MEDIA_URL_INTERNAL_ERROR]:', err);
     return fail(
       500,
       'INTERNAL_SERVER_ERROR',
-      err instanceof Error ? err.message : 'Gagal memproses permintaan media URL'
+      'Terjadi kesalahan sistem saat memproses berkas media'
     );
   }
 }
@@ -156,7 +160,8 @@ export async function POST(
       .maybeSingle();
 
     if (bookingError) {
-      return fail(500, 'QUERY_FAILED', bookingError.message);
+      console.error('[BOOKING_MEDIA_URL_ERROR]:', bookingError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memproses berkas media sesi konseling');
     }
     if (!bookingData) {
       return fail(404, 'NOT_FOUND', 'Booking sesi tidak ditemukan');
@@ -211,10 +216,11 @@ export async function POST(
       .createSignedUploadUrl(filePath);
 
     if (uploadError || !uploadData?.signedUrl) {
+      console.error('[BOOKING_MEDIA_UPLOAD_STORAGE_ERROR]:', uploadError);
       return fail(
         500,
         'STORAGE_UPLOAD_ERROR',
-        uploadError?.message || 'Gagal menghasilkan URL unggah media'
+        'Gagal menghasilkan tautan unggah berkas media'
       );
     }
 
@@ -230,10 +236,11 @@ export async function POST(
       data: responsePayload,
     });
   } catch (err: unknown) {
+    console.error('[BOOKING_MEDIA_UPLOAD_INTERNAL_ERROR]:', err);
     return fail(
       500,
       'INTERNAL_SERVER_ERROR',
-      err instanceof Error ? err.message : 'Gagal menghasilkan upload URL'
+      'Terjadi kesalahan sistem saat memproses unggah media'
     );
   }
 }

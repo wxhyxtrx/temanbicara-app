@@ -17,7 +17,7 @@ export async function getPasswordStatus(userId: string): Promise<PasswordStatusR
 
   const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
   if (error || !data?.user) {
-    throw new Error(error?.message || 'Pengguna auth tidak ditemukan');
+    throw new Error('Pengguna auth tidak ditemukan');
   }
 
   const user = data.user;

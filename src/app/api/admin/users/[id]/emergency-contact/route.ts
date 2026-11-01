@@ -44,7 +44,8 @@ export async function GET(
       .maybeSingle();
 
     if (userError) {
-      return fail(500, 'QUERY_FAILED', userError.message);
+      console.error('[ADMIN_EMERGENCY_CONTACT_USER_ERROR]:', userError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat data pengguna');
     }
     if (!targetUser) {
       return fail(404, 'NOT_FOUND', 'Pengguna tidak ditemukan');
@@ -58,7 +59,8 @@ export async function GET(
       .maybeSingle();
 
     if (profileError) {
-      return fail(500, 'QUERY_FAILED', profileError.message);
+      console.error('[ADMIN_EMERGENCY_CONTACT_PROFILE_ERROR]:', profileError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat data kontak darurat');
     }
 
     // 3. Catat log audit akses kontak darurat (Fail closed: jika gagal log, jangan bocorkan kontak)
@@ -72,7 +74,8 @@ export async function GET(
       });
 
     if (logError) {
-      return fail(500, 'AUDIT_LOG_FAILED', 'Gagal mencatat log audit akses kontak darurat: ' + logError.message);
+      console.error('[ADMIN_EMERGENCY_CONTACT_AUDIT_LOG_ERROR]:', logError);
+      return fail(500, 'AUDIT_LOG_FAILED', 'Gagal mencatat log audit akses kontak darurat');
     }
 
     const contactView: PatientEmergencyContactView = {
@@ -86,6 +89,7 @@ export async function GET(
       data: contactView,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[ADMIN_EMERGENCY_CONTACT_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memproses kontak darurat');
   }
 }

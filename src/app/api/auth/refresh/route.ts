@@ -35,11 +35,14 @@ export async function POST(req: Request) {
       await supabasePublic.auth.refreshSession({ refresh_token: refreshToken });
 
     if (refreshError || !authData.session || !authData.user) {
+      if (refreshError) {
+        console.error('[AUTH_REFRESH_FAILED]:', refreshError.message);
+      }
       const errorResponse = NextResponse.json(
         {
           success: false,
           error: 'INVALID_REFRESH_TOKEN',
-          message: refreshError?.message || 'Sesi tidak dapat diperbarui',
+          message: 'Sesi tidak dapat diperbarui. Silakan login kembali.',
         },
         { status: 401 }
       );
@@ -96,11 +99,12 @@ export async function POST(req: Request) {
 
     return response;
   } catch (err: unknown) {
+    console.error('[AUTH_REFRESH_INTERNAL_ERROR]:', err);
     return NextResponse.json(
       {
         success: false,
         error: 'INTERNAL_SERVER_ERROR',
-        message: err instanceof Error ? err.message : 'Terjadi kesalahan sistem saat memperbarui token',
+        message: 'Terjadi kesalahan sistem saat memperbarui token.',
       },
       { status: 500 }
     );

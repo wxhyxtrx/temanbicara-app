@@ -88,6 +88,7 @@ export async function POST(
       message: 'Booking berhasil dibatalkan',
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_CANCEL_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat membatalkan booking');
   }
 }

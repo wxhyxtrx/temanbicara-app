@@ -59,7 +59,7 @@ export async function GET(req: Request) {
     if (sessionError || !sessionData.user || !sessionData.session) {
       console.error('[OAUTH EXCHANGE FAILED]:', sessionError?.message);
       return NextResponse.redirect(
-        `${origin}/login?error=OAUTH_EXCHANGE_FAILED&message=${encodeURIComponent(sessionError?.message || '')}`
+        `${origin}/login?error=OAUTH_EXCHANGE_FAILED&message=${encodeURIComponent('Gagal masuk via Google. Silakan coba beberapa saat lagi.')}`
       );
     }
 

@@ -70,6 +70,7 @@ export async function POST(
       message: 'Permintaan perpanjangan sesi 10 menit berhasil diajukan',
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_EXTENSION_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat mengajukan perpanjangan sesi');
   }
 }

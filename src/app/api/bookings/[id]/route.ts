@@ -37,7 +37,8 @@ export async function GET(
       .maybeSingle();
 
     if (selectError) {
-      return fail(500, 'QUERY_FAILED', selectError.message);
+      console.error('[BOOKING_GET_BY_ID_ERROR]:', selectError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat detail booking');
     }
     if (!booking) {
       return fail(404, 'NOT_FOUND', 'Booking tidak ditemukan');
@@ -121,6 +122,7 @@ export async function GET(
       data: bookingRow,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_GET_BY_ID_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat detail booking');
   }
 }

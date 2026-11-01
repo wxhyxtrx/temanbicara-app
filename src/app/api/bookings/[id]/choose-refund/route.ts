@@ -58,6 +58,7 @@ export async function POST(
       message: 'Pilihan refund berhasil diproses. Koin telah dikembalikan penuh ke saldo Anda.',
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_CHOOSE_REFUND_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memproses pengembalian dana');
   }
 }

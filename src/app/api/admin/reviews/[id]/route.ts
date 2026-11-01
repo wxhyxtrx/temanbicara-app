@@ -64,6 +64,7 @@ export async function PATCH(
         : 'Ulasan berhasil ditampilkan kembali ke publik',
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[ADMIN_REVIEW_HIDE_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memoderasi ulasan');
   }
 }

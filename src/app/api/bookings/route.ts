@@ -80,7 +80,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: booking as BookingEntity }, { status: 201 });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKINGS_CREATE_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat membuat booking');
   }
 }
 
@@ -144,7 +145,8 @@ export async function GET(req: Request) {
     const { data: rows, count, error: selectError } = await query.range(from, to);
 
     if (selectError) {
-      return fail(500, 'QUERY_FAILED', selectError.message);
+      console.error('[BOOKINGS_QUERY_ERROR]:', selectError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat daftar booking');
     }
 
     const bookingList = (rows || []) as BookingEntity[];
@@ -233,6 +235,7 @@ export async function GET(req: Request) {
       pagination: { page, limit, total: totalCount },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKINGS_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat booking');
   }
 }
