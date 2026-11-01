@@ -44,7 +44,8 @@ export async function POST(
       .maybeSingle();
 
     if (fetchError) {
-      return fail(500, 'QUERY_FAILED', fetchError.message);
+      console.error('[PEER_TICKET_CLOSE_FETCH_ERROR]:', fetchError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memverifikasi status tiket curhat');
     }
     if (!existingTicket) {
       return fail(404, 'TICKET_NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -69,6 +70,7 @@ export async function POST(
     });
 
     if (rpcError) {
+      console.error('[PEER_TICKET_CLOSE_RPC_ERROR]:', rpcError);
       const msg = rpcError.message || '';
       if (msg.includes('TICKET_NOT_FOUND')) {
         return fail(404, 'TICKET_NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -82,7 +84,7 @@ export async function POST(
       if (msg.includes('INVALID_PARAMETER')) {
         return fail(400, 'INVALID_PARAMETER', 'Parameter tidak valid');
       }
-      return fail(400, 'CLOSE_FAILED', msg || 'Gagal menutup tiket curhat');
+      return fail(400, 'CLOSE_FAILED', 'Gagal menutup tiket curhat');
     }
 
     const ticket = closedTicket as PeerTicketEntity;
@@ -101,6 +103,7 @@ export async function POST(
       data: ticket,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_TICKET_CLOSE_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses penutupan tiket');
   }
 }

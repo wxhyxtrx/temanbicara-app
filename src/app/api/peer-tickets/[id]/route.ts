@@ -49,7 +49,8 @@ export async function GET(
       .maybeSingle<PeerTicketEntity>();
 
     if (ticketError) {
-      return fail(500, 'QUERY_FAILED', ticketError.message);
+      console.error('[PEER_TICKET_DETAIL_ERROR]:', ticketError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat detail tiket curhat');
     }
     if (!ticket) {
       return fail(404, 'NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -125,7 +126,7 @@ export async function GET(
       data,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Terjadi kesalahan pada server';
-    return fail(500, 'INTERNAL_SERVER_ERROR', message);
+    console.error('[PEER_TICKET_DETAIL_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses detail tiket');
   }
 }

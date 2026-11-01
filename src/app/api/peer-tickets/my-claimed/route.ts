@@ -45,7 +45,8 @@ export async function GET() {
       .maybeSingle();
 
     if (error) {
-      return fail(500, 'QUERY_FAILED', error.message);
+      console.error('[PEER_TICKET_MY_CLAIMED_ERROR]:', error);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat tiket curhat yang ditangani');
     }
 
     if (!ticket) {
@@ -63,6 +64,7 @@ export async function GET() {
       data: safeTicket as RelawanPeerTicketDTO,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_TICKET_MY_CLAIMED_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses tiket yang ditangani');
   }
 }

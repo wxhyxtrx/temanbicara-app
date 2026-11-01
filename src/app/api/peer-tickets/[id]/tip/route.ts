@@ -64,7 +64,8 @@ export async function POST(
       .maybeSingle();
 
     if (ticketError) {
-      return fail(500, 'QUERY_FAILED', ticketError.message);
+      console.error('[PEER_TIP_TICKET_ERROR]:', ticketError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memverifikasi tiket curhat');
     }
     if (!ticket) {
       return fail(404, 'TICKET_NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -93,6 +94,7 @@ export async function POST(
     });
 
     if (rpcError) {
+      console.error('[PEER_TIP_RPC_ERROR]:', rpcError);
       const msg = rpcError.message || '';
       if (msg.includes('TICKET_NOT_FOUND')) {
         return fail(404, 'TICKET_NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -118,7 +120,7 @@ export async function POST(
       if (msg.includes('TIP_DAILY_CAP_EXCEEDED')) {
         return fail(400, 'TIP_DAILY_CAP_EXCEEDED', 'Batas maksimal harian pemberian tip telah tercapai');
       }
-      return fail(400, 'TIP_FAILED', msg || 'Gagal memberikan tip');
+      return fail(400, 'TIP_FAILED', 'Gagal memberikan tip');
     }
 
     return NextResponse.json({
@@ -129,6 +131,7 @@ export async function POST(
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_TIP_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses tip');
   }
 }

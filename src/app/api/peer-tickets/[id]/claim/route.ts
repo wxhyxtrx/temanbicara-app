@@ -51,6 +51,7 @@ export async function POST(
     });
 
     if (rpcError) {
+      console.error('[PEER_TICKET_CLAIM_RPC_ERROR]:', rpcError);
       const msg = rpcError.message || '';
       if (msg.includes('DAILY_QUOTA_EXHAUSTED')) {
         return fail(409, 'DAILY_QUOTA_EXHAUSTED', 'Kuota klaim tiket harian relawan sudah habis.');
@@ -70,7 +71,7 @@ export async function POST(
       if (msg.includes('INVALID_PARAMETER')) {
         return fail(422, 'INVALID_PARAMETER', 'Parameter klaim tiket tidak valid');
       }
-      return fail(400, 'CLAIM_FAILED', msg || 'Gagal mengklaim tiket curhat');
+      return fail(400, 'CLAIM_FAILED', 'Gagal mengklaim tiket curhat');
     }
 
     // Buang patient_id demi privasi pasien
@@ -82,6 +83,7 @@ export async function POST(
       data: safeTicket as RelawanPeerTicketDTO,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_TICKET_CLAIM_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses klaim tiket');
   }
 }

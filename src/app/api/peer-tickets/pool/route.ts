@@ -44,7 +44,8 @@ export async function GET() {
       .order('created_at', { ascending: true });
 
     if (error) {
-      return fail(500, 'QUERY_FAILED', error.message);
+      console.error('[PEER_TICKETS_POOL_ERROR]:', error);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat antrean tiket curhat');
     }
 
     const filtered = (tickets ?? []).filter((t) => {
@@ -65,6 +66,7 @@ export async function GET() {
       data: safeTickets,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_TICKETS_POOL_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses antrean tiket');
   }
 }

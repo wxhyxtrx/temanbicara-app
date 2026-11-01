@@ -81,7 +81,8 @@ export async function GET() {
       .in('quota_date', [todayWib, yesterdayWib]);
 
     if (quotaError) {
-      return fail(500, 'QUERY_FAILED', quotaError.message);
+      console.error('[PEER_TICKET_QUOTA_ERROR]:', quotaError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat kuota harian relawan');
     }
 
     const todayRow = (quotaRows ?? []).find((r) => r.quota_date === todayWib);
@@ -118,6 +119,7 @@ export async function GET() {
       data: quotaData,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_TICKET_QUOTA_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses kuota relawan');
   }
 }

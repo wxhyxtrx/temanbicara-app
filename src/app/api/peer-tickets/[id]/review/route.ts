@@ -43,7 +43,8 @@ export async function GET(
       .maybeSingle();
 
     if (ticketError) {
-      return fail(500, 'QUERY_FAILED', ticketError.message);
+      console.error('[PEER_REVIEW_GET_TICKET_ERROR]:', ticketError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memverifikasi tiket curhat');
     }
     if (!ticket) {
       return fail(404, 'TICKET_NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -64,7 +65,8 @@ export async function GET(
       .maybeSingle();
 
     if (reviewError) {
-      return fail(500, 'QUERY_FAILED', reviewError.message);
+      console.error('[PEER_REVIEW_FETCH_ERROR]:', reviewError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat ulasan tiket');
     }
 
     return NextResponse.json({
@@ -72,7 +74,8 @@ export async function GET(
       data: (review as PeerReviewEntity | null) ?? null,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_REVIEW_GET_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses ulasan');
   }
 }
 
@@ -134,7 +137,8 @@ export async function POST(
       .maybeSingle();
 
     if (ticketError) {
-      return fail(500, 'QUERY_FAILED', ticketError.message);
+      console.error('[PEER_REVIEW_POST_TICKET_ERROR]:', ticketError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memverifikasi tiket curhat');
     }
     if (!ticket) {
       return fail(404, 'TICKET_NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -157,6 +161,7 @@ export async function POST(
     });
 
     if (rpcError) {
+      console.error('[PEER_REVIEW_CREATE_RPC_ERROR]:', rpcError);
       const msg = rpcError.message || '';
       if (msg.includes('ALREADY_REVIEWED') || msg.includes('duplicate key') || msg.includes('23505')) {
         return fail(409, 'REVIEW_ALREADY_EXISTS', 'Ulasan untuk tiket ini sudah pernah dibuat');
@@ -174,9 +179,9 @@ export async function POST(
         return fail(403, 'FORBIDDEN', 'Hanya pasien pemilik tiket yang dapat memberikan ulasan');
       }
       if (msg.includes('INVALID_RATING') || msg.includes('REVIEW_TOO_LONG') || msg.includes('INVALID_PARAMETER')) {
-        return fail(400, 'VALIDATION_ERROR', msg);
+        return fail(400, 'VALIDATION_ERROR', 'Parameter ulasan tidak valid');
       }
-      return fail(400, 'REVIEW_FAILED', msg || 'Gagal menyimpan ulasan');
+      return fail(400, 'REVIEW_FAILED', 'Gagal menyimpan ulasan');
     }
 
     return NextResponse.json(
@@ -187,6 +192,7 @@ export async function POST(
       { status: 200 }
     );
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_REVIEW_POST_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat menyimpan ulasan');
   }
 }

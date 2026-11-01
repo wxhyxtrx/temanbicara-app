@@ -50,7 +50,8 @@ export async function GET(
       .maybeSingle();
 
     if (ticketError) {
-      return fail(500, 'QUERY_FAILED', ticketError.message);
+      console.error('[PEER_MESSAGES_TICKET_ERROR]:', ticketError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat tiket curhat');
     }
     if (!ticket) {
       return fail(404, 'NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -80,7 +81,8 @@ export async function GET(
     ]);
 
     if (messagesRes.error) {
-      return fail(500, 'QUERY_FAILED', messagesRes.error.message);
+      console.error('[PEER_MESSAGES_FETCH_ERROR]:', messagesRes.error);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat riwayat pesan');
     }
 
     const relawanName = relawanProfileRes.data?.alias_name?.trim() || 'Pendengar Sebaya';
@@ -110,7 +112,8 @@ export async function GET(
       data: messagesView,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_MESSAGES_GET_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses riwayat pesan');
   }
 }
 
@@ -174,7 +177,8 @@ export async function POST(
       .maybeSingle();
 
     if (ticketError) {
-      return fail(500, 'QUERY_FAILED', ticketError.message);
+      console.error('[PEER_MESSAGES_POST_TICKET_ERROR]:', ticketError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memproses tiket curhat');
     }
     if (!ticketData) {
       return fail(404, 'NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -206,11 +210,12 @@ export async function POST(
       });
 
       if (rpcError) {
+        console.error('[PEER_TICKET_FIRST_RESPONSE_RPC_ERROR]:', rpcError);
         const msg = rpcError.message || '';
         if (msg.includes('TIMEOUT') || msg.includes('FIRST_RESPONSE_TIMEOUT')) {
           return fail(409, 'FIRST_RESPONSE_TIMEOUT', 'Batas waktu respon pertama (10 menit) telah terlewati. Tiket telah dikembalikan ke antrean.');
         }
-        return fail(400, 'FIRST_RESPONSE_FAILED', msg || 'Gagal memproses respon pertama');
+        return fail(400, 'FIRST_RESPONSE_FAILED', 'Gagal memproses respon pertama');
       }
 
       const updatedTicket = rpcTicket as PeerTicketEntity | null;
@@ -254,7 +259,8 @@ export async function POST(
       .single();
 
     if (insertError) {
-      return fail(500, 'INSERT_FAILED', insertError.message);
+      console.error('[PEER_MESSAGES_INSERT_ERROR]:', insertError);
+      return fail(500, 'INSERT_FAILED', 'Gagal mengirim pesan');
     }
 
     const insertedEntity = newMsg as PeerMessageEntity;
@@ -292,6 +298,7 @@ export async function POST(
       { status: 201 }
     );
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_MESSAGES_POST_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat mengirim pesan');
   }
 }

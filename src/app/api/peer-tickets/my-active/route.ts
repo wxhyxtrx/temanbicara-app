@@ -44,7 +44,8 @@ export async function GET() {
       .maybeSingle<PeerTicketEntity>();
 
     if (activeError) {
-      return fail(500, 'QUERY_FAILED', activeError.message);
+      console.error('[PEER_TICKET_MY_ACTIVE_ERROR]:', activeError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat tiket curhat aktif');
     }
 
     if (activeTicket) {
@@ -64,7 +65,8 @@ export async function GET() {
       .maybeSingle<PeerTicketEntity>();
 
     if (lastError) {
-      return fail(500, 'QUERY_FAILED', lastError.message);
+      console.error('[PEER_TICKET_LAST_ERROR]:', lastError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat riwayat tiket curhat');
     }
 
     // 3. Jika tiket terakhir berstatus 'archived', kembalikan untuk kartu empati di beranda
@@ -81,6 +83,7 @@ export async function GET() {
       data: null,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_TICKET_MY_ACTIVE_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses tiket curhat aktif');
   }
 }

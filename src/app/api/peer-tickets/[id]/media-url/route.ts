@@ -64,7 +64,8 @@ export async function GET(
       .maybeSingle();
 
     if (ticketError) {
-      return fail(500, 'QUERY_FAILED', ticketError.message);
+      console.error('[PEER_MEDIA_URL_TICKET_ERROR]:', ticketError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memproses berkas media tiket curhat');
     }
     if (!ticket) {
       return fail(404, 'NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -87,7 +88,8 @@ export async function GET(
       .maybeSingle();
 
     if (msgError) {
-      return fail(500, 'QUERY_FAILED', msgError.message);
+      console.error('[PEER_MEDIA_URL_MSG_ERROR]:', msgError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memverifikasi berkas media');
     }
     if (!msgMatch) {
       return fail(404, 'MEDIA_NOT_FOUND', 'Berkas media tidak ditemukan pada riwayat obrolan tiket ini');
@@ -98,7 +100,8 @@ export async function GET(
       .createSignedUrl(mediaPath, SIGNED_URL_EXPIRES_IN_SECONDS);
 
     if (signError || !signedData?.signedUrl) {
-      return fail(500, 'STORAGE_ERROR', signError?.message || 'Gagal menghasilkan signed URL media');
+      console.error('[PEER_MEDIA_URL_SIGN_ERROR]:', signError);
+      return fail(500, 'STORAGE_ERROR', 'Gagal menghasilkan signed URL media');
     }
 
     const responseData: PeerMediaUrlResponse = {
@@ -111,7 +114,8 @@ export async function GET(
       data: responseData,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_MEDIA_URL_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses berkas media');
   }
 }
 
@@ -161,7 +165,8 @@ export async function POST(
       .maybeSingle();
 
     if (ticketError) {
-      return fail(500, 'QUERY_FAILED', ticketError.message);
+      console.error('[PEER_MEDIA_UPLOAD_TICKET_ERROR]:', ticketError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memproses unggah media tiket curhat');
     }
     if (!ticketData) {
       return fail(404, 'NOT_FOUND', 'Tiket curhat tidak ditemukan');
@@ -196,7 +201,8 @@ export async function POST(
         .maybeSingle();
 
       if (msgError) {
-        return fail(500, 'QUERY_FAILED', msgError.message);
+        console.error('[PEER_MEDIA_VIEW_MSG_ERROR]:', msgError);
+        return fail(500, 'QUERY_FAILED', 'Gagal memverifikasi berkas media');
       }
       if (!msgMatch) {
         return fail(404, 'MEDIA_NOT_FOUND', 'Berkas media tidak ditemukan pada riwayat obrolan tiket ini');
@@ -207,7 +213,8 @@ export async function POST(
         .createSignedUrl(mediaPath, SIGNED_URL_EXPIRES_IN_SECONDS);
 
       if (signError || !signedData?.signedUrl) {
-        return fail(500, 'STORAGE_ERROR', signError?.message || 'Gagal menghasilkan signed URL media');
+        console.error('[PEER_MEDIA_VIEW_SIGN_ERROR]:', signError);
+        return fail(500, 'STORAGE_ERROR', 'Gagal menghasilkan signed URL media');
       }
 
       const viewResponse: PeerMediaUrlResponse = {
@@ -267,10 +274,11 @@ export async function POST(
       .createSignedUploadUrl(filePath);
 
     if (uploadError || !uploadData?.signedUrl) {
+      console.error('[PEER_MEDIA_UPLOAD_STORAGE_ERROR]:', uploadError);
       return fail(
         500,
         'STORAGE_UPLOAD_ERROR',
-        uploadError?.message || 'Gagal menghasilkan URL unggah media'
+        'Gagal menghasilkan URL unggah media'
       );
     }
 
@@ -286,6 +294,7 @@ export async function POST(
       data: responsePayload,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_MEDIA_UPLOAD_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses unggah media');
   }
 }

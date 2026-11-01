@@ -57,6 +57,7 @@ export async function POST(req: Request) {
     });
 
     if (rpcError) {
+      console.error('[PEER_TICKET_CREATE_RPC_ERROR]:', rpcError);
       const msg = rpcError.message || '';
       if (msg.includes('ACTIVE_TICKET_EXISTS')) {
         return fail(409, 'ACTIVE_TICKET_EXISTS', 'Pasien masih memiliki tiket curhat yang sedang aktif.');
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
       if (msg.includes('INVALID_PARAMETER')) {
         return fail(422, 'INVALID_PARAMETER', 'Parameter tiket curhat tidak valid');
       }
-      return fail(400, 'CREATE_TICKET_FAILED', msg || 'Gagal membuat tiket curhat');
+      return fail(400, 'CREATE_TICKET_FAILED', 'Gagal membuat tiket curhat');
     }
 
     return NextResponse.json(
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PEER_TICKET_CREATE_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat membuat tiket curhat');
   }
 }
