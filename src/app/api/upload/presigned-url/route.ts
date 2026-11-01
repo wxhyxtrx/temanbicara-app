@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { z } from 'zod';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitExceededResponse,
+} from '@/lib/rate-limit/distributed';
 
 const uploadRequestSchema = z.object({
   file_name: z
@@ -18,6 +23,13 @@ const uploadRequestSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    // 1. Rate Limiting Terdistribusi: 10 request per 10 menit per IP (fail-open)
+    const ip = getClientIp(req);
+    const rateLimit = await checkRateLimit(`upload_presigned:${ip}`, 10, 600);
+    if (!rateLimit.allowed) {
+      return rateLimitExceededResponse(rateLimit.retryAfter);
+    }
+
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== 'object') {
       return NextResponse.json(
@@ -44,21 +56,34 @@ export async function POST(req: Request) {
       );
     }
 
-    const { file_name, document_type, user_email_or_temp_id } = parsed.data;
+    const { document_type, user_email_or_temp_id } = parsed.data;
     const sanitizedPrefix = user_email_or_temp_id.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const filePath = `${sanitizedPrefix}/${document_type}-${Date.now()}.pdf`;
+    const filePath = `${sanitizedPrefix}/${document_type}-${crypto.randomUUID()}.pdf`;
 
-    // Buat signed upload URL (berlaku 120 detik)
-    const { data, error } = await supabaseAdmin.storage
-      .from('dokumen-mitra')
-      .createSignedUploadUrl(filePath);
-
-    if (error) {
+    if (!supabaseAdmin) {
+      console.error('[UploadPresignedUrl] supabaseAdmin client tidak tersedia');
       return NextResponse.json(
         {
           success: false,
           error: 'STORAGE_UPLOAD_URL_ERROR',
-          message: error.message,
+          message: 'Gagal menghasilkan URL upload berkas. Silakan coba kembali.',
+        },
+        { status: 500 }
+      );
+    }
+
+    // Buat signed upload URL dengan opsi { upsert: false }
+    const { data, error } = await supabaseAdmin.storage
+      .from('dokumen-mitra')
+      .createSignedUploadUrl(filePath, { upsert: false });
+
+    if (error || !data) {
+      console.error('[UploadPresignedUrl] Gagal membuat presigned upload URL:', error?.message);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'STORAGE_UPLOAD_URL_ERROR',
+          message: 'Gagal menghasilkan URL upload berkas. Silakan coba kembali.',
         },
         { status: 500 }
       );
@@ -74,11 +99,15 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: unknown) {
+    console.error(
+      '[UploadPresignedUrl] Exception saat membuat presigned upload URL:',
+      err instanceof Error ? err.message : String(err)
+    );
     return NextResponse.json(
       {
         success: false,
         error: 'INTERNAL_SERVER_ERROR',
-        message: err instanceof Error ? err.message : 'Gagal menghasilkan URL upload berkas',
+        message: 'Gagal menghasilkan URL upload berkas. Silakan coba kembali.',
       },
       { status: 500 }
     );
