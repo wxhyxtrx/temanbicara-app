@@ -37,7 +37,8 @@ export async function GET() {
     });
 
     if (rpcError) {
-      return fail(500, 'QUERY_FAILED', rpcError.message);
+      console.error('[LISTENER_RATING_SUMMARY_RPC_ERROR]:', rpcError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat ringkasan rating');
     }
 
     const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : (data as Record<string, unknown> | undefined);
@@ -58,6 +59,7 @@ export async function GET() {
       data: summary,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_SERVER_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[LISTENER_RATING_SUMMARY_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memuat ringkasan rating');
   }
 }

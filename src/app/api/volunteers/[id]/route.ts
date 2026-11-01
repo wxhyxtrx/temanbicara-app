@@ -10,11 +10,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!UUID_RE.test(id)) return fail(400, 'INVALID_ID', 'ID tidak valid');
 
     const { data, error } = await activeProfiles('relawan_profiles').eq('user_id', id).maybeSingle();
-    if (error) return fail(500, 'QUERY_FAILED', error.message);
+    if (error) {
+      console.error('[VOLUNTEERS_GET_BY_ID_QUERY_ERROR]:', error);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat data relawan');
+    }
     if (!data) return fail(404, 'NOT_FOUND', 'Relawan tidak ditemukan');
 
     return NextResponse.json({ success: true, data: toPublicVolunteer(data) });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[VOLUNTEERS_GET_BY_ID_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat data relawan');
   }
 }

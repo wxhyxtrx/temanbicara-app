@@ -58,7 +58,8 @@ export async function GET(req: Request) {
     ]);
 
     if (listResult.error) {
-      return fail(500, 'QUERY_FAILED', listResult.error.message);
+      console.error('[NOTIFICATIONS_GET_QUERY_ERROR]:', listResult.error);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat daftar notifikasi');
     }
 
     const notifications = (listResult.data || []) as NotificationEntity[];
@@ -77,6 +78,7 @@ export async function GET(req: Request) {
       unread_count: unreadCount,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[NOTIFICATIONS_GET_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat notifikasi');
   }
 }

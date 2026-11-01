@@ -77,7 +77,8 @@ export async function POST(
       if (msg.includes('TIP_DAILY_CAP_EXCEEDED')) {
         return fail(422, 'TIP_DAILY_CAP_EXCEEDED', 'Batas maksimal harian pemberian tip telah tercapai');
       }
-      return fail(400, 'TIP_FAILED', msg);
+      console.error('[BOOKING_TIP_RPC_ERROR]:', rpcError);
+      return fail(400, 'TIP_FAILED', 'Gagal memberikan tip sesi konseling');
     }
 
     return NextResponse.json({
@@ -90,6 +91,7 @@ export async function POST(
       message: 'Tip berhasil diberikan kepada psikolog',
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[BOOKING_TIP_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memberikan tip');
   }
 }

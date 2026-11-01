@@ -45,7 +45,8 @@ export async function POST(req: Request) {
     const { data: updatedRows, error: updateError } = await updateQuery.select('id');
 
     if (updateError) {
-      return fail(500, 'UPDATE_FAILED', updateError.message);
+      console.error('[NOTIFICATIONS_READ_UPDATE_ERROR]:', updateError);
+      return fail(500, 'UPDATE_FAILED', 'Gagal memperbarui status notifikasi');
     }
 
     const updatedCount = updatedRows?.length ?? 0;
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[NOTIFICATIONS_READ_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memperbarui status notifikasi');
   }
 }

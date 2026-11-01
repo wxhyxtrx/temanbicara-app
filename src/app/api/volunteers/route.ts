@@ -8,7 +8,10 @@ export async function GET(req: Request) {
     const { data, error, count } = await activeProfiles('relawan_profiles')
       .order('total_sesi', { ascending: false })
       .range(from, to);
-    if (error) return fail(500, 'QUERY_FAILED', error.message);
+    if (error) {
+      console.error('[VOLUNTEERS_GET_QUERY_ERROR]:', error);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat daftar relawan');
+    }
 
     return NextResponse.json({
       success: true,
@@ -16,6 +19,7 @@ export async function GET(req: Request) {
       meta: { page, limit, total: count ?? 0 },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[VOLUNTEERS_GET_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat daftar relawan');
   }
 }
