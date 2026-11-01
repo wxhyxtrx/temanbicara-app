@@ -52,6 +52,9 @@ export function ChooseRefundModal({
     try {
       const res = await bookingClient.chooseRefund(booking.id);
       if (res?.success) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("wallet:refresh"));
+        }
         onSuccess(booking.price_coins);
         onClose();
       }

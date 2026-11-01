@@ -234,6 +234,7 @@ export function NotificationDropdown() {
                 "completed",
                 "psikolog_cancelled_choice",
                 "transaksi",
+                "extension_approved",
               ];
               if (walletMutationTypes.includes(newRow.type)) {
                 if (typeof window !== "undefined") {
