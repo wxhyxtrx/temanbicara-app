@@ -28,7 +28,8 @@ export async function GET() {
       .order('start_hour', { ascending: true });
 
     if (weeklyError) {
-      return fail(500, 'FETCH_SCHEDULE_FAILED', weeklyError.message);
+      console.error('[COUNSELOR_SCHEDULE_FETCH_WEEKLY_ERROR]:', weeklyError);
+      return fail(500, 'FETCH_SCHEDULE_FAILED', 'Gagal memuat jadwal konseling');
     }
 
     // 2. Ambil Waktu Libur (Time Off)
@@ -39,7 +40,8 @@ export async function GET() {
       .order('start_at', { ascending: true });
 
     if (timeOffError) {
-      return fail(500, 'FETCH_TIME_OFF_FAILED', timeOffError.message);
+      console.error('[COUNSELOR_SCHEDULE_FETCH_TIMEOFF_ERROR]:', timeOffError);
+      return fail(500, 'FETCH_TIME_OFF_FAILED', 'Gagal memuat waktu libur');
     }
 
     // 3. Ambil Konfigurasi Booking Profil Psikolog
@@ -50,7 +52,8 @@ export async function GET() {
       .single();
 
     if (profileError) {
-      return fail(500, 'FETCH_PROFILE_FAILED', profileError.message);
+      console.error('[COUNSELOR_SCHEDULE_FETCH_PROFILE_ERROR]:', profileError);
+      return fail(500, 'FETCH_PROFILE_FAILED', 'Gagal memuat profil psikolog');
     }
 
     return NextResponse.json({
@@ -64,7 +67,8 @@ export async function GET() {
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[COUNSELOR_SCHEDULE_GET_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat jadwal');
   }
 }
 
@@ -113,7 +117,8 @@ export async function PUT(req: Request) {
     });
 
     if (rpcError) {
-      return fail(500, 'UPDATE_SCHEDULE_FAILED', rpcError.message);
+      console.error('[COUNSELOR_SCHEDULE_RPC_ERROR]:', rpcError);
+      return fail(500, 'UPDATE_SCHEDULE_FAILED', 'Gagal memperbarui jadwal konseling');
     }
 
     // Ambil hasil tersimpan terbaru
@@ -125,7 +130,8 @@ export async function PUT(req: Request) {
       .order('start_hour', { ascending: true });
 
     if (fetchError) {
-      return fail(500, 'FETCH_SCHEDULE_FAILED', fetchError.message);
+      console.error('[COUNSELOR_SCHEDULE_FETCH_UPDATED_ERROR]:', fetchError);
+      return fail(500, 'FETCH_SCHEDULE_FAILED', 'Gagal memuat jadwal konseling terbaru');
     }
 
     return NextResponse.json({
@@ -136,6 +142,7 @@ export async function PUT(req: Request) {
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[COUNSELOR_SCHEDULE_PUT_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memperbarui jadwal');
   }
 }

@@ -54,7 +54,8 @@ export async function POST(req: Request) {
       .single();
 
     if (insertError || !newTimeOff) {
-      return fail(500, 'CREATE_TIME_OFF_FAILED', insertError?.message ?? 'Gagal menyimpan waktu libur');
+      console.error('[COUNSELOR_TIME_OFF_INSERT_ERROR]:', insertError);
+      return fail(500, 'CREATE_TIME_OFF_FAILED', 'Gagal menyimpan waktu libur');
     }
 
     // 2. Deteksi Booking yang Tertimpa (Conflicting Bookings)
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[COUNSELOR_TIME_OFF_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat menambahkan waktu libur');
   }
 }

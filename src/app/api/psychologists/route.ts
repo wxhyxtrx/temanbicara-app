@@ -13,7 +13,10 @@ export async function GET(req: Request) {
     const { data, error, count } = await activeProfiles('psikolog_profiles')
       .order('created_at', { ascending: false })
       .range(from, to);
-    if (error) return fail(500, 'QUERY_FAILED', error.message);
+    if (error) {
+      console.error('[PSYCHOLOGISTS_GET_QUERY_ERROR]:', error);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat daftar psikolog');
+    }
 
     const rows = data ?? [];
     const psychologistIds = rows.map((r) => r.user_id);
@@ -30,7 +33,8 @@ export async function GET(req: Request) {
       meta: { page, limit, total: count ?? 0 },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PSYCHOLOGISTS_GET_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat daftar psikolog');
   }
 }
 

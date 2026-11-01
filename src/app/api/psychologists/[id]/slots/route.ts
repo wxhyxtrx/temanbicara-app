@@ -61,7 +61,8 @@ export async function GET(
       .maybeSingle();
 
     if (psychError) {
-      return fail(500, 'QUERY_FAILED', psychError.message);
+      console.error('[PSYCHOLOGISTS_SLOTS_CHECK_ERROR]:', psychError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memeriksa profil psikolog');
     }
     if (!psychologist) {
       return fail(404, 'NOT_FOUND', 'Psikolog tidak ditemukan');
@@ -80,7 +81,8 @@ export async function GET(
     });
 
     if (rpcError) {
-      return fail(500, 'FETCH_SLOTS_FAILED', rpcError.message);
+      console.error('[PSYCHOLOGISTS_SLOTS_RPC_ERROR]:', rpcError);
+      return fail(500, 'FETCH_SLOTS_FAILED', 'Gagal memuat jadwal slot');
     }
 
     const slotList: string[] = Array.isArray(slots) ? (slots as string[]) : [];
@@ -93,6 +95,7 @@ export async function GET(
       slots: slotList,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PSYCHOLOGISTS_SLOTS_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat jadwal slot');
   }
 }

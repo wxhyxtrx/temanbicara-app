@@ -76,7 +76,8 @@ export async function GET(
       .order('created_at', { ascending: false });
 
     if (notesError) {
-      return fail(500, 'QUERY_FAILED', notesError.message);
+      console.error('[COUNSELOR_PATIENT_NOTES_QUERY_ERROR]:', notesError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat catatan sesi');
     }
 
     const noteRows = (notes || []) as ClientNoteEntity[];
@@ -117,6 +118,7 @@ export async function GET(
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[COUNSELOR_PATIENT_NOTES_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat catatan sesi');
   }
 }

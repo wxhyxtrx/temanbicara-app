@@ -51,7 +51,8 @@ export async function GET(
       .maybeSingle();
 
     if (psikoError) {
-      return fail(500, 'QUERY_FAILED', psikoError.message);
+      console.error('[PSYCHOLOGISTS_REVIEWS_CHECK_PSIKO_ERROR]:', psikoError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memeriksa data psikolog');
     }
     if (!psiko) {
       return fail(404, 'NOT_FOUND', 'Psikolog tidak ditemukan');
@@ -68,7 +69,8 @@ export async function GET(
       .range(from, to);
 
     if (reviewsError) {
-      return fail(500, 'QUERY_FAILED', reviewsError.message);
+      console.error('[PSYCHOLOGISTS_REVIEWS_FETCH_ERROR]:', reviewsError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat ulasan psikolog');
     }
 
     const formattedReviews: PublicReviewItem[] = (reviews ?? []).map((r) => ({
@@ -87,6 +89,7 @@ export async function GET(
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[PSYCHOLOGISTS_REVIEWS_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat ulasan psikolog');
   }
 }

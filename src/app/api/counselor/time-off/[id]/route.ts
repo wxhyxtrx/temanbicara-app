@@ -37,7 +37,8 @@ export async function DELETE(
       .maybeSingle();
 
     if (findError) {
-      return fail(500, 'QUERY_FAILED', findError.message);
+      console.error('[COUNSELOR_TIME_OFF_FIND_ERROR]:', findError);
+      return fail(500, 'QUERY_FAILED', 'Gagal mencari data waktu libur');
     }
     if (!existing) {
       return fail(404, 'NOT_FOUND', 'Waktu libur tidak ditemukan');
@@ -50,7 +51,8 @@ export async function DELETE(
       .eq('psikolog_id', session.user.id);
 
     if (deleteError) {
-      return fail(500, 'DELETE_TIME_OFF_FAILED', deleteError.message);
+      console.error('[COUNSELOR_TIME_OFF_DELETE_ERROR]:', deleteError);
+      return fail(500, 'DELETE_TIME_OFF_FAILED', 'Gagal menghapus waktu libur');
     }
 
     return NextResponse.json({
@@ -58,6 +60,7 @@ export async function DELETE(
       message: 'Waktu libur berhasil dihapus',
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[COUNSELOR_TIME_OFF_DELETE_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat menghapus waktu libur');
   }
 }
