@@ -122,7 +122,10 @@ export async function GET(req: Request) {
     }
 
     const { data, error, count } = await query;
-    if (error) return fail(500, 'QUERY_FAILED', error.message);
+    if (error) {
+      console.error('[USERS_GET_QUERY_ERROR]:', error);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat daftar pengguna');
+    }
 
     const rows = (data ?? []) as unknown as AdminUserQueryResult[];
     const userIds = rows.map((u) => u.id);
@@ -162,7 +165,8 @@ export async function GET(req: Request) {
       meta: { page, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit) },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[USERS_GET_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat daftar pengguna');
   }
 }
 
@@ -321,7 +325,8 @@ export async function POST(req: Request) {
     });
 
     if (authError || !authData.user) {
-      return fail(500, 'AUTH_CREATION_FAILED', authError?.message || 'Gagal membuat auth user');
+      console.error('[USERS_POST_AUTH_ERROR]:', authError);
+      return fail(500, 'AUTH_CREATION_FAILED', 'Gagal membuat akun pengguna');
     }
 
     const userId = authData.user.id;
@@ -338,8 +343,9 @@ export async function POST(req: Request) {
 
     if (userError) {
       // Rollback auth user jika insert tabel induk gagal
+      console.error('[USERS_POST_USER_INSERT_ERROR]:', userError);
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      return fail(500, 'USER_INSERT_FAILED', userError.message);
+      return fail(500, 'USER_INSERT_FAILED', 'Gagal menyimpan data pengguna');
     }
 
     // 4. Masukkan ke tabel profil anak sesuai role (TANPA dummy fallback)
@@ -388,9 +394,10 @@ export async function POST(req: Request) {
 
     if (profileError) {
       // Rollback total: hapus dari public.users dan auth.users
+      console.error('[USERS_POST_PROFILE_ERROR]:', profileError);
       await supabaseAdmin.from('users').delete().eq('id', userId);
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      return fail(500, 'PROFILE_INSERT_FAILED', profileError.message);
+      return fail(500, 'PROFILE_INSERT_FAILED', 'Gagal menyimpan profil pengguna');
     }
 
     return NextResponse.json(
@@ -409,6 +416,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[USERS_POST_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat membuat pengguna');
   }
 }

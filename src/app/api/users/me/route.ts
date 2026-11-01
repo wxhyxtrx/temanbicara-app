@@ -91,10 +91,11 @@ export async function PATCH(req: Request) {
         .eq('id', session.user.id);
 
       if (userUpdateError) {
+        console.error('[USERS_ME_UPDATE_PHONE_ERROR]:', userUpdateError);
         if (userUpdateError.code === '23505' || userUpdateError.message?.toLowerCase().includes('unique')) {
           return fail(409, 'PHONE_ALREADY_EXISTS', 'Nomor WhatsApp sudah digunakan oleh pengguna lain');
         }
-        return fail(500, 'USER_UPDATE_FAILED', userUpdateError.message);
+        return fail(500, 'USER_UPDATE_FAILED', 'Gagal memperbarui data pengguna');
       }
     }
 
@@ -172,7 +173,8 @@ export async function PATCH(req: Request) {
         .eq('user_id', session.user.id);
 
       if (profileUpdateError) {
-        return fail(500, 'PROFILE_UPDATE_FAILED', profileUpdateError.message);
+        console.error('[USERS_ME_UPDATE_PROFILE_ERROR]:', profileUpdateError);
+        return fail(500, 'PROFILE_UPDATE_FAILED', 'Gagal memperbarui profil pengguna');
       }
     }
 
@@ -184,6 +186,7 @@ export async function PATCH(req: Request) {
       .single();
 
     if (fetchUserError || !updatedUser) {
+      console.error('[USERS_ME_FETCH_UPDATED_USER_ERROR]:', fetchUserError);
       return fail(500, 'FETCH_UPDATED_USER_FAILED', 'Gagal memuat profil pengguna terbaru');
     }
 
@@ -199,6 +202,7 @@ export async function PATCH(req: Request) {
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[USERS_ME_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memperbarui profil pengguna');
   }
 }

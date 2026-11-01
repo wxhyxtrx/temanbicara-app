@@ -67,7 +67,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .eq('id', id)
       .maybeSingle();
 
-    if (userError) return fail(500, 'QUERY_FAILED', userError.message);
+    if (userError) {
+      console.error('[USERS_GET_BY_ID_ERROR]:', userError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memuat data pengguna');
+    }
     if (!user) return fail(404, 'NOT_FOUND', 'Pengguna tidak ditemukan');
 
     const profileTable = PROFILE_TABLE[user.role as keyof typeof PROFILE_TABLE];
@@ -236,7 +239,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[USERS_GET_BY_ID_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memuat data pengguna');
   }
 }
 
@@ -267,7 +271,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .eq('id', id)
       .maybeSingle();
 
-    if (checkError) return fail(500, 'QUERY_FAILED', checkError.message);
+    if (checkError) {
+      console.error('[USERS_PATCH_CHECK_ERROR]:', checkError);
+      return fail(500, 'QUERY_FAILED', 'Gagal memeriksa data pengguna');
+    }
     if (!targetUser) return fail(404, 'NOT_FOUND', 'Pengguna tidak ditemukan');
 
     // 2. Proteksi self-lockout bagi Admin
@@ -301,7 +308,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .update(userUpdates)
       .eq('id', id);
 
-    if (updateUserError) return fail(500, 'UPDATE_FAILED', updateUserError.message);
+    if (updateUserError) {
+      console.error('[USERS_PATCH_UPDATE_ERROR]:', updateUserError);
+      return fail(500, 'UPDATE_FAILED', 'Gagal memperbarui data pengguna');
+    }
 
     // 5. Update profil anak jika ada perubahan nama atau catatan penolakan
     const profileTable = PROFILE_TABLE[targetUser.role as keyof typeof PROFILE_TABLE];
@@ -339,7 +349,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       },
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[USERS_PATCH_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memperbarui data pengguna');
   }
 }
 
@@ -365,7 +376,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       .eq('id', id)
       .maybeSingle();
 
-    if (findError) return fail(500, 'QUERY_FAILED', findError.message);
+    if (findError) {
+      console.error('[USERS_DELETE_FIND_ERROR]:', findError);
+      return fail(500, 'QUERY_FAILED', 'Gagal mencari data pengguna');
+    }
     if (!targetUser) return fail(404, 'NOT_FOUND', 'Pengguna tidak ditemukan');
 
     // Proteksi self-delete (ID atau email admin yang sedang login)
@@ -375,7 +389,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
     // 2. Hapus dari public.users (cascade akan menghapus profile anak)
     const { error: deleteDbError } = await supabaseAdmin.from('users').delete().eq('id', id);
-    if (deleteDbError) return fail(500, 'DELETE_DB_FAILED', deleteDbError.message);
+    if (deleteDbError) {
+      console.error('[USERS_DELETE_DB_ERROR]:', deleteDbError);
+      return fail(500, 'DELETE_DB_FAILED', 'Gagal menghapus data pengguna dari database');
+    }
 
     // 3. Hapus dari Supabase Auth
     const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(id);
@@ -388,6 +405,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       message: `Pengguna ${targetUser.email} berhasil dihapus permanen`,
     });
   } catch (err: unknown) {
-    return fail(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Kesalahan sistem');
+    console.error('[USERS_DELETE_INTERNAL_ERROR]:', err);
+    return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat menghapus pengguna');
   }
 }
