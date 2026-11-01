@@ -183,8 +183,6 @@ export async function POST(req: Request) {
           avatar_url: userProfile.avatar_url,
         },
         session: {
-          access_token: authData.session.access_token,
-          refresh_token: authData.session.refresh_token,
           expires_at: authData.session.expires_at,
         },
         redirect_to: redirectTo,

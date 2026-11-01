@@ -22,6 +22,8 @@ export async function setSessionCookies(
     path: '/',
     maxAge,
     sameSite: 'lax',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
   });
 
   if (s.refreshToken) {
@@ -59,11 +61,15 @@ export async function setSessionCookies(
 }
 
 export function clearSessionCookies(res: NextResponse): void {
+  const isProd = process.env.NODE_ENV === 'production';
+
   res.cookies.set('tb_access_token', '', {
     path: '/',
     maxAge: 0,
     expires: new Date(0),
     sameSite: 'lax',
+    httpOnly: true,
+    secure: isProd,
   });
   res.cookies.set('tb_refresh_token', '', {
     path: '/',
@@ -71,6 +77,7 @@ export function clearSessionCookies(res: NextResponse): void {
     expires: new Date(0),
     sameSite: 'lax',
     httpOnly: true,
+    secure: isProd,
   });
   res.cookies.set('tb_user_role', '', {
     path: '/',
@@ -78,6 +85,7 @@ export function clearSessionCookies(res: NextResponse): void {
     expires: new Date(0),
     sameSite: 'lax',
     httpOnly: true,
+    secure: isProd,
   });
   res.cookies.set('tb_user_status', '', {
     path: '/',

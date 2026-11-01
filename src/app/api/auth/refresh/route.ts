@@ -69,8 +69,6 @@ export async function POST(req: Request) {
       message: 'Token berhasil diperbarui',
       data: {
         session: {
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
           expires_at: session.expires_at,
         },
         user: userProfile
