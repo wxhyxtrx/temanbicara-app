@@ -5,7 +5,7 @@
 -- 1. Setup fixture: auth.users, public.users, profiles, system_settings, tables & functions
 -- 2. DDL Salinan persis dari 20261031000030_patient_booking_ticket_notifications.sql
 -- 3. Uji 1: Booking baru berstatus 'booked' -> notifikasi booking_confirmed ke pasien dengan nama psikolog dan koin
--- 4. Uji 2: Update status booking ke 'confirmed' -> notifikasi booking_confirmed
+-- 4. Uji 2: Reschedule booking dari awaiting_patient_choice ke booked (UPDATE) -> TIDAK mengirim notifikasi booking_confirmed
 -- 5. Uji 3: Update booking tanpa perubahan status atau ke status selain booked/confirmed -> tidak mengirim booking_confirmed
 -- 6. Uji 4: Booking dengan profil psikolog kosong/tanpa gelar -> fallback 'Psikolog'
 -- 7. Uji 5: Tiket curhat baru berstatus 'open' -> notifikasi peer_ticket_created ke /patient/curhat
@@ -186,10 +186,6 @@ BEGIN
         IF NEW.status NOT IN ('booked', 'confirmed') THEN
             RETURN NEW;
         END IF;
-    ELSIF TG_OP = 'UPDATE' THEN
-        IF NEW.status NOT IN ('booked', 'confirmed') OR (OLD.status IS NOT DISTINCT FROM NEW.status) THEN
-            RETURN NEW;
-        END IF;
     ELSE
         RETURN NEW;
     END IF;
@@ -221,7 +217,7 @@ GRANT EXECUTE ON FUNCTION public.trg_bookings_notify_patient_confirmed() TO serv
 
 DROP TRIGGER IF EXISTS trg_bookings_notify_patient_confirmed ON public.bookings;
 CREATE TRIGGER trg_bookings_notify_patient_confirmed
-    AFTER INSERT OR UPDATE OF status ON public.bookings
+    AFTER INSERT ON public.bookings
     FOR EACH ROW
     EXECUTE FUNCTION public.trg_bookings_notify_patient_confirmed();
 
@@ -306,21 +302,22 @@ END $$;
 
 
 -- ========================================================
--- 4. UJI 2: UPDATE STATUS BOOKING KE 'confirmed'
+-- 4. UJI 2: RESCHEDULE DARI awaiting_patient_choice KE booked (UPDATE) TIDAK MEMICU NOTIFIKASI
 -- ========================================================
 DO $$
 DECLARE
-    v_notif RECORD;
-    v_notif_count INT;
-    v_expected_body TEXT;
+    v_count_before INT;
+    v_count_after INT;
+    v_booking_reschedule_id UUID := 'e1000000-0000-0000-0000-000000000002';
+    v_patient_id UUID := 'c3000000-0000-0000-0000-000000000010';
 BEGIN
-    -- Buat booking dengan status awaiting_patient_choice
+    -- Buat booking dengan status awaiting_patient_choice (INSERT)
     INSERT INTO public.bookings (
         id, patient_id, psikolog_id, start_at, status,
         keluhan, price_coins, patient_display_name
     ) VALUES (
-        'e1000000-0000-0000-0000-000000000002',
-        'c3000000-0000-0000-0000-000000000010',
+        v_booking_reschedule_id,
+        v_patient_id,
         'c3000000-0000-0000-0000-000000000001',
         pg_catalog.now() + INTERVAL '3 days',
         'awaiting_patient_choice',
@@ -330,35 +327,38 @@ BEGIN
     );
 
     -- Pastikan belum ada notifikasi booking_confirmed untuk booking 2
-    SELECT count(*) INTO v_notif_count
+    SELECT count(*) INTO v_count_before
     FROM public.notifications
-    WHERE user_id = 'c3000000-0000-0000-0000-000000000010'
-      AND type = 'booking_confirmed'
-      AND body LIKE '%30 Koin terpotong%';
+    WHERE user_id = v_patient_id
+      AND type = 'booking_confirmed';
 
-    IF v_notif_count <> 0 THEN
-        RAISE EXCEPTION 'UJI 2 GAGAL: Booking berstatus awaiting_patient_choice tidak boleh mengirim notifikasi booking_confirmed';
+    -- Skenario Reschedule: Pasien memilih jadwal baru sehingga status berubah menjadi 'booked' (UPDATE)
+    -- UPDATE status ini TIDAK boleh memicu notifikasi booking_confirmed (tidak ada debit koin baru)
+    UPDATE public.bookings
+    SET status = 'booked'
+    WHERE id = v_booking_reschedule_id;
+
+    SELECT count(*) INTO v_count_after
+    FROM public.notifications
+    WHERE user_id = v_patient_id
+      AND type = 'booking_confirmed';
+
+    IF v_count_after <> v_count_before THEN
+        RAISE EXCEPTION 'UJI 2 GAGAL: Reschedule booking (UPDATE status ke booked) tidak boleh menghasilkan notifikasi booking_confirmed. Sebelum: %, Sesudah: %', v_count_before, v_count_after;
     END IF;
 
-    -- Update status menjadi 'confirmed'
+    -- Uji juga UPDATE status ke 'confirmed' tidak memicu notifikasi booking_confirmed
     UPDATE public.bookings
     SET status = 'confirmed'
-    WHERE id = 'e1000000-0000-0000-0000-000000000002';
+    WHERE id = v_booking_reschedule_id;
 
-    -- Verifikasi notifikasi terkirim pasca update status
-    SELECT * INTO v_notif
+    SELECT count(*) INTO v_count_after
     FROM public.notifications
-    WHERE user_id = 'c3000000-0000-0000-0000-000000000010'
-      AND type = 'booking_confirmed'
-      AND body LIKE '%30 Koin terpotong%';
+    WHERE user_id = v_patient_id
+      AND type = 'booking_confirmed';
 
-    IF v_notif.id IS NULL THEN
-        RAISE EXCEPTION 'UJI 2 GAGAL: Notifikasi booking_confirmed tidak terbentuk setelah status diupdate ke confirmed';
-    END IF;
-
-    v_expected_body := 'Sesi konseling bersama Dr. Rahma Psikolog, M.Psi berhasil dikonfirmasi. 30 Koin terpotong.';
-    IF v_notif.body <> v_expected_body THEN
-        RAISE EXCEPTION 'UJI 2 GAGAL: Isi pesan notifikasi salah. Didapat: % | Ekspektasi: %', v_notif.body, v_expected_body;
+    IF v_count_after <> v_count_before THEN
+        RAISE EXCEPTION 'UJI 2 GAGAL: UPDATE status booking ke confirmed tidak boleh menghasilkan notifikasi booking_confirmed. Sebelum: %, Sesudah: %', v_count_before, v_count_after;
     END IF;
 END $$;
 

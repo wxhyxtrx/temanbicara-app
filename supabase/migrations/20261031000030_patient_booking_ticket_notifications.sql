@@ -4,9 +4,9 @@
 -- ========================================================
 
 -- 1. TRIGGER NOTIFIKASI BOOKING KONSELING DIKONFIRMASI (PUBLIC.BOOKINGS)
--- Mengirim notifikasi in-app ke pasien saat booking konseling berhasil dibuat
--- atau statusnya berubah menjadi confirmed/booked, mencantumkan nama psikolog
--- dan jumlah koin yang terpotong serta link ke /patient/schedule.
+-- Mengirim notifikasi in-app ke pasien saat booking konseling berhasil dibuat (INSERT)
+-- dengan status booked/confirmed, mencantumkan nama psikolog dan jumlah koin
+-- yang terpotong serta link ke /patient/schedule.
 CREATE OR REPLACE FUNCTION public.trg_bookings_notify_patient_confirmed()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -17,13 +17,8 @@ DECLARE
     v_psikolog_name TEXT;
 BEGIN
     -- Jalankan saat INSERT dengan status 'booked' atau 'confirmed'
-    -- atau saat UPDATE ketika status berubah menjadi 'booked' atau 'confirmed'
     IF TG_OP = 'INSERT' THEN
         IF NEW.status NOT IN ('booked', 'confirmed') THEN
-            RETURN NEW;
-        END IF;
-    ELSIF TG_OP = 'UPDATE' THEN
-        IF NEW.status NOT IN ('booked', 'confirmed') OR (OLD.status IS NOT DISTINCT FROM NEW.status) THEN
             RETURN NEW;
         END IF;
     ELSE
@@ -56,11 +51,11 @@ $$;
 REVOKE ALL ON FUNCTION public.trg_bookings_notify_patient_confirmed() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.trg_bookings_notify_patient_confirmed() TO service_role;
 
-COMMENT ON FUNCTION public.trg_bookings_notify_patient_confirmed() IS 'Trigger notifikasi in-app ke pasien saat booking konseling dibuat atau dikonfirmasi dengan rincian nama psikolog dan koin';
+COMMENT ON FUNCTION public.trg_bookings_notify_patient_confirmed() IS 'Trigger notifikasi in-app ke pasien saat booking konseling dibuat dengan rincian nama psikolog dan koin';
 
 DROP TRIGGER IF EXISTS trg_bookings_notify_patient_confirmed ON public.bookings;
 CREATE TRIGGER trg_bookings_notify_patient_confirmed
-    AFTER INSERT OR UPDATE OF status ON public.bookings
+    AFTER INSERT ON public.bookings
     FOR EACH ROW
     EXECUTE FUNCTION public.trg_bookings_notify_patient_confirmed();
 
