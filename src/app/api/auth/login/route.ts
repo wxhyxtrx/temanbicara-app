@@ -2,9 +2,23 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin, supabasePublic } from '@/lib/supabase/client';
 import { loginSchema } from '@/lib/validations/auth';
 import { setSessionCookies } from '@/lib/auth/session-cookies';
+import {
+  checkRateLimit,
+  getClientIp,
+  hashEmail,
+  rateLimitExceededResponse,
+} from '@/lib/rate-limit/distributed';
+import { internalErrorResponse } from '@/lib/api/error-response';
 
 export async function POST(req: Request) {
   try {
+    // 1. Rate Limiting Terdistribusi: Batas global 30 request per 15 menit per IP (fail-open)
+    const ip = getClientIp(req);
+    const globalLimit = await checkRateLimit(`auth_login_ip:${ip}`, 30, 900);
+    if (!globalLimit.allowed) {
+      return rateLimitExceededResponse(globalLimit.retryAfter);
+    }
+
     const body = await req.json();
     const parsed = loginSchema.safeParse(body);
 
@@ -20,8 +34,38 @@ export async function POST(req: Request) {
     }
 
     const { email, password, remember_me } = parsed.data;
+    const emailHash = hashEmail(email);
+    const failKey = `auth_login_fail:${ip}:${emailHash}`;
 
-    // 1. Verifikasi kredensial via Supabase Auth
+    // Periksa apakah kredensial pengguna sedang terkunci (maksimal 5 kegagalan per 15 menit)
+    if (supabaseAdmin) {
+      try {
+        const { data: existingLimit } = await supabaseAdmin
+          .from('rate_limits')
+          .select('count, expires_at')
+          .eq('key', failKey)
+          .maybeSingle();
+
+        if (
+          existingLimit &&
+          existingLimit.count >= 5 &&
+          new Date(existingLimit.expires_at).getTime() > Date.now()
+        ) {
+          const retryAfter = Math.max(
+            1,
+            Math.ceil((new Date(existingLimit.expires_at).getTime() - Date.now()) / 1000)
+          );
+          return rateLimitExceededResponse(retryAfter);
+        }
+      } catch (err: unknown) {
+        console.error(
+          '[RateLimit] Gagal memeriksa status kunci login (fail-open):',
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    }
+
+    // 2. Verifikasi kredensial via Supabase Auth
     const { data: authData, error: authError } = await supabasePublic.auth.signInWithPassword({
       email,
       password,
@@ -39,6 +83,10 @@ export async function POST(req: Request) {
     }
 
     if (authError || !authData.user) {
+      const failLimit = await checkRateLimit(failKey, 5, 900);
+      if (!failLimit.allowed) {
+        return rateLimitExceededResponse(failLimit.retryAfter);
+      }
       return NextResponse.json(
         {
           error: 'INVALID_CREDENTIALS',
@@ -50,7 +98,7 @@ export async function POST(req: Request) {
 
     const userId = authData.user.id;
 
-    // 2. Ambil entitas public.users untuk memeriksa status akun & role
+    // 3. Ambil entitas public.users untuk memeriksa status akun & role
     const { data: userProfile, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, email, role, status, is_email_verified, avatar_url')
@@ -58,6 +106,10 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (userError || !userProfile) {
+      const failLimit = await checkRateLimit(failKey, 5, 900);
+      if (!failLimit.allowed) {
+        return rateLimitExceededResponse(failLimit.retryAfter);
+      }
       return NextResponse.json(
         {
           error: 'USER_PROFILE_NOT_FOUND',
@@ -67,7 +119,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Evaluasi status akun
+    // 4. Evaluasi status akun
     // suspended / rejected TIDAK ditolak di sini: tetap login agar user melihat penjelasan di /status
     if (userProfile.status === 'unverified_email' || !userProfile.is_email_verified) {
       return NextResponse.json(
@@ -79,7 +131,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Penentuan redirect URL berdasarkan role & status
+    // Login berhasil: bersihkan counter kegagalan kredensial jika ada
+    if (supabaseAdmin) {
+      try {
+        await supabaseAdmin.from('rate_limits').delete().eq('key', failKey);
+      } catch {
+        // Abaikan error pembersihan counter
+      }
+    }
+
+    // 5. Penentuan redirect URL berdasarkan role & status
     let redirectTo = '/patient/beranda';
 
     if (userProfile.status === 'suspended' || userProfile.status === 'rejected') {
@@ -109,7 +170,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 5. Kembalikan session data dan metadata role
+    // 6. Kembalikan session data dan metadata role
     const response = NextResponse.json({
       success: true,
       message: 'Login berhasil',
@@ -141,13 +202,7 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch (err: any) {
-    return NextResponse.json(
-      {
-        error: 'INTERNAL_SERVER_ERROR',
-        message: err.message || 'Terjadi kesalahan sistem saat proses login',
-      },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    return internalErrorResponse(err, 'Terjadi kesalahan sistem saat proses login');
   }
 }

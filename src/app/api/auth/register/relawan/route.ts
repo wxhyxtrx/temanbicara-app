@@ -3,9 +3,22 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 import { getMaintenanceStatus } from '@/lib/maintenance';
 import { registerRelawanSchema } from '@/lib/validations/auth';
 import { normalizePhone } from '@/lib/validations/phone';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitExceededResponse,
+} from '@/lib/rate-limit/distributed';
+import { internalErrorResponse } from '@/lib/api/error-response';
 
 export async function POST(req: Request) {
   try {
+    // 1. Rate Limiting Terdistribusi: 5 registrasi per IP per jam (fail-open)
+    const ip = getClientIp(req);
+    const rateLimit = await checkRateLimit(`auth_register:${ip}`, 5, 3600);
+    if (!rateLimit.allowed) {
+      return rateLimitExceededResponse(rateLimit.retryAfter);
+    }
+
     const maintenance = await getMaintenanceStatus();
     if (maintenance.phase === 'active') {
       return NextResponse.json(
@@ -44,7 +57,7 @@ export async function POST(req: Request) {
       topik_keahlian,
     } = parsed.data;
 
-    // 1. Cek duplikasi email
+    // 2. Cek duplikasi email
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -62,7 +75,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Buat akun auth
+    // 3. Buat akun auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -74,11 +87,12 @@ export async function POST(req: Request) {
     });
 
     if (authError || !authData.user) {
+      console.error('[RegisterRelawan] Gagal membuat akun auth:', authError?.message);
       return NextResponse.json(
         {
           success: false,
           error: 'AUTH_CREATION_FAILED',
-          message: authError?.message || 'Gagal membuat akun auth',
+          message: 'Gagal membuat akun relawan. Silakan coba kembali.',
         },
         { status: 500 }
       );
@@ -87,7 +101,7 @@ export async function POST(req: Request) {
     const userId = authData.user.id;
     const normalizedNoWa = normalizePhone(no_wa);
 
-    // 3. Insert entitas public.users dengan status pending_approval
+    // 4. Insert entitas public.users dengan status pending_approval
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: userId,
       email,
@@ -98,18 +112,19 @@ export async function POST(req: Request) {
     });
 
     if (userError) {
+      console.error('[RegisterRelawan] Gagal insert public.users:', userError.message);
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
         {
           success: false,
           error: 'USER_PROFILE_INSERT_FAILED',
-          message: userError.message,
+          message: 'Gagal menyimpan data pengguna. Silakan coba kembali.',
         },
         { status: 500 }
       );
     }
 
-    // 4. Insert profil relawan
+    // 5. Insert profil relawan
     const { error: profileError } = await supabaseAdmin.from('relawan_profiles').insert({
       user_id: userId,
       nama_lengkap,
@@ -123,6 +138,7 @@ export async function POST(req: Request) {
     });
 
     if (profileError) {
+      console.error('[RegisterRelawan] Gagal insert public.relawan_profiles:', profileError.message);
       // Rollback kompensasi anti-zombie user
       await supabaseAdmin.from('users').delete().eq('id', userId);
       await supabaseAdmin.auth.admin.deleteUser(userId);
@@ -130,7 +146,7 @@ export async function POST(req: Request) {
         {
           success: false,
           error: 'PROFILE_INSERT_FAILED',
-          message: profileError.message,
+          message: 'Gagal menyimpan profil relawan. Silakan coba kembali.',
         },
         { status: 500 }
       );
@@ -151,13 +167,6 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'INTERNAL_SERVER_ERROR',
-        message: err instanceof Error ? err.message : 'Terjadi kesalahan sistem',
-      },
-      { status: 500 }
-    );
+    return internalErrorResponse(err, 'Terjadi kesalahan sistem saat registrasi relawan');
   }
 }

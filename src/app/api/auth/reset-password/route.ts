@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { resetPasswordApiSchema } from '@/lib/validations/auth';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitExceededResponse,
+} from '@/lib/rate-limit/distributed';
+import { internalErrorResponse, sanitizeLogMessage } from '@/lib/api/error-response';
 
 function parseJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -20,6 +26,13 @@ function parseJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 export async function POST(req: Request) {
+  // 1. Rate Limiting Terdistribusi: 5 percobaan per IP per 15 menit (fail-open)
+  const ip = getClientIp(req);
+  const rateLimit = await checkRateLimit(`auth_reset:${ip}`, 5, 900);
+  if (!rateLimit.allowed) {
+    return rateLimitExceededResponse(rateLimit.retryAfter);
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -59,7 +72,7 @@ export async function POST(req: Request) {
         {
           success: false,
           error: 'SERVER_CONFIG_ERROR',
-          message: 'Server configuration error',
+          message: 'Konfigurasi server bermasalah',
         },
         { status: 500 }
       );
@@ -135,11 +148,11 @@ export async function POST(req: Request) {
     );
 
     if (updateError) {
-      console.error('[RESET_PASSWORD_ERROR]:', updateError.message);
+      console.error('[RESET_PASSWORD_ERROR]:', sanitizeLogMessage(updateError.message));
       return NextResponse.json(
         {
           success: false,
-          error: 'INTERNAL_SERVER_ERROR',
+          error: 'INTERNAL_ERROR',
           message: 'Gagal memperbarui kata sandi. Silakan coba beberapa saat lagi.',
         },
         { status: 500 }
@@ -151,17 +164,6 @@ export async function POST(req: Request) {
       message: 'Kata sandi berhasil diperbarui. Silakan masuk dengan kata sandi baru Anda.',
     });
   } catch (err: unknown) {
-    console.error(
-      '[RESET_PASSWORD_ERROR]:',
-      err instanceof Error ? err.message : 'Unknown error'
-    );
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'INTERNAL_SERVER_ERROR',
-        message: 'Gagal memperbarui kata sandi. Silakan coba beberapa saat lagi.',
-      },
-      { status: 500 }
-    );
+    return internalErrorResponse(err, 'Gagal memperbarui kata sandi. Silakan coba beberapa saat lagi.');
   }
 }

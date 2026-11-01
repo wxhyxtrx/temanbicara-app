@@ -3,9 +3,22 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 import { getMaintenanceStatus } from '@/lib/maintenance';
 import { registerPasienSchema } from '@/lib/validations/auth';
 import { normalizePhone } from '@/lib/validations/phone';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitExceededResponse,
+} from '@/lib/rate-limit/distributed';
+import { internalErrorResponse } from '@/lib/api/error-response';
 
 export async function POST(req: Request) {
   try {
+    // 1. Rate Limiting Terdistribusi: 5 registrasi per IP per jam (fail-open)
+    const ip = getClientIp(req);
+    const rateLimit = await checkRateLimit(`auth_register:${ip}`, 5, 3600);
+    if (!rateLimit.allowed) {
+      return rateLimitExceededResponse(rateLimit.retryAfter);
+    }
+
     const maintenance = await getMaintenanceStatus();
     if (maintenance.phase === 'active') {
       return NextResponse.json(
@@ -43,7 +56,7 @@ export async function POST(req: Request) {
       password,
     } = parsed.data;
 
-    // 1. Cek apakah email sudah terdaftar di public.users
+    // 2. Cek apakah email sudah terdaftar di public.users
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -61,7 +74,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Buat akun di Supabase Auth
+    // 3. Buat akun di Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -74,11 +87,12 @@ export async function POST(req: Request) {
     });
 
     if (authError || !authData.user) {
+      console.error('[RegisterPasien] Gagal membuat akun auth:', authError?.message);
       return NextResponse.json(
         {
           success: false,
           error: 'AUTH_CREATION_FAILED',
-          message: authError?.message || 'Gagal membuat akun auth',
+          message: 'Gagal membuat akun auth pengguna. Silakan coba kembali.',
         },
         { status: 500 }
       );
@@ -88,7 +102,7 @@ export async function POST(req: Request) {
     const normalizedNoWa = normalizePhone(no_wa);
     const normalizedEmergencyWa = normalizePhone(kontak_darurat_wa);
 
-    // 3. Insert entitas public.users
+    // 4. Insert entitas public.users
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: userId,
       email,
@@ -99,19 +113,20 @@ export async function POST(req: Request) {
     });
 
     if (userError) {
+      console.error('[RegisterPasien] Gagal insert public.users:', userError.message);
       // Rollback auth jika gagal
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
         {
           success: false,
           error: 'USER_PROFILE_INSERT_FAILED',
-          message: userError.message,
+          message: 'Gagal menyimpan data pengguna. Silakan coba kembali.',
         },
         { status: 500 }
       );
     }
 
-    // 4. Insert ke public.pasien_profiles
+    // 5. Insert ke public.pasien_profiles
     const { error: profileError } = await supabaseAdmin.from('pasien_profiles').insert({
       user_id: userId,
       nama_lengkap,
@@ -121,6 +136,7 @@ export async function POST(req: Request) {
     });
 
     if (profileError) {
+      console.error('[RegisterPasien] Gagal insert public.pasien_profiles:', profileError.message);
       // Rollback kompensasi: bersihkan data di users dan auth agar tidak menjadi zombie user
       await supabaseAdmin.from('users').delete().eq('id', userId);
       await supabaseAdmin.auth.admin.deleteUser(userId);
@@ -128,7 +144,7 @@ export async function POST(req: Request) {
         {
           success: false,
           error: 'PROFILE_INSERT_FAILED',
-          message: profileError.message,
+          message: 'Gagal menyimpan profil pasien. Silakan coba kembali.',
         },
         { status: 500 }
       );
@@ -149,13 +165,6 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'INTERNAL_SERVER_ERROR',
-        message: err instanceof Error ? err.message : 'Terjadi kesalahan sistem',
-      },
-      { status: 500 }
-    );
+    return internalErrorResponse(err, 'Terjadi kesalahan sistem saat registrasi pasien');
   }
 }

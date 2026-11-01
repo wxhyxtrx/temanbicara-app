@@ -3,9 +3,22 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 import { getMaintenanceStatus } from '@/lib/maintenance';
 import { registerPsikologSchema } from '@/lib/validations/auth';
 import { normalizePhone } from '@/lib/validations/phone';
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitExceededResponse,
+} from '@/lib/rate-limit/distributed';
+import { internalErrorResponse } from '@/lib/api/error-response';
 
 export async function POST(req: Request) {
   try {
+    // 1. Rate Limiting Terdistribusi: 5 registrasi per IP per jam (fail-open)
+    const ip = getClientIp(req);
+    const rateLimit = await checkRateLimit(`auth_register:${ip}`, 5, 3600);
+    if (!rateLimit.allowed) {
+      return rateLimitExceededResponse(rateLimit.retryAfter);
+    }
+
     const maintenance = await getMaintenanceStatus();
     if (maintenance.phase === 'active') {
       return NextResponse.json(
@@ -45,7 +58,7 @@ export async function POST(req: Request) {
       tarif_sesi,
     } = parsed.data;
 
-    // 1. Cek duplikasi email
+    // 2. Cek duplikasi email
     const { data: existingEmail } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -63,7 +76,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Cek keunikan nomor SIPP/STR
+    // 3. Cek keunikan nomor SIPP/STR
     const { data: existingSipp } = await supabaseAdmin
       .from('psikolog_profiles')
       .select('user_id')
@@ -81,7 +94,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Buat akun di Supabase Auth
+    // 4. Buat akun di Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -93,11 +106,12 @@ export async function POST(req: Request) {
     });
 
     if (authError || !authData.user) {
+      console.error('[RegisterPsikolog] Gagal membuat akun auth:', authError?.message);
       return NextResponse.json(
         {
           success: false,
           error: 'AUTH_CREATION_FAILED',
-          message: authError?.message || 'Gagal membuat akun auth',
+          message: 'Gagal membuat akun psikolog. Silakan coba kembali.',
         },
         { status: 500 }
       );
@@ -106,7 +120,7 @@ export async function POST(req: Request) {
     const userId = authData.user.id;
     const normalizedNoWa = normalizePhone(no_wa);
 
-    // 4. Insert public.users dengan status pending_verification
+    // 5. Insert public.users dengan status pending_verification
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: userId,
       email,
@@ -117,18 +131,19 @@ export async function POST(req: Request) {
     });
 
     if (userError) {
+      console.error('[RegisterPsikolog] Gagal insert public.users:', userError.message);
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return NextResponse.json(
         {
           success: false,
           error: 'USER_PROFILE_INSERT_FAILED',
-          message: userError.message,
+          message: 'Gagal menyimpan data pengguna. Silakan coba kembali.',
         },
         { status: 500 }
       );
     }
 
-    // 5. Insert profil psikolog
+    // 6. Insert profil psikolog
     const { error: profileError } = await supabaseAdmin.from('psikolog_profiles').insert({
       user_id: userId,
       nama_lengkap_gelar,
@@ -141,6 +156,7 @@ export async function POST(req: Request) {
     });
 
     if (profileError) {
+      console.error('[RegisterPsikolog] Gagal insert public.psikolog_profiles:', profileError.message);
       // Rollback kompensasi anti-zombie user
       await supabaseAdmin.from('users').delete().eq('id', userId);
       await supabaseAdmin.auth.admin.deleteUser(userId);
@@ -148,7 +164,7 @@ export async function POST(req: Request) {
         {
           success: false,
           error: 'PROFILE_INSERT_FAILED',
-          message: profileError.message,
+          message: 'Gagal menyimpan profil psikolog. Silakan coba kembali.',
         },
         { status: 500 }
       );
@@ -169,13 +185,6 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'INTERNAL_SERVER_ERROR',
-        message: err instanceof Error ? err.message : 'Terjadi kesalahan sistem',
-      },
-      { status: 500 }
-    );
+    return internalErrorResponse(err, 'Terjadi kesalahan sistem saat registrasi psikolog');
   }
 }
