@@ -45,8 +45,8 @@ export interface UserState {
       fullName?: string;
       no_wa?: string | null;
     },
-    token?: string,
-    profile?: MeProfile | null
+    profile?: MeProfile | null,
+    legacyProfile?: MeProfile | null
   ) => void;
   syncSession: () => Promise<void>;
   logout: () => void;
@@ -207,7 +207,13 @@ export const useUserStore = create<UserState>()(
         return true;
       },
 
-      setAuthSession: (sessionUser, token, profile) => {
+      setAuthSession: (sessionUser, profileOrLegacy, legacyProfile) => {
+        const profile: MeProfile | null =
+          legacyProfile !== undefined
+            ? legacyProfile
+            : typeof profileOrLegacy === "object"
+            ? profileOrLegacy
+            : null;
         const roleMap: Record<string, UserRole> = {
           pasien: "patient",
           relawan: "peer_listener",
@@ -322,27 +328,15 @@ export const useUserStore = create<UserState>()(
         });
 
         if (typeof window !== "undefined") {
-          if (token) {
-            localStorage.setItem("tb_access_token", token);
-            document.cookie = `tb_access_token=${token}; path=/; max-age=604800; SameSite=Lax`;
-          }
+          localStorage.removeItem("tb_access_token");
           document.cookie = `tb_user_status=${sessionUser.status || "active"}; path=/; max-age=604800; SameSite=Lax`;
         }
       },
 
       syncSession: async () => {
         if (typeof window === "undefined") return;
-        const matchToken = document.cookie.match(/tb_access_token=([^;]+)/);
         const matchRole = document.cookie.match(/tb_user_role=([^;]+)/);
-        const token = matchToken ? matchToken[1] : null;
         const cookieRoleRaw = matchRole ? matchRole[1].split('.')[0] : null;
-
-        if (!token) {
-          if (get().isAuthenticated) {
-            set({ isAuthenticated: false });
-          }
-          return;
-        }
 
         const roleMap: Record<string, UserRole> = {
           pasien: "patient",
@@ -356,7 +350,7 @@ export const useUserStore = create<UserState>()(
 
         // 1. Fetch sesi real-time dari backend (/api/users/me)
         try {
-          const res = await fetch("/api/users/me");
+          const res = await fetch("/api/users/me", { credentials: "include" });
           if (res.status === 401) {
             // Sesi token tidak valid atau kedaluwarsa di backend
             get().logout();
@@ -374,7 +368,7 @@ export const useUserStore = create<UserState>()(
           if (res.ok) {
             const json = await res.json();
             if (json?.data?.user) {
-              get().setAuthSession(json.data.user, token, json.data.profile || null);
+              get().setAuthSession(json.data.user, json.data.profile || null);
               set({ isProfileLoaded: true });
               return;
             }
@@ -403,7 +397,6 @@ export const useUserStore = create<UserState>()(
           PERSISTENT_STORES_TO_CLEAR.forEach((key) => {
             localStorage.removeItem(key);
           });
-          document.cookie = "tb_access_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
           document.cookie = "tb_user_role=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
           document.cookie = "tb_user_status=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         }

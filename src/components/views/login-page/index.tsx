@@ -88,7 +88,7 @@ export default function Login() {
       });
 
       if (res.success && res.data) {
-        setAuthSession(res.data.user, res.data.session.access_token);
+        setAuthSession(res.data.user);
         try {
           await syncSession();
         } catch {
