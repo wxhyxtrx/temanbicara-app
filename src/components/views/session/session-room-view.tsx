@@ -19,20 +19,13 @@ import { SessionTipCard } from "./session-tip-card";
 import { SessionModals } from "./session-modals";
 import { SessionAudioPlayer } from "./session-audio-player";
 import { SessionImagePreview } from "./session-image-preview";
+import { syncRealtimeAuth } from "@/lib/supabase/realtime-token";
 import type {
   PatientBookingView,
   PsikologBookingView,
   SessionMessageEntity,
   SessionMessageView,
 } from "@/types/booking";
-
-function getAccessTokenFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)tb_access_token=([^;]+)/);
-  if (!match) return null;
-  const raw = decodeURIComponent(match[1]).trim().replace(/^"|"$/g, "");
-  return raw && raw !== "undefined" && raw !== "null" ? raw : null;
-}
 
 interface SessionRoomViewProps {
   bookingId: string;
@@ -161,7 +154,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
     return () => clearInterval(bookingPollInterval);
   }, [isTerminalStatus, bookingId, fetchBooking]);
 
-  // Realtime subscriber dengan autentikasi token tb_access_token
+  // Realtime subscriber dengan helper sentral realtime-token
   useEffect(() => {
     if (!bookingId || !supabasePublic) return;
 
@@ -169,16 +162,8 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
     let channel: ReturnType<typeof supabasePublic.channel> | null = null;
 
     const setupRealtime = async () => {
-      const token = getAccessTokenFromCookie();
+      const token = await syncRealtimeAuth();
       if (!token) {
-        if (isMounted) setIsChannelSubscribed(false);
-        return;
-      }
-
-      try {
-        await supabasePublic.realtime.setAuth(token);
-      } catch (err) {
-        console.error("Gagal setAuth realtime:", err);
         if (isMounted) setIsChannelSubscribed(false);
         return;
       }
@@ -245,6 +230,9 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
             status === "CLOSED"
           ) {
             setIsChannelSubscribed(false);
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              syncRealtimeAuth().catch(() => {});
+            }
           }
         });
 

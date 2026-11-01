@@ -25,16 +25,9 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { supabasePublic } from "@/lib/supabase/client";
+import { syncRealtimeAuth } from "@/lib/supabase/realtime-token";
 import { useUserStore } from "@/store/user-store";
 import type { NotificationEntity } from "@/types/notification";
-
-function getAccessTokenFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)tb_access_token=([^;]+)/);
-  if (!match) return null;
-  const raw = decodeURIComponent(match[1]).trim().replace(/^"|"$/g, "");
-  return raw && raw !== "undefined" && raw !== "null" ? raw : null;
-}
 
 function formatRelativeTime(dateStr: string): string {
   try {
@@ -184,7 +177,7 @@ export function NotificationDropdown() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Realtime subscription dengan autentikasi token tb_access_token & fallback polling 30 detik
+  // Realtime subscription dengan autentikasi via helper sentral realtime-token & fallback polling 30 detik
   useEffect(() => {
     if (!mounted || !user?.id || !supabasePublic) return;
 
@@ -192,17 +185,8 @@ export function NotificationDropdown() {
     let channel: ReturnType<typeof supabasePublic.channel> | null = null;
 
     const setupRealtime = async () => {
-      const token = getAccessTokenFromCookie();
-      if (!token) return;
-
-      try {
-        await supabasePublic.realtime.setAuth(token);
-      } catch (err) {
-        console.error("Gagal setAuth realtime notifikasi:", err);
-        return;
-      }
-
-      if (!isMounted) return;
+      const token = await syncRealtimeAuth();
+      if (!token || !isMounted) return;
 
       const channelName = `notifications_user_${user.id}`;
       const ch = supabasePublic
@@ -244,7 +228,11 @@ export function NotificationDropdown() {
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            syncRealtimeAuth().catch(() => {});
+          }
+        });
 
       channel = ch;
     };

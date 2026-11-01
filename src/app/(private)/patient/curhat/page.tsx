@@ -31,15 +31,8 @@ import type { PeerTicketEntity } from "@/types/peer-tickets";
 import { PatientPeerTicketCard } from "@/components/views/patient/patient-peer-ticket-card";
 import { VentingModalForm } from "@/components/views/patient/venting-modal-form";
 import { supabasePublic } from "@/lib/supabase/client";
+import { syncRealtimeAuth } from "@/lib/supabase/realtime-token";
 import { notify } from "@/lib/toast";
-
-function getAccessTokenFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)tb_access_token=([^;]+)/);
-  if (!match) return null;
-  const raw = decodeURIComponent(match[1]).trim().replace(/^"|"$/g, "");
-  return raw && raw !== "undefined" && raw !== "null" ? raw : null;
-}
 
 export default function PatientCurhatPage() {
   const user = useUserStore((state) => state.user);
@@ -102,14 +95,7 @@ export default function PatientCurhatPage() {
     let channel: ReturnType<typeof supabasePublic.channel> | null = null;
 
     const setupRealtime = async () => {
-      const token = getAccessTokenFromCookie();
-      if (token) {
-        try {
-          await supabasePublic.realtime.setAuth(token);
-        } catch (err) {
-          console.error("Gagal setAuth realtime curhat:", err);
-        }
-      }
+      await syncRealtimeAuth();
 
       if (!isMounted) return;
 
@@ -130,7 +116,11 @@ export default function PatientCurhatPage() {
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            syncRealtimeAuth().catch(() => {});
+          }
+        });
 
       channel = ch;
     };

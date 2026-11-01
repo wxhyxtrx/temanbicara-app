@@ -21,16 +21,9 @@ import { SessionAudioPlayer } from "@/components/views/session/session-audio-pla
 import { SessionImagePreview } from "@/components/views/session/session-image-preview";
 import { SessionReviewCard } from "@/components/views/session/session-review-card";
 import { SessionTipCard } from "@/components/views/session/session-tip-card";
+import { syncRealtimeAuth } from "@/lib/supabase/realtime-token";
 import type { PeerTicketDetailView } from "@/types/peer-tickets";
 import type { PeerMessageView, PeerMessageEntity } from "@/types/peer-messages";
-
-function getAccessTokenFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)tb_access_token=([^;]+)/);
-  if (!match) return null;
-  const raw = decodeURIComponent(match[1]).trim().replace(/^"|"$/g, "");
-  return raw && raw !== "undefined" && raw !== "null" ? raw : null;
-}
 
 function getGreetingTimer(claimedAt: string | null, now: number) {
   if (!claimedAt) return { text: "10:00", isExpired: false };
@@ -208,21 +201,14 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
     isRelawanGreetingExpired ||
     isWaitingFirstGreeting;
 
-  // Realtime subscriber dengan setAuth token
+  // Realtime subscriber dengan helper sentral realtime-token
   useEffect(() => {
     if (!ticketId || !supabasePublic) return;
     let isMounted = true;
     let channel: ReturnType<typeof supabasePublic.channel> | null = null;
 
     const setupRealtime = async () => {
-      const token = getAccessTokenFromCookie();
-      if (token) {
-        try {
-          await supabasePublic.realtime.setAuth(token);
-        } catch (err) {
-          console.error("Gagal setAuth realtime:", err);
-        }
-      }
+      await syncRealtimeAuth();
       if (!isMounted) return;
 
       const ch = supabasePublic
@@ -261,6 +247,9 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
         .subscribe((status) => {
           if (!isMounted) return;
           setIsChannelSubscribed(status === "SUBSCRIBED");
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            syncRealtimeAuth().catch(() => {});
+          }
         });
 
       channel = ch;
