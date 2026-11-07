@@ -8,6 +8,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 /**
  * GET /api/admin/users/[id]/emergency-contact
  * Mengambil data kontak darurat pasien untuk protokol krisis klinis.
+ * Mendukung query parameter alert_id opsional untuk integrasi audit log feed krisis.
  * Syarat: Hanya admin berstatus aktif.
  * Setiap akses WAJIB mencatat entri audit log ke emergency_contact_access_log.
  */
@@ -19,6 +20,16 @@ export async function GET(
     const { id } = await params;
     if (!UUID_RE.test(id)) {
       return fail(400, 'INVALID_ID', 'ID pengguna tidak valid');
+    }
+
+    const url = new URL(_req.url);
+    const rawAlertId = url.searchParams.get('alert_id');
+    let alertId: string | null = null;
+    if (rawAlertId) {
+      if (!UUID_RE.test(rawAlertId)) {
+        return fail(400, 'INVALID_ALERT_ID', 'ID alert tidak valid');
+      }
+      alertId = rawAlertId;
     }
 
     const session = await getSessionUser();
@@ -44,7 +55,7 @@ export async function GET(
       .maybeSingle();
 
     if (userError) {
-      console.error('[ADMIN_EMERGENCY_CONTACT_USER_ERROR]:', userError);
+      console.error('[ADMIN_EMERGENCY_CONTACT_USER_ERROR]:', userError.code || userError.message);
       return fail(500, 'QUERY_FAILED', 'Gagal memuat data pengguna');
     }
     if (!targetUser) {
@@ -59,22 +70,32 @@ export async function GET(
       .maybeSingle();
 
     if (profileError) {
-      console.error('[ADMIN_EMERGENCY_CONTACT_PROFILE_ERROR]:', profileError);
+      console.error('[ADMIN_EMERGENCY_CONTACT_PROFILE_ERROR]:', profileError.code || profileError.message);
       return fail(500, 'QUERY_FAILED', 'Gagal memuat data kontak darurat');
     }
 
     // 3. Catat log audit akses kontak darurat (Fail closed: jika gagal log, jangan bocorkan kontak)
     const logId = crypto.randomUUID();
+    const logPayload: {
+      id: string;
+      admin_id: string;
+      patient_id: string;
+      alert_id?: string | null;
+    } = {
+      id: logId,
+      admin_id: user.id,
+      patient_id: id,
+    };
+    if (alertId) {
+      logPayload.alert_id = alertId;
+    }
+
     const { error: logError } = await supabaseAdmin
       .from('emergency_contact_access_log')
-      .insert({
-        id: logId,
-        admin_id: user.id,
-        patient_id: id,
-      });
+      .insert(logPayload);
 
     if (logError) {
-      console.error('[ADMIN_EMERGENCY_CONTACT_AUDIT_LOG_ERROR]:', logError);
+      console.error('[ADMIN_EMERGENCY_CONTACT_AUDIT_LOG_ERROR]:', logError.code || logError.message);
       return fail(500, 'AUDIT_LOG_FAILED', 'Gagal mencatat log audit akses kontak darurat');
     }
 
@@ -89,7 +110,7 @@ export async function GET(
       data: contactView,
     });
   } catch (err: unknown) {
-    console.error('[ADMIN_EMERGENCY_CONTACT_INTERNAL_ERROR]:', err);
+    console.error('[ADMIN_EMERGENCY_CONTACT_INTERNAL_ERROR]:', err instanceof Error ? err.message : 'Unknown error');
     return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memproses kontak darurat');
   }
 }
