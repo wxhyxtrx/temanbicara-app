@@ -85,6 +85,7 @@ export interface PsychologistSummary {
 
 export interface PatientBookingView extends BookingEntity {
   psikolog?: PsychologistSummary;
+  has_open_crisis_alert?: boolean;
 }
 
 export interface CreateBookingPayload {

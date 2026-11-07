@@ -102,6 +102,16 @@ export async function GET(
       });
     }
 
+    let hasOpenCrisisAlert: boolean | undefined = undefined;
+    if (isPatient) {
+      const { count: openAlertCount } = await supabaseAdmin
+        .from('crisis_alerts')
+        .select('id', { count: 'exact', head: true })
+        .eq('ticket_id', ticket.id)
+        .eq('status', 'new');
+      hasOpenCrisisAlert = Boolean((openAlertCount ?? 0) > 0);
+    }
+
     const data: PeerTicketDetailView = {
       id: ticket.id,
       patient_id: ticket.patient_id,
@@ -119,6 +129,7 @@ export async function GET(
       created_at: ticket.created_at,
       updated_at: ticket.updated_at,
       relawan_alias: relawanAlias,
+      ...(isPatient ? { has_open_crisis_alert: hasOpenCrisisAlert } : {}),
     };
 
     return NextResponse.json({

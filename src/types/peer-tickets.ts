@@ -85,6 +85,7 @@ export interface PeerTicketDetailView {
   created_at: string;
   updated_at: string;
   relawan_alias: string | null;
+  has_open_crisis_alert?: boolean;
 }
 
 export type RelawanPeerTicketDetailView = Omit<PeerTicketDetailView, 'patient_id'>;

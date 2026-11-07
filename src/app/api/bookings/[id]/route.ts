@@ -79,9 +79,9 @@ export async function GET(
       });
     }
 
-    // Jika diakses pasien, lengkapi dengan data ringkas profil psikolog
+    // Jika diakses pasien, lengkapi dengan data ringkas profil psikolog & flag krisis aktif
     if (user.role === 'pasien') {
-      const [profileRes, userRes] = await Promise.all([
+      const [profileRes, userRes, alertRes] = await Promise.all([
         supabaseAdmin
           .from('psikolog_profiles')
           .select('user_id, nama_lengkap_gelar, nomor_sipp_str, spesialisasi, tahun_pengalaman, tarif_sesi')
@@ -92,6 +92,11 @@ export async function GET(
           .select('avatar_url')
           .eq('id', bookingRow.psikolog_id)
           .maybeSingle(),
+        supabaseAdmin
+          .from('crisis_alerts')
+          .select('id', { count: 'exact', head: true })
+          .eq('booking_id', bookingRow.id)
+          .eq('status', 'new'),
       ]);
 
       const psikologSummary: PsychologistSummary | undefined = profileRes.data
@@ -106,9 +111,12 @@ export async function GET(
           }
         : undefined;
 
+      const hasOpenCrisisAlert = Boolean((alertRes?.count ?? 0) > 0);
+
       const patientView: PatientBookingView = {
         ...bookingRow,
         psikolog: psikologSummary,
+        has_open_crisis_alert: hasOpenCrisisAlert,
       };
 
       return NextResponse.json({
