@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, Coins, XCircle, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ArrowLeft, Coins, XCircle, PanelRightClose, PanelRightOpen, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SessionTimer } from "./session-timer";
@@ -23,6 +23,7 @@ interface SessionRoomHeaderProps {
   onToggleNotesPanel: () => void;
   onRequestExtensionOpen: () => void;
   onEndSessionOpen: () => void;
+  onReportCrisisOpen?: () => void;
 }
 
 export function SessionRoomHeader({
@@ -34,6 +35,7 @@ export function SessionRoomHeader({
   onToggleNotesPanel,
   onRequestExtensionOpen,
   onEndSessionOpen,
+  onReportCrisisOpen,
 }: SessionRoomHeaderProps) {
   return (
     <header className="shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-4 py-2.5 flex items-center justify-between gap-3 font-nunito">
@@ -103,9 +105,24 @@ export function SessionRoomHeader({
           )
         )}
 
-        {/* Counselor Actions: Akhiri Sesi & Toggle Notes Panel */}
+        {/* Counselor Actions: Laporkan Krisis, Akhiri Sesi & Toggle Notes Panel */}
         {role === "psikolog" && (
           <>
+            {!isReadOnly && onReportCrisisOpen && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onReportCrisisOpen}
+                className="text-xs h-8 rounded-xl border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 gap-1 cursor-pointer font-medium"
+                title="Laporkan situasi krisis keselamatan pasien"
+              >
+                <ShieldAlert size={13} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="hidden sm:inline">Laporkan Krisis</span>
+                <span className="sm:hidden">Krisis</span>
+              </Button>
+            )}
+
             {!isReadOnly && (
               <Button
                 type="button"

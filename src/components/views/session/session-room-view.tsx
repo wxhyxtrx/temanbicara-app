@@ -19,6 +19,9 @@ import { SessionTipCard } from "./session-tip-card";
 import { SessionModals } from "./session-modals";
 import { SessionAudioPlayer } from "./session-audio-player";
 import { SessionImagePreview } from "./session-image-preview";
+import { CrisisReportModal } from "@/components/shared/molecules/crisis-report-modal";
+import { CrisisSupportCard } from "@/components/shared/molecules/crisis-support-card";
+import { crisisClient } from "@/services/crisis.client";
 import { syncRealtimeAuth } from "@/lib/supabase/realtime-token";
 import type {
   PatientBookingView,
@@ -55,6 +58,11 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
   const [isRequestingExtension, setIsRequestingExtension] = useState<boolean>(false);
   const [isRespondingExtension, setIsRespondingExtension] = useState<boolean>(false);
   const [insufficientCoinsError, setInsufficientCoinsError] = useState<string | null>(null);
+
+  // Crisis reporting & support card states
+  const [crisisReportModalOpen, setCrisisReportModalOpen] = useState<boolean>(false);
+  const [isReportingCrisis, setIsReportingCrisis] = useState<boolean>(false);
+  const [hasCrisisSupportRealtime, setHasCrisisSupportRealtime] = useState<boolean>(false);
 
   // UI layout & refs
   const [isNotesPanelOpen, setIsNotesPanelOpen] = useState<boolean>(true);
@@ -160,6 +168,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
 
     let isMounted = true;
     let channel: ReturnType<typeof supabasePublic.channel> | null = null;
+    let notifChannel: ReturnType<typeof supabasePublic.channel> | null = null;
 
     const setupRealtime = async () => {
       const token = await syncRealtimeAuth();
@@ -237,6 +246,30 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
         });
 
       channel = ch;
+
+      // Realtime listener notifikasi krisis untuk pasien
+      if (role === "pasien" && currentUser?.id) {
+        const notifChannelName = `patient_booking_notifs_${currentUser.id}_${bookingId}`;
+        notifChannel = supabasePublic
+          .channel(notifChannelName)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "notifications",
+              filter: `user_id=eq.${currentUser.id}`,
+            },
+            (payload) => {
+              const newNotif = payload.new as { type?: string };
+              if (newNotif?.type === "crisis_support") {
+                setHasCrisisSupportRealtime(true);
+                fetchBooking();
+              }
+            }
+          )
+          .subscribe();
+      }
     };
 
     setupRealtime();
@@ -245,6 +278,9 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
       isMounted = false;
       if (channel) {
         supabasePublic.removeChannel(channel);
+      }
+      if (notifChannel) {
+        supabasePublic.removeChannel(notifChannel);
       }
     };
   }, [bookingId, currentUser.id, role, fetchBooking, scrollToBottom]);
@@ -438,6 +474,29 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
     }
   };
 
+  // Psychologist: Report Crisis
+  const handleReportCrisis = async (note?: string) => {
+    try {
+      setIsReportingCrisis(true);
+      const res = await crisisClient.reportBookingCrisis(bookingId, note);
+      if (res.success) {
+        notify.success(
+          "Laporan Krisis Terkirim",
+          res.message || "Laporan eskalasi krisis berhasil diteruskan ke tim Admin TemanBicara."
+        );
+        setCrisisReportModalOpen(false);
+        fetchBooking();
+      }
+    } catch (err: unknown) {
+      notify.error(
+        "Gagal Mengirim Laporan Krisis",
+        err instanceof Error ? err.message : "Terjadi kesalahan sistem saat melaporkan krisis."
+      );
+    } finally {
+      setIsReportingCrisis(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
@@ -474,6 +533,8 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
       ? booking.patient_display_name || "Pasien Anonim"
       : patientBooking?.psikolog?.nama_lengkap_gelar || "Psikolog Klinis";
 
+  const hasOpenCrisisAlert = Boolean((booking as PatientBookingView)?.has_open_crisis_alert);
+
   return (
     <div className="h-[calc(100vh-115px)] min-h-[540px] flex flex-col font-nunito bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
       <SessionRoomHeader
@@ -485,6 +546,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
         onToggleNotesPanel={() => setIsNotesPanelOpen((prev) => !prev)}
         onRequestExtensionOpen={() => setExtensionModalOpen(true)}
         onEndSessionOpen={() => setEndSessionModalOpen(true)}
+        onReportCrisisOpen={() => setCrisisReportModalOpen(true)}
       />
 
       <SessionComplaintBanner
@@ -501,6 +563,13 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
       <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* Kolom Chat */}
         <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900">
+          {/* Kartu Bantuan Hotline Krisis (Pasien) */}
+          {role === "pasien" && (hasOpenCrisisAlert || hasCrisisSupportRealtime) && (
+            <div className="p-3 sm:p-4 pb-0 shrink-0 min-w-0">
+              <CrisisSupportCard />
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
             <div className="flex items-center justify-center my-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700/80">
@@ -631,6 +700,15 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
         isEndingSession={isEndingSession}
         onEndSession={handleEndSession}
         patientDisplayName={booking?.patient_display_name || "pasien"}
+      />
+
+      <CrisisReportModal
+        open={crisisReportModalOpen}
+        onOpenChange={setCrisisReportModalOpen}
+        onSubmit={handleReportCrisis}
+        isLoading={isReportingCrisis}
+        targetName={booking?.patient_display_name || "Pasien"}
+        role="psikolog"
       />
     </div>
   );

@@ -21,6 +21,9 @@ import { SessionAudioPlayer } from "@/components/views/session/session-audio-pla
 import { SessionImagePreview } from "@/components/views/session/session-image-preview";
 import { SessionReviewCard } from "@/components/views/session/session-review-card";
 import { SessionTipCard } from "@/components/views/session/session-tip-card";
+import { CrisisReportModal } from "@/components/shared/molecules/crisis-report-modal";
+import { CrisisSupportCard } from "@/components/shared/molecules/crisis-support-card";
+import { crisisClient } from "@/services/crisis.client";
 import { syncRealtimeAuth } from "@/lib/supabase/realtime-token";
 import type { PeerTicketDetailView } from "@/types/peer-tickets";
 import type { PeerMessageView, PeerMessageEntity } from "@/types/peer-messages";
@@ -88,6 +91,10 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
 
   const [endSessionDialogOpen, setEndSessionDialogOpen] = useState(false);
   const [isEndingSession, setIsEndingSession] = useState(false);
+
+  const [crisisReportModalOpen, setCrisisReportModalOpen] = useState(false);
+  const [isReportingCrisis, setIsReportingCrisis] = useState(false);
+  const [hasCrisisSupportRealtime, setHasCrisisSupportRealtime] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -206,6 +213,7 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
     if (!ticketId || !supabasePublic) return;
     let isMounted = true;
     let channel: ReturnType<typeof supabasePublic.channel> | null = null;
+    let notifChannel: ReturnType<typeof supabasePublic.channel> | null = null;
 
     const setupRealtime = async () => {
       await syncRealtimeAuth();
@@ -253,14 +261,39 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
         });
 
       channel = ch;
+
+      // Realtime listener notifikasi krisis untuk pasien
+      if (role === "pasien" && userRef.current?.id) {
+        const notifChannelName = `patient_peer_notifs_${userRef.current.id}_${ticketId}`;
+        notifChannel = supabasePublic
+          .channel(notifChannelName)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "notifications",
+              filter: `user_id=eq.${userRef.current.id}`,
+            },
+            (payload) => {
+              const newNotif = payload.new as { type?: string };
+              if (newNotif?.type === "crisis_support") {
+                setHasCrisisSupportRealtime(true);
+                fetchTicket();
+              }
+            }
+          )
+          .subscribe();
+      }
     };
 
     setupRealtime();
     return () => {
       isMounted = false;
       if (channel) supabasePublic.removeChannel(channel);
+      if (notifChannel) supabasePublic.removeChannel(notifChannel);
     };
-  }, [ticketId, fetchTicket, scrollToBottom]);
+  }, [ticketId, role, fetchTicket, scrollToBottom]);
 
   // Polling cadangan pesan tiap 5 detik jika Realtime tidak SUBSCRIBED
   useEffect(() => {
@@ -297,6 +330,29 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
       );
     } finally {
       setIsEndingSession(false);
+    }
+  };
+
+  const handleReportCrisis = async (note?: string) => {
+    if (!ticketId || isReportingCrisis) return;
+    try {
+      setIsReportingCrisis(true);
+      const res = await crisisClient.reportPeerCrisis(ticketId, note);
+      if (res.success) {
+        notify.success(
+          "Laporan Krisis Terkirim",
+          res.message || "Laporan eskalasi krisis berhasil diteruskan ke tim Admin TemanBicara."
+        );
+        setCrisisReportModalOpen(false);
+        fetchTicket();
+      }
+    } catch (err: unknown) {
+      notify.error(
+        "Gagal Mengirim Laporan Krisis",
+        err instanceof Error ? err.message : "Terjadi kesalahan sistem saat melaporkan krisis."
+      );
+    } finally {
+      setIsReportingCrisis(false);
     }
   };
 
@@ -483,6 +539,21 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
               <span>Sesi: {activeTimer.text}</span>
             </div>
           )}
+          {/* Relawan Action: Laporkan Krisis */}
+          {role === "relawan" && !isTerminalStatus && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCrisisReportModalOpen(true)}
+              className="h-8 px-2 sm:px-2.5 text-xs rounded-xl font-medium border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-950/50 cursor-pointer shrink-0"
+              title="Laporkan situasi krisis keselamatan pasien"
+            >
+              <ShieldAlert size={13} className="text-amber-600 dark:text-amber-400 sm:mr-1 shrink-0" />
+              <span className="hidden sm:inline">Laporkan Krisis</span>
+              <span className="sm:hidden">Krisis</span>
+            </Button>
+          )}
           {ticket.status === "active" && (
             <Button
               type="button"
@@ -547,6 +618,13 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
       {isActiveExpired && (
         <div className="shrink-0 bg-rose-50 dark:bg-rose-950/60 border-b border-rose-200 dark:border-rose-800 px-3 sm:px-4 py-2 text-xs text-rose-800 dark:text-rose-200 min-w-0">
           Waktu sesi pendampingan 24 jam telah berakhir. Ruang obrolan kini berada dalam mode hanya-baca.
+        </div>
+      )}
+
+      {/* Kartu Bantuan Darurat Pasien */}
+      {role === "pasien" && (Boolean(ticket.has_open_crisis_alert) || hasCrisisSupportRealtime) && (
+        <div className="p-3 sm:p-4 pb-0 shrink-0 min-w-0">
+          <CrisisSupportCard />
         </div>
       )}
 
@@ -675,6 +753,16 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Pelaporan Krisis oleh Relawan */}
+      <CrisisReportModal
+        open={crisisReportModalOpen}
+        onOpenChange={setCrisisReportModalOpen}
+        onSubmit={handleReportCrisis}
+        isLoading={isReportingCrisis}
+        targetName={ticket.patient_alias || "Teman Curhat"}
+        role="relawan"
+      />
     </div>
   );
 }
