@@ -215,7 +215,7 @@ BEGIN
             RETURN NEW;
         END IF;
 
-        v_snippet := pg_catalog.substring(NEW.body FROM 1 FOR 100);
+        v_snippet := pg_catalog.substr(NEW.body, 1, 100);
 
         IF v_source = 'booking' THEN
             SELECT id INTO v_existing_alert_id

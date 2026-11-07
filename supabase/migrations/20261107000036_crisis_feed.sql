@@ -144,7 +144,7 @@ BEGIN
         END IF;
 
         -- Potongan kalimat pemicu krisis maks 100 karakter
-        v_snippet := pg_catalog.substring(NEW.body FROM 1 FOR 100);
+        v_snippet := pg_catalog.substr(NEW.body, 1, 100);
 
         -- Aturan 1 alert terbuka: periksa apakah sudah ada alert berstatus 'new'
         IF v_source = 'booking' THEN
