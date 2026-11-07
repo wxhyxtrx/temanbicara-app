@@ -36,6 +36,7 @@ import { mockUsers } from "@/constant/mock-users";
 import { useUserStore, UserRole } from "@/store/user-store";
 import { authService } from "@/services/auth.service";
 import { walletClient } from "@/services/wallet.client";
+import { crisisClient } from "@/services/crisis.client";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function AppSidebar() {
@@ -46,6 +47,7 @@ export function AppSidebar() {
   const logout = useUserStore((state) => state.logout);
   const [mounted, setMounted] = React.useState(false);
   const [patientCoins, setPatientCoins] = React.useState<number | null>(null);
+  const [crisisNewCount, setCrisisNewCount] = React.useState<number>(0);
 
   const refreshCoins = React.useCallback(() => {
     if (user?.role === "patient" || !user?.role || pathname?.startsWith("/patient")) {
@@ -61,20 +63,41 @@ export function AppSidebar() {
     }
   }, [user?.role, pathname]);
 
+  const refreshCrisisCount = React.useCallback(() => {
+    if (pathname?.startsWith("/admin") || user?.role === "admin") {
+      crisisClient
+        .adminGetAlerts({ status: "new", limit: 1 })
+        .then((res) => {
+          if (res.success && res.pagination) {
+            setCrisisNewCount(res.pagination.unhandled_count || 0);
+          }
+        })
+        .catch(() => {
+          // Abaikan error saat bukan admin atau network error
+        });
+    }
+  }, [user?.role, pathname]);
+
   React.useEffect(() => {
     setMounted(true);
     refreshCoins();
+    refreshCrisisCount();
 
     if (typeof window !== "undefined") {
       const handleWalletRefresh = () => {
         refreshCoins();
       };
+      const handleCrisisRefresh = () => {
+        refreshCrisisCount();
+      };
       window.addEventListener("wallet:refresh", handleWalletRefresh);
+      window.addEventListener("crisis:refresh", handleCrisisRefresh);
       return () => {
         window.removeEventListener("wallet:refresh", handleWalletRefresh);
+        window.removeEventListener("crisis:refresh", handleCrisisRefresh);
       };
     }
-  }, [refreshCoins]);
+  }, [refreshCoins, refreshCrisisCount]);
 
   const getEffectiveRole = (): UserRole => {
     // 1. Pathname check is 100% deterministic on BOTH Server (SSR) and Client!
@@ -303,6 +326,11 @@ export function AppSidebar() {
               {menuConfig.mainItems.map((item) => {
                 const isActive = activeItem ? (item.title === activeItem.title && item.url === activeItem.url) : false;
                 const Icon = item.icon;
+                const isCrisisFeed = item.url === "/admin/crisis-feed";
+                const displayBadge = isCrisisFeed
+                  ? (crisisNewCount > 0 ? String(crisisNewCount) : null)
+                  : item.badge;
+                const isCrisisAlertBadge = isCrisisFeed && crisisNewCount > 0;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -330,15 +358,17 @@ export function AppSidebar() {
                         </div>
 
                         {/* High-Contrast Badge */}
-                        {item.badge && (
+                        {displayBadge && (
                           <span
                             className={`ml-auto shrink-0 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold font-mono tracking-tight shadow-xs ${
-                              isActive
+                              isCrisisAlertBadge
+                                ? "bg-rose-600 text-white animate-pulse"
+                                : isActive
                                 ? "bg-teal-700 text-white ring-1 ring-teal-800"
                                 : "bg-teal-600 text-white"
                             }`}
                           >
-                            {item.badge}
+                            {displayBadge}
                           </span>
                         )}
                       </Link>

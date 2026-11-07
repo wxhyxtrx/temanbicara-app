@@ -95,6 +95,11 @@ function getCategoryIcon(type: string) {
     case "peer_claim_timeout":
     case "peer_ticket_archived":
       return <ShieldAlert size={15} className="text-rose-700 dark:text-rose-300" />;
+    case "crisis_alert":
+      return <ShieldAlert size={15} className="text-rose-700 dark:text-rose-300" />;
+    case "crisis_companion_alert":
+    case "crisis_support":
+      return <ShieldAlert size={15} className="text-amber-700 dark:text-amber-300" />;
     default:
       return <ShieldCheck size={15} className="text-amber-700 dark:text-amber-300" />;
   }
@@ -140,6 +145,11 @@ function getCategoryBg(type: string) {
     case "peer_claim_timeout":
     case "peer_ticket_archived":
       return "bg-rose-50 dark:bg-rose-950/70 border-rose-200 dark:border-rose-900";
+    case "crisis_alert":
+      return "bg-rose-50 dark:bg-rose-950/70 border-rose-200 dark:border-rose-900";
+    case "crisis_companion_alert":
+    case "crisis_support":
+      return "bg-amber-50 dark:bg-amber-950/70 border-amber-200 dark:border-amber-800";
     default:
       return "bg-amber-50 dark:bg-amber-950/70 border-amber-200 dark:border-amber-800";
   }
@@ -225,6 +235,11 @@ export function NotificationDropdown() {
                   window.dispatchEvent(new CustomEvent("wallet:refresh"));
                 }
               }
+              if (newRow.type === "crisis_alert") {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("crisis:refresh"));
+                }
+              }
             }
           }
         )
@@ -278,8 +293,12 @@ export function NotificationDropdown() {
     }
 
     setIsOpen(false);
-    if (item.link) {
-      router.push(item.link);
+    const targetLink =
+      item.type === "crisis_alert"
+        ? item.link || "/admin/crisis-feed"
+        : item.link;
+    if (targetLink) {
+      router.push(targetLink);
     }
   };
 
