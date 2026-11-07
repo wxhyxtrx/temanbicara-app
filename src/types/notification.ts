@@ -28,7 +28,10 @@ export type NotificationType =
   | 'peer_session_closed_by_patient'
   | 'peer_ticket_archived'
   | 'peer_review_received'
-  | 'peer_tip_received';
+  | 'peer_tip_received'
+  | 'crisis_alert'
+  | 'crisis_companion_alert'
+  | 'crisis_support';
 
 export interface NotificationEntity {
   id: string;
