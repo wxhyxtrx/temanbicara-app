@@ -62,7 +62,8 @@ export async function POST(
       if (msg.includes('NO_PENDING_EXTENSION')) {
         return fail(409, 'NO_PENDING_EXTENSION', 'Tidak ada permintaan ekstensi yang menunggu keputusan');
       }
-      return fail(400, 'EXTENSION_RESPOND_FAILED', msg);
+      console.error('[EXTENSION_RESPOND_FAILED]:', rpcError);
+      return fail(400, 'EXTENSION_RESPOND_FAILED', 'Gagal memproses tanggapan perpanjangan sesi');
     }
 
     const typedResult = resultText as ExtensionRespondResult;

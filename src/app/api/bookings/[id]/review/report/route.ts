@@ -49,7 +49,8 @@ export async function POST(
       if (msg.includes('FORBIDDEN')) {
         return fail(403, 'FORBIDDEN', 'Anda hanya dapat melaporkan ulasan pada sesi konseling Anda sendiri');
       }
-      return fail(400, 'REPORT_FAILED', msg);
+      console.error('[REPORT_FAILED]:', rpcError);
+      return fail(400, 'REPORT_FAILED', 'Gagal melaporkan ulasan sesi');
     }
 
     return NextResponse.json({

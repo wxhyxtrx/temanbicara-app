@@ -52,7 +52,8 @@ export async function POST(
         if (msg.includes('INVALID_BOOKING_STATUS')) {
           return fail(409, 'INVALID_BOOKING_STATUS', 'Hanya booking berstatus booked yang dapat dibatalkan');
         }
-        return fail(400, 'CANCEL_FAILED', msg);
+        console.error('[BOOKING_CANCEL_PSIKOLOG_FAILED]:', rpcError);
+        return fail(400, 'CANCEL_FAILED', 'Gagal membatalkan sesi konseling');
       }
 
       return NextResponse.json({
@@ -79,7 +80,8 @@ export async function POST(
       if (msg.includes('INVALID_BOOKING_STATUS')) {
         return fail(409, 'INVALID_BOOKING_STATUS', 'Hanya booking berstatus booked yang dapat dibatalkan');
       }
-      return fail(400, 'CANCEL_FAILED', msg);
+      console.error('[BOOKING_CANCEL_PATIENT_FAILED]:', rpcError);
+      return fail(400, 'CANCEL_FAILED', 'Gagal membatalkan sesi konseling');
     }
 
     return NextResponse.json({

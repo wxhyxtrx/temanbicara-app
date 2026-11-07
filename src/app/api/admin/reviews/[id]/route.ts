@@ -53,7 +53,8 @@ export async function PATCH(
       if (msg.includes('REVIEW_NOT_FOUND')) {
         return fail(404, 'NOT_FOUND', 'Ulasan tidak ditemukan');
       }
-      return fail(400, 'MODERATION_FAILED', msg);
+      console.error('[MODERATION_FAILED]:', rpcError);
+      return fail(400, 'MODERATION_FAILED', 'Gagal memproses moderasi ulasan');
     }
 
     return NextResponse.json({

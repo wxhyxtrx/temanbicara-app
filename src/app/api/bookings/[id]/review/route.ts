@@ -137,7 +137,8 @@ export async function PUT(
       if (msg.includes('INVALID_RATING')) {
         return fail(422, 'INVALID_RATING', 'Rating harus antara 1 sampai 5');
       }
-      return fail(400, 'REVIEW_FAILED', msg);
+      console.error('[REVIEW_FAILED]:', rpcError);
+      return fail(400, 'REVIEW_FAILED', 'Gagal menyimpan ulasan sesi');
     }
 
     return NextResponse.json({

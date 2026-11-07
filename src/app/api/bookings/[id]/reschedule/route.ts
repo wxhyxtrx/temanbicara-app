@@ -73,7 +73,8 @@ export async function POST(
       if (msg.includes('INVALID_BOOKING_STATUS')) {
         return fail(409, 'INVALID_BOOKING_STATUS', 'Status booking saat ini tidak mengizinkan pemindahan jadwal');
       }
-      return fail(400, 'RESCHEDULE_FAILED', msg);
+      console.error('[RESCHEDULE_FAILED]:', rpcError);
+      return fail(400, 'RESCHEDULE_FAILED', 'Gagal memindahkan jadwal sesi');
     }
 
     return NextResponse.json({

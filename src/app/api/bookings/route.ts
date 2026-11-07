@@ -75,7 +75,8 @@ export async function POST(req: Request) {
       if (msg.includes('INVALID_KELUHAN')) {
         return fail(422, 'INVALID_KELUHAN', 'Keluhan wajib terdiri dari 20 hingga 1000 karakter');
       }
-      return fail(400, 'BOOKING_FAILED', msg);
+      console.error('[BOOKING_FAILED]:', rpcError);
+      return fail(400, 'BOOKING_FAILED', 'Gagal memproses pemesanan sesi');
     }
 
     return NextResponse.json({ success: true, data: booking as BookingEntity }, { status: 201 });

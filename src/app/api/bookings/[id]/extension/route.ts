@@ -61,7 +61,8 @@ export async function POST(
       if (msg.includes('EXTENSION_WINDOW_EXPIRED')) {
         return fail(409, 'EXTENSION_WINDOW_EXPIRED', 'Batas waktu 45 menit pengajuan ekstensi telah berakhir');
       }
-      return fail(400, 'EXTENSION_REQUEST_FAILED', msg);
+      console.error('[EXTENSION_REQUEST_FAILED]:', rpcError);
+      return fail(400, 'EXTENSION_REQUEST_FAILED', 'Gagal mengajukan perpanjangan sesi');
     }
 
     return NextResponse.json({

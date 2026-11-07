@@ -136,7 +136,8 @@ export async function PUT(
       if (msg.includes('BODY_TOO_LONG')) {
         return fail(422, 'BODY_TOO_LONG', 'Catatan maksimal 5000 karakter');
       }
-      return fail(400, 'SAVE_NOTE_FAILED', msg);
+      console.error('[SAVE_NOTE_FAILED]:', rpcError);
+      return fail(400, 'SAVE_NOTE_FAILED', 'Gagal menyimpan catatan sesi');
     }
 
     return NextResponse.json({

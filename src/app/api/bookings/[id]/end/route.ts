@@ -48,7 +48,8 @@ export async function POST(
       if (msg.includes('INVALID_BOOKING_STATUS')) {
         return fail(409, 'INVALID_BOOKING_STATUS', 'Hanya sesi yang sedang berjalan yang dapat diakhiri');
       }
-      return fail(400, 'END_SESSION_FAILED', msg);
+      console.error('[END_SESSION_FAILED]:', rpcError);
+      return fail(400, 'END_SESSION_FAILED', 'Gagal mengakhiri sesi konseling');
     }
 
     return NextResponse.json({

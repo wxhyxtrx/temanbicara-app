@@ -49,7 +49,8 @@ export async function POST(
       if (msg.includes('INVALID_BOOKING_STATUS')) {
         return fail(409, 'INVALID_BOOKING_STATUS', 'Pilihan refund hanya tersedia untuk booking dengan status awaiting_patient_choice');
       }
-      return fail(400, 'CHOOSE_REFUND_FAILED', msg);
+      console.error('[CHOOSE_REFUND_FAILED]:', rpcError);
+      return fail(400, 'CHOOSE_REFUND_FAILED', 'Gagal memproses pengembalian koin');
     }
 
     return NextResponse.json({
