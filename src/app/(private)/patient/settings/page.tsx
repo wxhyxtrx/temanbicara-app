@@ -568,7 +568,7 @@ export default function PatientSettingsPage() {
                 Pengingat Sesi Otomatis
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                Informasi pengingat jadwal konseling dan pemberitahuan evaluasi psikolog
+                Informasi pengingat jadwal konseling
               </CardDescription>
             </CardHeader>
 
@@ -581,18 +581,6 @@ export default function PatientSettingsPage() {
                   </p>
                   <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
                     Pengingat sesi di dalam aplikasi (in-app) sudah aktif secara otomatis. Kamu akan menerima notifikasi lonceng pada <span className="font-semibold text-slate-900 dark:text-white">60 menit</span> dan <span className="font-semibold text-slate-900 dark:text-white">10 menit</span> sebelum sesi konseling dimulai.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 pt-4">
-                <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                <div className="space-y-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Catatan Evaluasi Psikolog
-                  </p>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
-                    Notifikasi catatan evaluasi psikolog juga aktif otomatis di dalam aplikasi.
                   </p>
                 </div>
               </div>
