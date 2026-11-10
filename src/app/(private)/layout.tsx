@@ -7,17 +7,17 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import { getMenuItemsByRole } from "@/constant/menu-sidebar";
 import Link from "next/link";
-import { useUserStore, UserRole } from "@/store/user-store";
+import { useUserStore } from "@/store/user-store";
 import { NotificationDropdown } from "@/components/shared/organisms/notification-dropdown";
 import { ThemeToggle } from "@/components/shared/atoms/theme-toggle";
 import { GlobalToastListener } from "@/components/shared/global-toast-listener";
 import { MaintenanceScheduledBanner } from "@/components/shared/maintenance-scheduled-banner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { mockUsers } from "@/constant/mock-users";
 
 export default function PrivateLayouts({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const user = useUserStore((state) => state.user);
+  const profileError = useUserStore((state) => state.profileError);
   const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
   const syncSession = useUserStore((state) => state.syncSession);
   const [mounted, setMounted] = React.useState(false);
@@ -27,17 +27,11 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
     syncSession();
   }, [syncSession]);
 
-  const currentRole: UserRole = mounted && user?.role ? user.role : "patient";
-  const menuConfig = getMenuItemsByRole(currentRole);
+  const currentRole = mounted && isProfileLoaded ? user.role : null;
+  const menuConfig = currentRole ? getMenuItemsByRole(currentRole) : { mainItems: [], utilityItems: [] };
 
-  const defaultFallbackUser = mockUsers[currentRole] || mockUsers.patient;
-
-  const displayName = mounted
-    ? user.fullName || defaultFallbackUser.fullName
-    : defaultFallbackUser.fullName;
-  const displayInitials = mounted
-    ? user.avatarInitials || defaultFallbackUser.avatarInitials
-    : defaultFallbackUser.avatarInitials;
+  const displayName = user.fullName;
+  const displayInitials = user.avatarInitials;
 
   const getAvatarBgClass = () => {
     switch (currentRole) {
@@ -132,7 +126,14 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
             <ThemeToggle />
 
             <div className="hidden sm:flex items-center pl-2 border-l border-slate-200 dark:border-slate-800">
-              {!mounted || !isProfileLoaded ? (
+              {mounted && profileError ? (
+                <div role="alert" className="min-w-0 p-3 text-sm">
+                  <p>{profileError}</p>
+                  <button type="button" onClick={() => void syncSession()} className="min-h-11 px-2 text-teal-700 dark:text-teal-300 underline rounded focus-visible:outline-2 focus-visible:outline-offset-2">
+                    Coba lagi
+                  </button>
+                </div>
+              ) : !mounted || !isProfileLoaded ? (
                 <div className="flex items-center gap-2.5 h-8">
                   <div className="flex flex-col items-end gap-1.5 py-0.5">
                     <Skeleton className="h-3.5 w-24 rounded" />
@@ -160,7 +161,16 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
         </header>
 
         <main className="px-3.5 sm:px-6 md:px-8 lg:px-10 py-6 w-full max-w-[1520px] mx-auto">
-          {children}
+          {mounted && isProfileLoaded ? children : (
+            <div role="status" aria-live="polite" className="space-y-3">
+              <p>{profileError || "Memuat data akun..."}</p>
+              {profileError ? (
+                <button type="button" onClick={() => void syncSession()} className="min-h-11 px-3 text-teal-700 dark:text-teal-300 underline rounded focus-visible:outline-2 focus-visible:outline-offset-2">
+                  Coba lagi
+                </button>
+              ) : <Skeleton className="h-24 w-full rounded-xl" />}
+            </div>
+          )}
         </main>
       </SidebarInset>
     </SidebarProvider>

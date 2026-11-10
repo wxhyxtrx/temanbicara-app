@@ -32,8 +32,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/shared/atoms/Logo";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { mockUsers } from "@/constant/mock-users";
-import { useUserStore, UserRole } from "@/store/user-store";
+import { useUserStore } from "@/store/user-store";
 import { authService } from "@/services/auth.service";
 import { walletClient } from "@/services/wallet.client";
 import { crisisClient } from "@/services/crisis.client";
@@ -43,14 +42,17 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
   const user = useUserStore((state) => state.user);
+  const profileError = useUserStore((state) => state.profileError);
   const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
+  const syncSession = useUserStore((state) => state.syncSession);
   const logout = useUserStore((state) => state.logout);
   const [mounted, setMounted] = React.useState(false);
   const [patientCoins, setPatientCoins] = React.useState<number | null>(null);
   const [crisisNewCount, setCrisisNewCount] = React.useState<number>(0);
 
   const refreshCoins = React.useCallback(() => {
-    if (user?.role === "patient" || !user?.role || pathname?.startsWith("/patient")) {
+    setPatientCoins(null);
+    if (isProfileLoaded && user.role === "patient") {
       walletClient
         .getWalletMe()
         .then((data) => {
@@ -58,13 +60,13 @@ export function AppSidebar() {
           useUserStore.getState().updateCoins(data.coin_balance, false);
         })
         .catch(() => {
-          setPatientCoins(0);
+          setPatientCoins(null);
         });
     }
-  }, [user?.role, pathname]);
+  }, [user.role, isProfileLoaded]);
 
   const refreshCrisisCount = React.useCallback(() => {
-    if (pathname?.startsWith("/admin") || user?.role === "admin") {
+    if (isProfileLoaded && user.role === "admin") {
       crisisClient
         .adminGetAlerts({ status: "new", limit: 1 })
         .then((res) => {
@@ -76,7 +78,7 @@ export function AppSidebar() {
           // Abaikan error saat bukan admin atau network error
         });
     }
-  }, [user?.role, pathname]);
+  }, [user.role, isProfileLoaded]);
 
   React.useEffect(() => {
     setMounted(true);
@@ -99,37 +101,10 @@ export function AppSidebar() {
     }
   }, [refreshCoins, refreshCrisisCount]);
 
-  const getEffectiveRole = (): UserRole => {
-    // 1. Pathname check is 100% deterministic on BOTH Server (SSR) and Client!
-    if (pathname?.startsWith("/admin")) return "admin";
-    if (pathname?.startsWith("/counselor")) return "counselor";
-    if (pathname?.startsWith("/listener")) return "peer_listener";
-    if (pathname?.startsWith("/patient")) return "patient";
-
-    // 2. Cookie check only after mounted (never during initial client hydration)
-    if (mounted && typeof document !== "undefined") {
-      const match = document.cookie.match(/tb_user_role=([^;]+)/);
-      if (match && match[1]) {
-        const rawRole = match[1].split('.')[0];
-        const roleMap: Record<string, UserRole> = {
-          pasien: "patient",
-          patient: "patient",
-          relawan: "peer_listener",
-          peer_listener: "peer_listener",
-          psikolog: "counselor",
-          counselor: "counselor",
-          admin: "admin",
-        };
-        if (roleMap[rawRole]) {
-          return roleMap[rawRole];
-        }
-      }
-    }
-    return mounted && user?.role ? user.role : "patient";
+  const currentRole = mounted && isProfileLoaded ? user.role : null;
+  const menuConfig = currentRole ? getMenuItemsByRole(currentRole) : {
+    mainItems: [], utilityItems: [], badgeLabel: "", roleTitle: "",
   };
-
-  const currentRole = getEffectiveRole();
-  const menuConfig = getMenuItemsByRole(currentRole);
 
   const activeItem = React.useMemo(() => {
     if (!pathname) return null;
@@ -156,14 +131,8 @@ export function AppSidebar() {
     }, prefixMatches[0]);
   }, [menuConfig, pathname]);
 
-  const defaultFallbackUser = mockUsers[currentRole] || mockUsers.patient;
-
-  const displayName = mounted
-    ? user.fullName || defaultFallbackUser.fullName
-    : defaultFallbackUser.fullName;
-  const displayInitials = mounted
-    ? user.avatarInitials || defaultFallbackUser.avatarInitials
-    : defaultFallbackUser.avatarInitials;
+  const displayName = user.fullName;
+  const displayInitials = user.avatarInitials;
 
   const [loggingOut, setLoggingOut] = React.useState(false);
 
@@ -197,8 +166,9 @@ export function AppSidebar() {
       case "admin":
         return "/admin/beranda";
       case "patient":
-      default:
         return "/patient/beranda";
+      default:
+        return "/";
     }
   };
 
@@ -211,8 +181,9 @@ export function AppSidebar() {
       case "admin":
         return "/admin/settings";
       case "patient":
-      default:
         return "/patient/settings";
+      default:
+        return "/";
     }
   };
 
@@ -280,7 +251,14 @@ export function AppSidebar() {
       <SidebarContent className="px-3 py-2 space-y-3 bg-white dark:bg-slate-900">
         {/* 2. User Profile Card with Dynamic Role */}
         <SidebarGroup className="p-0">
-          {!mounted || !isProfileLoaded ? (
+          {mounted && profileError ? (
+            <div role="alert" className="min-w-0 p-3 text-sm">
+              <p>{profileError}</p>
+              <button type="button" onClick={() => void syncSession()} className="min-h-11 px-2 text-teal-700 dark:text-teal-300 underline rounded focus-visible:outline-2 focus-visible:outline-offset-2">
+                Coba lagi
+              </button>
+            </div>
+          ) : !mounted || !isProfileLoaded ? (
             <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 h-[66px]">
               <div className="flex items-center gap-3 min-w-0">
                 <Skeleton className="w-10 h-10 rounded-full shrink-0" />
@@ -319,7 +297,7 @@ export function AppSidebar() {
         {/* 3. Main Navigation */}
         <SidebarGroup className="p-0 space-y-1">
           <SidebarGroupLabel className="text-[11px] font-bold px-3 py-1 text-slate-400 dark:text-slate-500 uppercase tracking-wider font-heading">
-            {currentRole === "patient" ? "Menu Konseling" : `Portal ${menuConfig.roleTitle}`}
+            {currentRole === "patient" ? "Menu Konseling" : currentRole ? `Portal ${menuConfig.roleTitle}` : "Menu"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
@@ -432,7 +410,7 @@ export function AppSidebar() {
       {/* 5. Footer: Dynamic Wallet / Mode Status & Logout */}
       <SidebarFooter className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
         {/* Dynamic Footer Card based on Role */}
-        {currentRole === "counselor" ? (
+        {!currentRole ? null : currentRole === "counselor" ? (
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800">
             <Link
               href="/counselor/earnings"

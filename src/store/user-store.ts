@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { mockUsers, UserProfile, UserRole } from "@/constant/mock-users";
+import type { UserProfile, UserRole } from "@/constant/mock-users";
 import type {
   MeProfile,
   PasienProfile,
@@ -16,25 +16,16 @@ function generateInitials(name: string): string {
   if (parts.length >= 2) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
-  return (name.slice(0, 2) || "TB").toUpperCase();
+  return (name.slice(0, 2) || "").toUpperCase();
 }
 
 export interface UserState {
   user: UserProfile;
-  roleProfiles: Record<UserRole, UserProfile>;
+  profileError: string | null;
   isAuthenticated: boolean;
   isProfileLoaded: boolean;
-  register: (
-    fullName: string,
-    email: string,
-    role?: UserRole,
-    extraData?: Partial<UserProfile>
-  ) => UserProfile;
   updateProfile: (data: Partial<UserProfile>) => void;
   updateCoins: (newTotalOrDelta: number, isDelta?: boolean) => void;
-  creditCounselorCoins: (coins: number) => void;
-  creditListenerCoins: (coins: number) => void;
-  sendTip: (recipientRole: "counselor" | "peer_listener", amount: number) => boolean;
   setAuthSession: (
     sessionUser: {
       id: string;
@@ -65,11 +56,17 @@ export const PERSISTENT_STORES_TO_CLEAR = [
   "tb_crisis_store_v1",
 ] as const;
 
+const EMPTY_PROFILE: UserProfile = {
+  id: "", role: "" as UserRole, fullName: "", alias: "", email: "",
+  phone: "", avatarInitials: "", coins: 0, isVerified: false,
+  patientId: "", emergencyContact: "", mentalNotes: "", isAnonymousDefault: false,
+};
+
 const createInitialUserState = () => ({
-  user: { ...mockUsers.patient },
-  roleProfiles: { ...mockUsers },
+  user: EMPTY_PROFILE,
   isAuthenticated: false,
   isProfileLoaded: false,
+  profileError: null as string | null,
 });
 
 export const useUserStore = create<UserState>()(
@@ -77,36 +74,8 @@ export const useUserStore = create<UserState>()(
     (set, get) => ({
       ...createInitialUserState(),
 
-      register: (fullName, email, role = "patient", extraData?: Partial<UserProfile>) => {
-        const initials = generateInitials(fullName);
-        const base = mockUsers[role] || mockUsers.patient;
-        const newUser: UserProfile = {
-          ...base,
-          id: `usr-${Date.now()}`,
-          role,
-          fullName,
-          alias: extraData?.alias || fullName.split(" ")[0] || "Teman",
-          email,
-          avatarInitials: initials,
-          patientId: `TB-${Math.floor(10000 + Math.random() * 90000)}`,
-          coins: 0,
-          ...extraData,
-        };
-
-        const profiles = get().roleProfiles || { ...mockUsers };
-        set({
-          isAuthenticated: true,
-          isProfileLoaded: true,
-          user: newUser,
-          roleProfiles: {
-            ...profiles,
-            [role]: newUser,
-          },
-        });
-        return newUser;
-      },
-
       updateProfile: (data) => {
+        if (!get().isProfileLoaded) return;
         const currentUser = get().user;
         const updated = { ...currentUser, ...data };
         if (data.fullName) {
@@ -116,95 +85,18 @@ export const useUserStore = create<UserState>()(
             ["Matt", "Matthew", "Matthew Johnson", "Pasien"].includes(data.alias) ||
             data.alias === currentUser.fullName.split(" ")[0]
           ) {
-            updated.alias = data.fullName.trim().split(" ")[0] || "Wahyu";
+            updated.alias = data.fullName.trim().split(" ")[0] || "";
           }
         }
-        const profiles = get().roleProfiles || { ...mockUsers };
-        set({
-          user: updated,
-          roleProfiles: {
-            ...profiles,
-            [currentUser.role]: updated,
-          },
-        });
+        set({ user: updated });
       },
 
       updateCoins: (val, isDelta = false) => {
+        if (!get().isProfileLoaded) return;
         const currentUser = get().user;
         const nextCoins = isDelta ? Math.max(0, currentUser.coins + val) : Math.max(0, val);
         const updatedUser = { ...currentUser, coins: nextCoins };
-        const profiles = get().roleProfiles || { ...mockUsers };
-        set({
-          user: updatedUser,
-          roleProfiles: {
-            ...profiles,
-            [currentUser.role]: updatedUser,
-          },
-        });
-      },
-
-      creditCounselorCoins: (coins: number) => {
-        const profiles = get().roleProfiles || { ...mockUsers };
-        const currentCounselor = profiles.counselor || mockUsers.counselor;
-        const nextCoins = Math.max(0, currentCounselor.coins + coins);
-        const updatedCounselor = {
-          ...currentCounselor,
-          coins: nextCoins,
-        };
-        const currentUser = get().user;
-        set({
-          roleProfiles: {
-            ...profiles,
-            counselor: updatedCounselor,
-          },
-          user: currentUser.role === "counselor" ? updatedCounselor : currentUser,
-        });
-      },
-
-      creditListenerCoins: (coins: number) => {
-        const profiles = get().roleProfiles || { ...mockUsers };
-        const currentListener = profiles.peer_listener || mockUsers.peer_listener;
-        const nextCoins = Math.max(0, currentListener.coins + coins);
-        const updatedListener = {
-          ...currentListener,
-          coins: nextCoins,
-        };
-        const currentUser = get().user;
-        set({
-          roleProfiles: {
-            ...profiles,
-            peer_listener: updatedListener,
-          },
-          user: currentUser.role === "peer_listener" ? updatedListener : currentUser,
-        });
-      },
-
-      sendTip: (recipientRole: "counselor" | "peer_listener", amount: number) => {
-        const currentUser = get().user;
-        if (currentUser.coins < amount) return false;
-
-        // Potong koin pengirim (pasien)
-        const updatedSender = {
-          ...currentUser,
-          coins: currentUser.coins - amount,
-        };
-
-        const profiles = get().roleProfiles || { ...mockUsers };
-        const targetProfile = profiles[recipientRole] || mockUsers[recipientRole];
-        const updatedTarget = {
-          ...targetProfile,
-          coins: targetProfile.coins + amount,
-        };
-
-        set({
-          user: updatedSender,
-          roleProfiles: {
-            ...profiles,
-            [currentUser.role]: updatedSender,
-            [recipientRole]: updatedTarget,
-          },
-        });
-        return true;
+        set({ user: updatedUser });
       },
 
       setAuthSession: (sessionUser, profileOrLegacy, legacyProfile) => {
@@ -223,21 +115,21 @@ export const useUserStore = create<UserState>()(
           peer_listener: "peer_listener",
           counselor: "counselor",
         };
-        const mappedRole: UserRole = roleMap[sessionUser.role] || "patient";
-        const profiles = get().roleProfiles || { ...mockUsers };
-        const baseProfile = profiles[mappedRole] || mockUsers[mappedRole] || mockUsers.patient;
-
-        const displayName = sessionUser.fullName || sessionUser.email.split("@")[0];
-
-        let patientData = baseProfile.patientData;
-        let counselorData = baseProfile.counselorData;
-        let listenerData = baseProfile.listenerData;
-        let adminData = baseProfile.adminData;
-
-        let alias = sessionUser.fullName ? sessionUser.fullName.split(" ")[0] : displayName;
-        let phone = sessionUser.no_wa || baseProfile.phone || "";
-        let emergencyContact = baseProfile.emergencyContact || "";
-        let isAnonymousDefault = baseProfile.isAnonymousDefault || false;
+        const mappedRole = roleMap[sessionUser.role];
+        if (!mappedRole || !sessionUser.id || !sessionUser.email) {
+          set({ user: EMPTY_PROFILE, isProfileLoaded: false, profileError: "Data akun gagal dimuat" });
+          return;
+        }
+        const baseProfile = EMPTY_PROFILE;
+        const displayName = sessionUser.fullName || "";
+        let patientData: UserProfile["patientData"];
+        let counselorData: UserProfile["counselorData"];
+        let listenerData: UserProfile["listenerData"];
+        let adminData: UserProfile["adminData"];
+        let alias = displayName.split(" ")[0];
+        const phone = sessionUser.no_wa || "";
+        let emergencyContact = "";
+        let isAnonymousDefault = false;
 
         if (profile) {
           if (mappedRole === "patient") {
@@ -319,12 +211,9 @@ export const useUserStore = create<UserState>()(
 
         set({
           isAuthenticated: true,
-          isProfileLoaded: Boolean(profile),
+          isProfileLoaded: true,
           user: updatedUser,
-          roleProfiles: {
-            ...profiles,
-            [mappedRole]: updatedUser,
-          },
+          profileError: null,
         });
 
         if (typeof window !== "undefined") {
@@ -335,18 +224,7 @@ export const useUserStore = create<UserState>()(
 
       syncSession: async () => {
         if (typeof window === "undefined") return;
-        const matchRole = document.cookie.match(/tb_user_role=([^;]+)/);
-        const cookieRoleRaw = matchRole ? matchRole[1].split('.')[0] : null;
-
-        const roleMap: Record<string, UserRole> = {
-          pasien: "patient",
-          relawan: "peer_listener",
-          psikolog: "counselor",
-          admin: "admin",
-          patient: "patient",
-          peer_listener: "peer_listener",
-          counselor: "counselor",
-        };
+        set({ profileError: null });
 
         // 1. Fetch sesi real-time dari backend (/api/users/me)
         try {
@@ -369,26 +247,12 @@ export const useUserStore = create<UserState>()(
             const json = await res.json();
             if (json?.data?.user) {
               get().setAuthSession(json.data.user, json.data.profile || null);
-              set({ isProfileLoaded: true });
               return;
             }
           }
+          set({ user: EMPTY_PROFILE, isProfileLoaded: false, profileError: "Data akun gagal dimuat" });
         } catch {
-          // Abaikan kesalahan jaringan sementara, gunakan fallback cookie
-        }
-
-        // 2. Fallback instan dari cookie jika fetch tertunda
-        if (cookieRoleRaw) {
-          const mapped = roleMap[cookieRoleRaw] || "patient";
-          if (get().user.role !== mapped || !get().isAuthenticated) {
-            const profiles = get().roleProfiles || { ...mockUsers };
-            const targetUser = profiles[mapped] || mockUsers[mapped] || mockUsers.patient;
-            set({
-              isAuthenticated: true,
-              isProfileLoaded: true,
-              user: targetUser,
-            });
-          }
+          set({ user: EMPTY_PROFILE, isProfileLoaded: false, profileError: "Data akun gagal dimuat" });
         }
       },
 
@@ -408,26 +272,9 @@ export const useUserStore = create<UserState>()(
     {
       name: "tb_user_store_v4",
       version: 4,
-      partialize: (state) => ({
-        user: state.user,
-        roleProfiles: state.roleProfiles,
-        isAuthenticated: state.isAuthenticated,
-      }),
-      migrate: (persistedState: unknown) => {
-        const state = persistedState as {
-          user?: Partial<UserProfile>;
-          roleProfiles?: Record<UserRole, UserProfile>;
-        } | undefined;
-        if (state && state.user) {
-          if (!state.user.role) {
-            state.user.role = "patient";
-          }
-        }
-        if (state && !state.roleProfiles) {
-          state.roleProfiles = { ...mockUsers };
-        }
-        return state as UserState;
-      },
+      // Never hydrate identity or role from a previous browser session.
+      partialize: () => ({}),
+      merge: (_persistedState, currentState) => currentState,
     }
   )
 );
