@@ -49,9 +49,7 @@ export default function PatientSettingsPage() {
   const [mentalNotes, setMentalNotes] = useState("");
   const [isAnonymousDefault, setIsAnonymousDefault] = useState(false);
 
-  // Preferences & Security states
-  const [sessionReminder, setSessionReminder] = useState(true);
-  const [psychologistMessageAlert, setPsychologistMessageAlert] = useState(true);
+  // Security states
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
 
   // Status feedback
@@ -267,12 +265,6 @@ export default function PatientSettingsPage() {
           >
             <Bell size={15} />
             <span>Notifikasi Sesi</span>
-            <Badge
-              variant="outline"
-              className="ml-1 text-[9px] px-1.5 py-0 bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-            >
-              Coming Soon
-            </Badge>
           </TabsTrigger>
           <TabsTrigger
             value="security"
@@ -569,73 +561,46 @@ export default function PatientSettingsPage() {
 
         {/* TAB 3: NOTIFIKASI */}
         <TabsContent value="notifications" className="space-y-4">
-          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs">
-            <Clock className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5">
-                <p className="font-bold font-heading text-xs text-amber-950 dark:text-amber-100">
-                  Fitur Notifikasi Sesi (Coming Soon)
-                </p>
-                <Badge
-                  variant="outline"
-                  className="text-[9px] px-1.5 py-0 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800"
-                >
-                  Dalam Pengembangan
-                </Badge>
-              </div>
-              <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-nunito">
-                Sinkronisasi webhook WhatsApp & Web Push untuk notifikasi pengingat sesi dan pesan evaluasi klinis sedang dipersiapkan. Pengaturan di bawah saat ini beroperasi dalam mode pratinjau lokal.
-              </p>
-            </div>
-          </div>
-
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
             <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Bell size={18} className="text-teal-600 dark:text-teal-400" />
-                  Preferensi Pengingat Sesi
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                >
-                  Coming Soon
-                </Badge>
-              </div>
+              <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                Pengingat Sesi Otomatis
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+                Informasi pengingat jadwal konseling dan pemberitahuan evaluasi psikolog
+              </CardDescription>
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-4 divide-y divide-slate-100 dark:divide-slate-800">
-              <div className="flex items-center justify-between gap-4 pt-1 first:pt-0">
-                <div className="space-y-0.5">
+              <div className="flex items-start gap-3 pt-1 first:pt-0">
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                <div className="space-y-1 min-w-0">
                   <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Pengingat Janji Temu Sesi
+                    Pengingat Sesi In-App
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Kirim notifikasi WhatsApp 30 menit sebelum sesi konseling dimulai.
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
+                    Pengingat sesi di dalam aplikasi (in-app) sudah aktif secara otomatis. Kamu akan menerima notifikasi lonceng pada <span className="font-semibold text-slate-900 dark:text-white">60 menit</span> dan <span className="font-semibold text-slate-900 dark:text-white">10 menit</span> sebelum sesi konseling dimulai.
                   </p>
                 </div>
-                <Switch
-                  checked={sessionReminder}
-                  disabled={true}
-                  className="cursor-not-allowed opacity-60"
-                />
               </div>
 
-              <div className="flex items-center justify-between gap-4 pt-4">
-                <div className="space-y-0.5">
+              <div className="flex items-start gap-3 pt-4">
+                <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                <div className="space-y-1 min-w-0">
                   <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                    Pemberitahuan Pesan Psikolog
+                    Catatan Evaluasi Psikolog
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Notifikasi ketika psikolog meninggalkan catatan evaluasi atau tugas latihan mandiri.
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
+                    Notifikasi catatan evaluasi psikolog juga aktif otomatis di dalam aplikasi.
                   </p>
                 </div>
-                <Switch
-                  checked={psychologistMessageAlert}
-                  disabled={true}
-                  className="cursor-not-allowed opacity-60"
-                />
+              </div>
+
+              <div className="pt-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
+                  Integrasi pengingat via WhatsApp belum tersedia saat ini.
+                </p>
               </div>
             </CardContent>
           </Card>
