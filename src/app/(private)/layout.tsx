@@ -126,14 +126,7 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
             <ThemeToggle />
 
             <div className="hidden sm:flex items-center pl-2 border-l border-slate-200 dark:border-slate-800">
-              {mounted && profileError ? (
-                <div role="alert" className="min-w-0 p-3 text-sm">
-                  <p>{profileError}</p>
-                  <button type="button" onClick={() => void syncSession()} className="min-h-11 px-2 text-teal-700 dark:text-teal-300 underline rounded focus-visible:outline-2 focus-visible:outline-offset-2">
-                    Coba lagi
-                  </button>
-                </div>
-              ) : !mounted || !isProfileLoaded ? (
+              {!mounted || !isProfileLoaded ? (
                 <div className="flex items-center gap-2.5 h-8">
                   <div className="flex flex-col items-end gap-1.5 py-0.5">
                     <Skeleton className="h-3.5 w-24 rounded" />

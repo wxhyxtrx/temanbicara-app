@@ -226,36 +226,49 @@ export const useUserStore = create<UserState>()(
         if (typeof window === "undefined") return;
         set({ profileError: null });
 
+        const maxAttempts = silent ? 2 : 1;
+
         // 1. Fetch sesi real-time dari backend (/api/users/me)
-        try {
-          const res = await fetch("/api/users/me", { credentials: "include" });
-          if (res.status === 401) {
-            // Sesi token tidak valid atau kedaluwarsa di backend
-            get().logout();
-            if (silent) return;
-            if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-              const currentPath = window.location.pathname + window.location.search;
-              const loginUrl = new URL("/login", window.location.origin);
-              loginUrl.searchParams.set("expired", "true");
-              if (currentPath && currentPath !== "/") {
-                loginUrl.searchParams.set("callbackUrl", currentPath);
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            const res = await fetch("/api/users/me", { credentials: "include" });
+            if (res.status === 401) {
+              // Sesi token tidak valid atau kedaluwarsa di backend
+              get().logout();
+              if (silent) return;
+              if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+                const currentPath = window.location.pathname + window.location.search;
+                const loginUrl = new URL("/login", window.location.origin);
+                loginUrl.searchParams.set("expired", "true");
+                if (currentPath && currentPath !== "/") {
+                  loginUrl.searchParams.set("callbackUrl", currentPath);
+                }
+                window.location.href = loginUrl.toString();
               }
-              window.location.href = loginUrl.toString();
-            }
-            return;
-          }
-          if (res.ok) {
-            const json = await res.json();
-            if (json?.data?.user) {
-              get().setAuthSession(json.data.user, json.data.profile || null);
-              if (silent && get().profileError) set(createInitialUserState());
               return;
             }
+            if (res.ok) {
+              const json = await res.json();
+              if (json?.data?.user) {
+                get().setAuthSession(json.data.user, json.data.profile || null);
+                if (!get().profileError) return;
+                if (silent) set({ profileError: null });
+              }
+            }
+          } catch {
+            // Lanjut ke mekanisme retry (bila silent) atau set state akhir di bawah
           }
-          set(silent ? createInitialUserState() : { user: EMPTY_PROFILE, isProfileLoaded: false, profileError: "Data akun gagal dimuat" });
-        } catch {
-          set(silent ? createInitialUserState() : { user: EMPTY_PROFILE, isProfileLoaded: false, profileError: "Data akun gagal dimuat" });
+
+          if (attempt < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+          }
         }
+
+        set(
+          silent
+            ? createInitialUserState()
+            : { user: EMPTY_PROFILE, isProfileLoaded: false, profileError: "Data akun gagal dimuat" }
+        );
       },
 
       logout: () => {

@@ -42,9 +42,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
   const user = useUserStore((state) => state.user);
-  const profileError = useUserStore((state) => state.profileError);
   const isProfileLoaded = useUserStore((state) => state.isProfileLoaded);
-  const syncSession = useUserStore((state) => state.syncSession);
   const logout = useUserStore((state) => state.logout);
   const [mounted, setMounted] = React.useState(false);
   const [patientCoins, setPatientCoins] = React.useState<number | null>(null);
@@ -251,14 +249,7 @@ export function AppSidebar() {
       <SidebarContent className="px-3 py-2 space-y-3 bg-white dark:bg-slate-900">
         {/* 2. User Profile Card with Dynamic Role */}
         <SidebarGroup className="p-0">
-          {mounted && profileError ? (
-            <div role="alert" className="min-w-0 p-3 text-sm">
-              <p>{profileError}</p>
-              <button type="button" onClick={() => void syncSession()} className="min-h-11 px-2 text-teal-700 dark:text-teal-300 underline rounded focus-visible:outline-2 focus-visible:outline-offset-2">
-                Coba lagi
-              </button>
-            </div>
-          ) : !mounted || !isProfileLoaded ? (
+          {!mounted || !isProfileLoaded ? (
             <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 h-[66px]">
               <div className="flex items-center gap-3 min-w-0">
                 <Skeleton className="w-10 h-10 rounded-full shrink-0" />
