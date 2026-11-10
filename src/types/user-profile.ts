@@ -257,6 +257,11 @@ export interface AdminDashboardStatsData {
     total_platform_revenue_rupiah: number;
     breakdown_by_reason: Record<string, number>;
   };
+  active_sessions?: {
+    counseling_count: number;
+    peer_count: number;
+    total: number;
+  };
 }
 
 export type AdminDashboardStatsResponse =

@@ -44,6 +44,20 @@ export async function GET() {
       return fail(500, 'DB_ERROR', 'Gagal memuat statistik pengguna');
     }
 
+    const [counselingRes, peerRes] = await Promise.all([
+      supabaseAdmin
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'in_progress'),
+      supabaseAdmin
+        .from('peer_tickets')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['claimed', 'active']),
+    ]);
+
+    const counselingCount = counselingRes.count ?? 0;
+    const peerCount = peerRes.count ?? 0;
+
     const byRole: Record<string, number> = {};
     for (const r of ROLES) byRole[r] = 0;
 
@@ -90,6 +104,11 @@ export async function GET() {
       revenue: typedStats?.revenue ?? {
         total_platform_revenue_rupiah: 0,
         breakdown_by_reason: {},
+      },
+      active_sessions: {
+        counseling_count: counselingCount,
+        peer_count: peerCount,
+        total: counselingCount + peerCount,
       },
     };
 
