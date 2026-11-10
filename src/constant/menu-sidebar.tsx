@@ -153,7 +153,6 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         description: "Sesi percakapan aktif anonim",
         url: "/listener/queue",
         icon: MessageCircle,
-        badge: "Segera",
       },
     ],
     utilityItems: [
