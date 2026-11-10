@@ -23,6 +23,7 @@ import {
   Clock,
 } from "lucide-react";
 import { userService } from "@/services/user.service";
+import { crisisClient } from "@/services/crisis.client";
 import type { AdminDashboardStatsData } from "@/types/user-profile";
 
 const REASON_LABELS: Record<string, string> = {
@@ -44,6 +45,7 @@ function formatReason(key: string): string {
 
 export default function AdminBerandaPage() {
   const [stats, setStats] = useState<AdminDashboardStatsData | null>(null);
+  const [unhandledCrisisCount, setUnhandledCrisisCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,11 +53,17 @@ export default function AdminBerandaPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await userService.getAdminStats();
+      const [res, crisisRes] = await Promise.all([
+        userService.getAdminStats(),
+        crisisClient.adminGetAlerts({ status: "new", limit: 1 }).catch(() => null),
+      ]);
       if (res.success && res.data) {
         setStats(res.data);
       } else {
         setError("Gagal memuat statistik platform");
+      }
+      if (crisisRes && crisisRes.success) {
+        setUnhandledCrisisCount(crisisRes.pagination?.unhandled_count ?? 0);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal memuat data statistik";
@@ -71,6 +79,9 @@ export default function AdminBerandaPage() {
 
   const pendingMitra = stats?.mitra_verification.pending_count ?? 0;
   const pendingPayout = stats?.payout.requested_count ?? 0;
+  const activeSessionsTotal = stats?.active_sessions?.total ?? 0;
+  const activeCounselingCount = stats?.active_sessions?.counseling_count ?? 0;
+  const activePeerCount = stats?.active_sessions?.peer_count ?? 0;
 
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -481,7 +492,7 @@ export default function AdminBerandaPage() {
         </Card>
       </div>
 
-      {/* 4. Section Bawah: Antrean Aksi & Status Modul Mendatang */}
+      {/* 4. Section Bawah: Antrean Aksi & Monitoring Sesi/Krisis */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Antrean Verifikasi Cepat (7 Cols) */}
         <div className="lg:col-span-7">
@@ -540,43 +551,85 @@ export default function AdminBerandaPage() {
           </Card>
         </div>
 
-        {/* Modul Segera Hadir (5 Cols) */}
+        {/* Monitoring Sesi & Feed Krisis (5 Cols) */}
         <div className="lg:col-span-5">
           <Card className="h-full rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
             <CardHeader className="p-5 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 shrink-0">
                     <AlertTriangle size={16} />
                   </span>
-                  <CardTitle className="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                  <CardTitle className="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
                     Monitoring Sesi & Feed Krisis
                   </CardTitle>
                 </div>
-                <Badge variant="outline" className="text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-semibold">
-                  Segera Hadir
-                </Badge>
+                <Link href="/admin/crisis-feed" className="shrink-0">
+                  <Button variant="ghost" size="sm" className="text-xs text-rose-700 dark:text-rose-400 font-semibold gap-1">
+                    Feed Krisis <ArrowRight size={13} />
+                  </Button>
+                </Link>
               </div>
             </CardHeader>
 
             <CardContent className="p-5 sm:p-6 space-y-3 text-xs">
-              <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-[11px]">
-                Modul telekonsultasi real-time dan sensor deteksi otomatis frasa krisis (self-harm/emergency) sedang dalam sinkronisasi backend. Angka dummy tidak ditampilkan.
-              </p>
-
-              <div className="space-y-2 pt-1">
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-600 dark:text-slate-400 font-medium">Sesi Berlangsung Real-time</span>
-                  <Badge variant="outline" className="text-[10px] font-mono text-slate-500">
-                    Segera Hadir
-                  </Badge>
+              <div className="space-y-2.5">
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+                  <div className="space-y-0.5 min-w-0">
+                    <span className="text-slate-700 dark:text-slate-200 font-semibold block">
+                      Sesi Berlangsung Real-time
+                    </span>
+                    {!loading && (
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                        Konseling: {activeCounselingCount}, Curhat Sebaya: {activePeerCount}
+                      </span>
+                    )}
+                  </div>
+                  {loading ? (
+                    <Skeleton className="h-6 w-28 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
+                  ) : activeSessionsTotal > 0 ? (
+                    <Badge
+                      variant="outline"
+                      className="self-start sm:self-auto bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800 text-[11px] font-bold shrink-0"
+                    >
+                      {activeSessionsTotal} Sesi Berlangsung
+                    </Badge>
+                  ) : (
+                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0">
+                      Tidak ada sesi berlangsung (0)
+                    </span>
+                  )}
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-600 dark:text-slate-400 font-medium">Laporan Eskalasi Krisis Aktif</span>
-                  <Badge variant="outline" className="text-[10px] font-mono text-slate-500">
-                    Segera Hadir
-                  </Badge>
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+                  <div className="space-y-0.5 min-w-0">
+                    <span className="text-slate-700 dark:text-slate-200 font-semibold block">
+                      Laporan Eskalasi Krisis Aktif
+                    </span>
+                    <Link
+                      href="/admin/crisis-feed"
+                      className="inline-flex items-center gap-1 text-[11px] text-rose-700 dark:text-rose-400 font-semibold hover:underline"
+                    >
+                      <span>Buka Feed Krisis</span>
+                      <ArrowRight size={11} />
+                    </Link>
+                  </div>
+                  {loading ? (
+                    <Skeleton className="h-6 w-28 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
+                  ) : unhandledCrisisCount > 0 ? (
+                    <Link href="/admin/crisis-feed" className="self-start sm:self-auto shrink-0">
+                      <Badge
+                        variant="outline"
+                        className="bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 text-[11px] font-bold animate-pulse cursor-pointer"
+                      >
+                        {unhandledCrisisCount} Alarm Baru
+                      </Badge>
+                    </Link>
+                  ) : (
+                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0">
+                      Tidak ada alarm aktif (0)
+                    </span>
+                  )}
                 </div>
               </div>
             </CardContent>
