@@ -37,9 +37,15 @@ export default function PublicHelpCenterPage() {
   const user = useUserStore((state) => state.user);
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
 
+  const syncSession = useUserStore((state) => state.syncSession);
+
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    let active = true;
+    void syncSession({ silent: true }).then(() => {
+      if (active) setMounted(true);
+    });
+    return () => { active = false; };
+  }, [syncSession]);
 
   const getPortalHome = (role?: string) => {
     switch (role) {
@@ -206,12 +212,14 @@ export default function PublicHelpCenterPage() {
             </p>
           </div>
 
-          <Link href={targetHref} className="shrink-0">
+          {!mounted ? (
+            <span role="status" className="text-xs text-slate-500 dark:text-slate-400">Memuat sesi...</span>
+          ) : <Link href={targetHref} className="shrink-0">
             <Button className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs px-4 h-9 font-semibold gap-1.5 shadow-xs cursor-pointer">
               <span>{targetLabel}</span>
               <ArrowRight size={14} />
             </Button>
-          </Link>
+          </Link>}
         </div>
 
         {/* 2. Top Emergency Crisis Hotlines Banner */}

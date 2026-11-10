@@ -16,10 +16,17 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const { isAuthenticated, user } = useUserStore();
+  const { isAuthenticated, user, syncSession } = useUserStore();
 
   useEffect(() => {
-    setMounted(true);
+    let active = true;
+    void syncSession({ silent: true }).then(() => {
+      if (active) setMounted(true);
+    });
+    return () => { active = false; };
+  }, [syncSession]);
+
+  useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
@@ -153,7 +160,9 @@ export function Navbar() {
             {/* Dark / Light Mode Toggle */}
             <ThemeToggle />
 
-            {isUserLoggedIn ? (
+            {!mounted ? (
+              <span role="status" className="text-xs text-slate-500 dark:text-slate-400">Memuat sesi...</span>
+            ) : isUserLoggedIn ? (
               /* User Profile Action (Logged In) */
               <Link href={getPortalHome(user?.role)} className="group">
                 <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl bg-teal-50/90 dark:bg-teal-950/60 border border-teal-200/90 dark:border-teal-800/80 hover:bg-teal-100/80 dark:hover:bg-teal-900/60 hover:border-teal-400 dark:hover:border-teal-600 transition-all cursor-pointer shadow-xs">
@@ -246,7 +255,9 @@ export function Navbar() {
                 Pusat Bantuan
               </Link>
 
-              {isUserLoggedIn ? (
+              {!mounted ? (
+                <span role="status" className="text-xs text-slate-500 dark:text-slate-400">Memuat sesi...</span>
+              ) : isUserLoggedIn ? (
                 /* Mobile User Profile Section (Logged In) */
                 <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2.5">
                   <div className="p-3 rounded-2xl bg-teal-50/70 dark:bg-slate-900 border border-teal-200/80 dark:border-slate-800 flex items-center justify-between">
