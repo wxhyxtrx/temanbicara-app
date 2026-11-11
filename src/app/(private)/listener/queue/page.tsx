@@ -136,6 +136,10 @@ export default function ListenerQueueRoomPage() {
           ) {
             void triggerQueueAlert().catch((alertErr) => {
               console.error("Gagal memicu peringatan antrean:", alertErr);
+              notify.info(
+                "Ada teman bicara baru di antrean",
+                "Buka Ruang Dengar untuk mendampingi teman bicara."
+              );
             });
           }
         }
