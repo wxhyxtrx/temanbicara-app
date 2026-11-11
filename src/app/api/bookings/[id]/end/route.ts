@@ -48,6 +48,12 @@ export async function POST(
       if (msg.includes('INVALID_BOOKING_STATUS')) {
         return fail(409, 'INVALID_BOOKING_STATUS', 'Hanya sesi yang sedang berjalan yang dapat diakhiri');
       }
+      if (msg.includes('SESSION_NOT_STARTED')) {
+        return fail(409, 'SESSION_NOT_STARTED', 'Sesi belum dimulai.');
+      }
+      if (msg.includes('PATIENT_NO_SHOW_PENDING')) {
+        return fail(409, 'PATIENT_NO_SHOW_PENDING', 'Sesi belum dapat diakhiri karena pasien belum merespons dan batas waktu no-show belum terlewati.');
+      }
       console.error('[END_SESSION_FAILED]:', rpcError);
       return fail(400, 'END_SESSION_FAILED', 'Gagal mengakhiri sesi konseling');
     }
