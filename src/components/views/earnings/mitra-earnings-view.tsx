@@ -19,6 +19,7 @@ import { walletClient, WalletApiError } from "@/services/wallet.client";
 import { systemSettingsClient } from "@/services/system-settings.client";
 import { userService } from "@/services/user.service";
 import type { PayoutRequestEntity, PaginationMeta, WalletInfoResponse } from "@/types/wallet";
+import { POPULAR_BANKS } from "@/constant/banks";
 import {
   Wallet,
   Building2,
@@ -35,18 +36,6 @@ import {
   AlertTriangle,
   Receipt,
 } from "lucide-react";
-
-const POPULAR_BANKS = [
-  "Bank Central Asia (BCA)",
-  "Bank Mandiri",
-  "Bank Negara Indonesia (BNI)",
-  "Bank Rakyat Indonesia (BRI)",
-  "Bank Syariah Indonesia (BSI)",
-  "Bank CIMB Niaga",
-  "Bank Permata",
-  "SeaBank Indonesia",
-  "Bank Jago",
-];
 
 interface MitraEarningsViewProps {
   role: "psikolog" | "relawan";
