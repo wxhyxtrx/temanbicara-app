@@ -98,18 +98,10 @@ REVOKE ALL ON FUNCTION public.session_end(UUID, UUID) FROM PUBLIC, anon, authent
 GRANT EXECUTE ON FUNCTION public.session_end(UUID, UUID) TO service_role;
 
 -- ========================================================
--- 2. SETUP DATA SYSTEM_SETTINGS JIKA BELUM ADA (DO NOTHING)
--- ========================================================
-
-INSERT INTO public.system_settings (key, value)
-VALUES
-    ('revenue_share', '{"mitra_bps": 8500}'::jsonb),
-    ('holding', '{"hours": 48}'::jsonb),
-    ('patient_noshow', '{"minutes": 30}'::jsonb)
-ON CONFLICT (key) DO NOTHING;
-
--- ========================================================
--- 3. EKSEKUSI PENGUJIAN DENGAN FIXTURE DINAMIS TERISOLASI
+-- 2. EKSEKUSI PENGUJIAN DENGAN FIXTURE DINAMIS TERISOLASI
+-- Catatan: Tidak menulis ke public.system_settings agar tidak menimpa/menambah
+-- konfigurasi DB bersama dan sekaligus menguji pembacaan nilai eksis maupun
+-- fallback default fungsi (patient_noshow=30 menit, mitra_share_bps=8500, holding=48 jam).
 -- ========================================================
 
 DO $$
@@ -134,7 +126,7 @@ DECLARE
     v_earning_count INTEGER;
     v_pending_balance BIGINT;
 BEGIN
-    -- Baca konfigurasi patient_noshow aktif dari database
+    -- Baca konfigurasi patient_noshow aktif (atau fallback default 30 menit jika baris tidak ada)
     SELECT COALESCE((value->>'minutes')::INTEGER, 30)
     INTO v_patient_noshow_minutes
     FROM public.system_settings
@@ -219,10 +211,10 @@ BEGIN
         price_coins, mitra_share_bps, refund_policy, patient_display_name,
         psikolog_first_msg_at, patient_first_msg_at
     ) VALUES (
-        v_b2_id, v_pasien_id, v_psikolog_id, pg_catalog.now() - INTERVAL '10 minutes', 'in_progress',
+        v_b2_id, v_pasien_id, v_psikolog_id, pg_catalog.now() - (v_patient_noshow_minutes * INTERVAL '1 minute'), 'in_progress',
         'Keluhan uji penolakan no-show pending sebelum batas waktu terlewati minimal dua puluh.',
         15, 8500, '[]'::jsonb, 'Pasien Guard Test',
-        pg_catalog.now() - INTERVAL '5 minutes', NULL
+        pg_catalog.now() - (GREATEST(v_patient_noshow_minutes / 2, 1) * INTERVAL '1 minute'), NULL
     );
 
     v_err_caught := false;
@@ -334,7 +326,7 @@ BEGIN
     ASSERT v_pending_balance = 127500, 'UJI 5 GAGAL: Earning mitra no-show setelah batas lewat harus 127500';
 
     -- ----------------------------------------------------
-    -- UJI 6: Verifikasi kepatuhan fungsi (SECURITY DEFINER & search_path)
+    -- UJI 6: Verifikasi kepatuhan fungsi (SECURITY DEFINER, search_path, & privilege EXECUTE)
     -- ----------------------------------------------------
     PERFORM 1
     FROM pg_proc p
@@ -344,7 +336,40 @@ BEGIN
       AND p.prosecdef = true
       AND array_to_string(p.proconfig, ',') LIKE '%search_path=%';
 
-    ASSERT FOUND, 'UJI 6 GAGAL: public.session_end harus SECURITY DEFINER dengan search_path eksplisit';
+    ASSERT FOUND, 'UJI 6a GAGAL: public.session_end harus SECURITY DEFINER dengan search_path eksplisit';
+
+    -- Verifikasi katalog privilege EXECUTE untuk PUBLIC, anon, authenticated, dan service_role
+    ASSERT has_function_privilege('public', 'public.session_end(uuid, uuid)', 'EXECUTE') = false,
+        'UJI 6b GAGAL: PUBLIC dilarang memiliki hak EXECUTE pada public.session_end(uuid, uuid)';
+    ASSERT has_function_privilege('anon', 'public.session_end(uuid, uuid)', 'EXECUTE') = false,
+        'UJI 6c GAGAL: anon dilarang memiliki hak EXECUTE pada public.session_end(uuid, uuid)';
+    ASSERT has_function_privilege('authenticated', 'public.session_end(uuid, uuid)', 'EXECUTE') = false,
+        'UJI 6d GAGAL: authenticated dilarang memiliki hak EXECUTE pada public.session_end(uuid, uuid)';
+    ASSERT has_function_privilege('service_role', 'public.session_end(uuid, uuid)', 'EXECUTE') = true,
+        'UJI 6e GAGAL: service_role wajib memiliki hak EXECUTE pada public.session_end(uuid, uuid)';
+
+    -- Verifikasi langsung entri ACL katalog pg_proc.proacl via aclexplode
+    PERFORM 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace,
+    LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
+    WHERE n.nspname = 'public'
+      AND p.proname = 'session_end'
+      AND a.privilege_type = 'EXECUTE'
+      AND a.grantee IN (0::oid, 'anon'::regrole::oid, 'authenticated'::regrole::oid);
+
+    ASSERT NOT FOUND, 'UJI 6f GAGAL: Entri ACL EXECUTE untuk PUBLIC/anon/authenticated ditemukan pada pg_proc.proacl';
+
+    PERFORM 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace,
+    LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a
+    WHERE n.nspname = 'public'
+      AND p.proname = 'session_end'
+      AND a.privilege_type = 'EXECUTE'
+      AND a.grantee = 'service_role'::regrole::oid;
+
+    ASSERT FOUND, 'UJI 6g GAGAL: Entri ACL EXECUTE untuk service_role wajib ada pada pg_proc.proacl';
 END $$;
 
 -- ========================================================
