@@ -23,6 +23,10 @@ import { ListenerQuotaCard } from "@/components/views/listener/listener-quota-ca
 import { ListenerActiveTicketCard } from "@/components/views/listener/listener-active-ticket-card";
 import { ListenerPoolList } from "@/components/views/listener/listener-pool-list";
 import { ListenerClaimDialog } from "@/components/views/listener/listener-claim-dialog";
+import {
+  getQueueNotificationPreference,
+  triggerQueueAlert,
+} from "@/lib/queue-alert";
 
 export default function ListenerQueueRoomPage() {
   const [quota, setQuota] = useState<RelawanQuotaInfo | null>(null);
@@ -39,6 +43,14 @@ export default function ListenerQueueRoomPage() {
   const [isClaiming, setIsClaiming] = useState(false);
 
   const isMountedRef = useRef(true);
+  const isAvailableRef = useRef(false);
+  const isBaselineEstablishedRef = useRef(false);
+  const seenTicketIdsRef = useRef<Set<string>>(new Set());
+
+  // Sinkronisasi ref status Siaga dari state profile tanpa dependensi di loadQueueData
+  useEffect(() => {
+    isAvailableRef.current = Boolean(profile?.is_available);
+  }, [profile?.is_available]);
 
   // Fetch all queue data concurrently
   const loadQueueData = useCallback(async (isSilent = false) => {
@@ -76,12 +88,57 @@ export default function ListenerQueueRoomPage() {
         setClaimedTicket(claimedRes.data ?? null);
       }
 
-      if (poolRes?.success && poolRes.data) {
-        setPoolTickets(poolRes.data);
+      // Ambil status Siaga dari respons polling aktif atau ref sinkron (bebas closure trap)
+      let currentIsAvailable = isAvailableRef.current;
+      if (userRes?.success && userRes.data?.profile) {
+        const userProfile = userRes.data.profile as RelawanProfile;
+        setProfile(userProfile);
+        currentIsAvailable = Boolean(userProfile.is_available);
+        isAvailableRef.current = currentIsAvailable;
       }
 
-      if (userRes?.success && userRes.data?.profile) {
-        setProfile(userRes.data.profile as RelawanProfile);
+      if (poolRes?.success && Array.isArray(poolRes.data)) {
+        const incomingTickets = poolRes.data;
+        setPoolTickets(incomingTickets);
+
+        if (!isBaselineEstablishedRef.current) {
+          // Baseline hanya terbentuk setelah pool pertama berhasil
+          for (const ticket of incomingTickets) {
+            if (ticket?.id) {
+              seenTicketIdsRef.current.add(ticket.id);
+            }
+          }
+          isBaselineEstablishedRef.current = true;
+        } else {
+          // Cari tiket baru yang belum pernah tercatat selama halaman terbuka
+          const newTickets: RelawanPeerTicketDTO[] = [];
+          for (const ticket of incomingTickets) {
+            if (ticket?.id && !seenTicketIdsRef.current.has(ticket.id)) {
+              newTickets.push(ticket);
+            }
+          }
+
+          // Catat semua ID tiket yang terlihat ke mutable ref
+          for (const ticket of incomingTickets) {
+            if (ticket?.id) {
+              seenTicketIdsRef.current.add(ticket.id);
+            }
+          }
+
+          // Peringatan nada dan notifikasi peramban hanya dipicu jika:
+          // 1. Terdapat tiket baru
+          // 2. Relawan berstatus Siaga (is_available === true)
+          // 3. Preferensi notifikasi antrean aktif di localStorage
+          if (
+            newTickets.length > 0 &&
+            currentIsAvailable &&
+            getQueueNotificationPreference()
+          ) {
+            void triggerQueueAlert().catch((alertErr) => {
+              console.error("Gagal memicu peringatan antrean:", alertErr);
+            });
+          }
+        }
       }
 
       setErrorInitial(null);
