@@ -231,7 +231,11 @@ export const useUserStore = create<UserState>()(
         // 1. Fetch sesi real-time dari backend (/api/users/me)
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            const res = await fetch("/api/users/me", { credentials: "include" });
+            const fetchInit: RequestInit & { _skipUnauthorizedRedirect?: boolean } = {
+              credentials: "include",
+              ...(silent ? { _skipUnauthorizedRedirect: true } : {}),
+            };
+            const res = await fetch("/api/users/me", fetchInit as RequestInit);
             if (res.status === 401) {
               // Sesi token tidak valid atau kedaluwarsa di backend
               get().logout();

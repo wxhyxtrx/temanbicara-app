@@ -156,6 +156,11 @@ async function handleMaintenance503(res: Response): Promise<void> {
   }
 }
 
+export type FetchWithAuthInit = RequestInit & {
+  _isAuthRetry?: boolean;
+  _skipUnauthorizedRedirect?: boolean;
+};
+
 /**
  * Wrapper fetch dengan auto-refresh token saat menerima status 401
  * serta notifikasi pemeliharaan sistem pada status 503 tanpa mengganggu sesi.
@@ -163,7 +168,7 @@ async function handleMaintenance503(res: Response): Promise<void> {
  */
 export async function fetchWithAuth(
   input: RequestInfo | URL,
-  init?: RequestInit & { _isAuthRetry?: boolean }
+  init?: FetchWithAuthInit
 ): Promise<Response> {
   let reqCloneForRetry: Request | null = null;
   if (typeof Request !== "undefined" && input instanceof Request) {
@@ -186,7 +191,7 @@ export async function fetchWithAuth(
     if (isInternalApiUrl(url) && !isAuthBypassUrl(url)) {
       const refreshed = await tryAuthRefresh();
       if (refreshed) {
-        const retryInit: RequestInit & { _isAuthRetry?: boolean } = {
+        const retryInit: FetchWithAuthInit = {
           ...init,
           _isAuthRetry: true,
         };
@@ -197,11 +202,15 @@ export async function fetchWithAuth(
           return retryRes;
         }
         if (retryRes.status === 401) {
-          handleUnauthorized("Sesi berakhir setelah percobaan refresh token");
+          if (!init?._skipUnauthorizedRedirect) {
+            handleUnauthorized("Sesi berakhir setelah percobaan refresh token");
+          }
         }
         return retryRes;
       } else {
-        handleUnauthorized("Sesi tidak valid atau kedaluwarsa");
+        if (!init?._skipUnauthorizedRedirect) {
+          handleUnauthorized("Sesi tidak valid atau kedaluwarsa");
+        }
       }
     }
   }
