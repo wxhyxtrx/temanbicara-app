@@ -18,6 +18,7 @@ import { notify } from "@/lib/toast";
 import { walletClient, WalletApiError } from "@/services/wallet.client";
 import { systemSettingsClient } from "@/services/system-settings.client";
 import { userService } from "@/services/user.service";
+import { mitraBankAccountClient } from "@/services/mitra-bank-account.client";
 import type { PayoutRequestEntity, PaginationMeta, WalletInfoResponse } from "@/types/wallet";
 import { POPULAR_BANKS } from "@/constant/banks";
 import {
@@ -139,21 +140,42 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
           .split(",")[0]
           .replace(/^(?:(?:prof|dr|drs|dra)\.?\s+)+/gi, "")
           .trim();
-        if (cleanName && !bankAccountName) {
-          setBankAccountName(cleanName.toUpperCase());
+        if (cleanName) {
+          setBankAccountName((prev) => prev || cleanName.toUpperCase());
         }
       }
     } catch (err) {
       console.error("Gagal memuat profil mitra:", err);
     }
-  }, [bankAccountName]);
+  }, []);
+
+  // Load Stored Bank Account for prefilling payout form
+  const fetchSavedBankAccount = useCallback(async () => {
+    try {
+      const account = await mitraBankAccountClient.getBankAccount();
+      if (account) {
+        if (POPULAR_BANKS.includes(account.bank_name as (typeof POPULAR_BANKS)[number])) {
+          setBankName(account.bank_name);
+          setCustomBank("");
+        } else {
+          setBankName("Lainnya");
+          setCustomBank(account.bank_name);
+        }
+        setAccountNumber(account.account_number);
+        setBankAccountName(account.bank_account_name);
+      }
+    } catch (err) {
+      console.error("Gagal memuat rekening tersimpan mitra:", err);
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
     fetchWallet();
     fetchSettings();
     fetchUserProfile();
-  }, [fetchWallet, fetchSettings, fetchUserProfile]);
+    fetchSavedBankAccount();
+  }, [fetchWallet, fetchSettings, fetchUserProfile, fetchSavedBankAccount]);
 
   useEffect(() => {
     fetchPayouts(page, limit);

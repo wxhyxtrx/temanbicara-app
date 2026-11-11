@@ -19,7 +19,17 @@ import {
   Plus,
   X,
   Loader2,
+  Edit3,
+  AlertCircle,
+  RefreshCw,
+  Info,
 } from "lucide-react";
+import { POPULAR_BANKS } from "@/constant/banks";
+import {
+  useMitraBankAccountCard,
+  MITRA_BANK_VERIFICATION_NOTE,
+  maskAccountNumber,
+} from "@/services/mitra-bank-account.client";
 import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
 import { userService, UserApiError } from "@/services/user.service";
@@ -27,14 +37,8 @@ import { usePublicSettings } from "@/hooks/use-public-settings";
 import type { PsikologProfile, UpdateMePsikologPayload } from "@/types/user-profile";
 
 const SUGGESTED_SPECIALIZATIONS = [
-  "Ansietas Klinis",
-  "Depresi & Gangguan Mood",
-  "Trauma & PTSD",
-  "Konseling Relasi & Pasangan",
-  "Burnout Karier & Stres Kerja",
-  "Regulasi Emosi",
-  "Grief & Duka Cita",
-  "Pengembangan Diri",
+  "Ansietas Klinis", "Depresi & Gangguan Mood", "Trauma & PTSD", "Konseling Relasi & Pasangan",
+  "Burnout Karier & Stres Kerja", "Regulasi Emosi", "Grief & Duka Cita", "Pengembangan Diri",
 ];
 
 export default function CounselorSettingsPage() {
@@ -56,10 +60,6 @@ export default function CounselorSettingsPage() {
   const [experienceYears, setExperienceYears] = useState<number>(0);
   const [sessionRate, setSessionRate] = useState<number>(150000);
   const [extensionPriceCoins, setExtensionPriceCoins] = useState<number>(2);
-
-  // Bank Info (payout reference)
-  const [bankAccount, setBankAccount] = useState("8820491823");
-  const [bankName, setBankName] = useState("Bank Central Asia (BCA)");
 
   // Status feedback
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -221,27 +221,11 @@ export default function CounselorSettingsPage() {
       {loadingProfile ? (
         <div className="space-y-6 animate-pulse">
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-5 shadow-xs">
-            <div className="space-y-2">
-              <Skeleton className="w-56 h-5 rounded-md" />
-              <Skeleton className="w-72 h-3 rounded-md" />
-            </div>
+            <Skeleton className="w-56 h-5 rounded-md" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="w-28 h-4 rounded-md" />
-                  <Skeleton className="w-full h-9 rounded-xl" />
-                </div>
+                <div key={i} className="space-y-2"><Skeleton className="w-28 h-4 rounded-md" /><Skeleton className="w-full h-9 rounded-xl" /></div>
               ))}
-            </div>
-          </Card>
-          <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 shadow-xs">
-            <Skeleton className="w-48 h-5 rounded-md" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Skeleton className="w-full h-10 rounded-xl" />
-              <Skeleton className="w-full h-10 rounded-xl" />
-            </div>
-            <div className="flex justify-end pt-2">
-              <Skeleton className="w-32 h-9 rounded-xl" />
             </div>
           </Card>
         </div>
@@ -268,16 +252,10 @@ export default function CounselorSettingsPage() {
                     <Lock size={13} className="text-slate-400" />
                     Nama Lengkap & Gelar Akademik
                   </Label>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">
-                    Hubungi admin untuk mengubah
-                  </span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">Hubungi admin untuk mengubah</span>
                 </div>
                 <div className="relative">
-                  <Input
-                    disabled
-                    value={loadingProfile ? "Memuat..." : fullNameWithDegree}
-                    className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed pl-8"
-                  />
+                  <Input disabled value={loadingProfile ? "Memuat..." : fullNameWithDegree} className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed pl-8" />
                   <Lock size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
               </div>
@@ -288,20 +266,12 @@ export default function CounselorSettingsPage() {
                     <Lock size={13} className="text-slate-400" />
                     Nomor SIPPK / STR Resmi
                   </Label>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">
-                    Hubungi admin untuk mengubah
-                  </span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">Hubungi admin untuk mengubah</span>
                 </div>
                 <div className="relative">
-                  <Input
-                    disabled
-                    value={loadingProfile ? "Memuat..." : sippNumber}
-                    className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed pl-8 pr-24 font-mono"
-                  />
+                  <Input disabled value={loadingProfile ? "Memuat..." : sippNumber} className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed pl-8 pr-24 font-mono" />
                   <Lock size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                    Terverifikasi
-                  </span>
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Terverifikasi</span>
                 </div>
               </div>
             </div>
@@ -324,117 +294,54 @@ export default function CounselorSettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Nomor WhatsApp */}
               <div className="space-y-1.5">
-                <Label htmlFor="counselorPhone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nomor WhatsApp Praktik
-                </Label>
-                <PhoneInput
-                  id="counselorPhone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="812 3456 7890"
-                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-within:ring-teal-600"
-                />
-                {errors.no_wa && (
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.no_wa}</p>
-                )}
+                <Label htmlFor="counselorPhone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nomor WhatsApp Praktik</Label>
+                <PhoneInput id="counselorPhone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="812 3456 7890" className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-within:ring-teal-600" />
+                {errors.no_wa && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.no_wa}</p>}
               </div>
 
               {/* Tahun Pengalaman */}
               <div className="space-y-1.5">
-                <Label htmlFor="experienceYears" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Pengalaman Praktik Klinis (Tahun)
-                </Label>
-                <Input
-                  id="experienceYears"
-                  type="number"
-                  min={0}
-                  max={60}
-                  value={experienceYears}
-                  onChange={(e) => setExperienceYears(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl"
-                  required
-                />
-                {errors.tahun_pengalaman && (
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400">{errors.tahun_pengalaman}</p>
-                )}
+                <Label htmlFor="experienceYears" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Pengalaman Praktik Klinis (Tahun)</Label>
+                <Input id="experienceYears" type="number" min={0} max={60} value={experienceYears} onChange={(e) => setExperienceYears(Math.max(0, parseInt(e.target.value, 10) || 0))} className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" required />
+                {errors.tahun_pengalaman && <p className="text-[11px] text-rose-600 dark:text-rose-400">{errors.tahun_pengalaman}</p>}
               </div>
 
               {/* Tarif per Sesi Konseling (Rp, kelipatan 10.000) */}
               <div className="space-y-1.5 md:col-span-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="sessionRate" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Tarif per Sesi Konseling 45 Menit (Rp)
-                  </Label>
+                  <Label htmlFor="sessionRate" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tarif per Sesi Konseling 45 Menit (Rp)</Label>
                   <span className="text-xs font-bold font-mono text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/70 px-2.5 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
                     = {calculatedCoins.toLocaleString("id-ID")} koin
                   </span>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs text-slate-400">
-                    Rp
-                  </span>
-                  <Input
-                    id="sessionRate"
-                    type="number"
-                    step={10000}
-                    min={50000}
-                    max={5000000}
-                    value={sessionRate}
-                    onChange={(e) => setSessionRate(parseInt(e.target.value, 10) || 0)}
-                    className="h-9 text-xs sm:text-sm pl-9 font-mono font-bold bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl"
-                    required
-                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs text-slate-400">Rp</span>
+                  <Input id="sessionRate" type="number" step={10000} min={50000} max={5000000} value={sessionRate} onChange={(e) => setSessionRate(parseInt(e.target.value, 10) || 0)} className="h-9 text-xs sm:text-sm pl-9 font-mono font-bold bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" required />
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-500 font-nunito">
                   <span>Kelipatan Rp 10.000 (Min. Rp 50.000, Maks. Rp 5.000.000)</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    1 Koin = Rp 10.000
-                  </span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">1 Koin = Rp 10.000</span>
                 </div>
-                {errors.tarif_sesi && (
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.tarif_sesi}</p>
-                )}
+                {errors.tarif_sesi && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.tarif_sesi}</p>}
               </div>
 
               {/* Poin 4: Tarif Perpanjangan Sesi (Ekstensi 10 Menit, Koin) */}
               <div className="space-y-1.5 md:col-span-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="extensionPriceCoins" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Tarif Perpanjangan Sesi (+10 Menit)
-                  </Label>
+                  <Label htmlFor="extensionPriceCoins" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tarif Perpanjangan Sesi (+10 Menit)</Label>
                   <span className="text-xs font-bold font-mono text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/70 px-2.5 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
                     = Rp {((Number(extensionPriceCoins) || 0) * 10000).toLocaleString("id-ID")}
                   </span>
                 </div>
                 <div className="relative">
-                  <Input
-                    id="extensionPriceCoins"
-                    type="number"
-                    min={minExtCoins}
-                    max={maxExtCoins}
-                    step={1}
-                    value={extensionPriceCoins}
-                    onChange={(e) => setExtensionPriceCoins(parseInt(e.target.value, 10) || 0)}
-                    className="h-9 text-xs sm:text-sm pl-3 pr-16 font-mono font-bold bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl"
-                    required
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    Koin
-                  </span>
+                  <Input id="extensionPriceCoins" type="number" min={minExtCoins} max={maxExtCoins} step={1} value={extensionPriceCoins} onChange={(e) => setExtensionPriceCoins(parseInt(e.target.value, 10) || 0)} className="h-9 text-xs sm:text-sm pl-3 pr-16 font-mono font-bold bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" required />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Koin</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-500 font-nunito">
-                  <span>
-                    Rentang pengaturan sistem: {minExtCoins} s/d {maxExtCoins} Koin
-                  </span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    1 Koin = Rp 10.000
-                  </span>
+                  <span>Rentang pengaturan sistem: {minExtCoins} s/d {maxExtCoins} Koin</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">1 Koin = Rp 10.000</span>
                 </div>
-                {errors.extension_price_coins && (
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">
-                    {errors.extension_price_coins}
-                  </p>
-                )}
+                {errors.extension_price_coins && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.extension_price_coins}</p>}
               </div>
             </div>
 
@@ -518,60 +425,6 @@ export default function CounselorSettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Card 3: Rekening Bank Pencairan (Coming Soon - Payout API) */}
-        <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Building2 size={18} className="text-teal-600 dark:text-teal-400" />
-                Rekening Bank Pencairan Honor
-              </CardTitle>
-              <Badge
-                variant="outline"
-                className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-              >
-                Coming Soon
-              </Badge>
-            </div>
-            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-              Integrasi pencairan otomatis ke rekening bank sedang disiapkan. Honor saat ini dicatat dan dikonversi melalui mutasi saldo koin.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="p-4 sm:p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="bankName" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nama Bank
-                </Label>
-                <Input
-                  id="bankName"
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  disabled
-                  className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/40 text-slate-500 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="accountNumber" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nomor Rekening
-                </Label>
-                <Input
-                  id="accountNumber"
-                  value={bankAccount}
-                  onChange={(e) => setBankAccount(e.target.value)}
-                  disabled
-                  className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/40 text-slate-500 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed font-mono"
-                />
-              </div>
-            </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
-              * Rekening rujukan pencairan dapat diubah setelah modul integrasi bank mitra resmi dirilis.
-            </p>
-          </CardContent>
-        </Card>
-
         <div className="flex justify-end pt-2">
           <Button
             type="submit"
@@ -593,6 +446,9 @@ export default function CounselorSettingsPage() {
         </div>
       </form>
 
+      {/* Card 3: Rekening Bank Pencairan */}
+      <CounselorBankAccountCard />
+
       {/* Card 4: Ganti Kata Sandi */}
       <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
         <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -611,5 +467,202 @@ export default function CounselorSettingsPage() {
       </div>
       )}
     </div>
+  );
+}
+
+function CounselorBankAccountCard() {
+  const {
+    loading,
+    account,
+    loadError,
+    isEditing,
+    formBank,
+    formAccountNumber,
+    formAccountName,
+    fieldErrors,
+    generalError,
+    isSaving,
+    saveSuccess,
+    setFormBank,
+    setFormAccountNumber,
+    setFormAccountName,
+    startEdit,
+    cancelEdit,
+    retryLoad,
+    submitSave,
+  } = useMitraBankAccountCard();
+
+  return (
+    <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs min-w-0">
+      <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
+            <Building2 size={18} className="text-teal-600 dark:text-teal-400 shrink-0" />
+            <span className="truncate">Rekening Bank Pencairan Honor</span>
+          </CardTitle>
+          {!loading && !loadError && (
+            <Badge
+              variant="outline"
+              className={
+                account
+                  ? "text-[10px] bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800 shrink-0"
+                  : "text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 shrink-0"
+              }
+            >
+              {account ? "Tersimpan" : "Belum Diatur"}
+            </Badge>
+          )}
+        </div>
+        <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+          Kelola rekening bank untuk menerima pencairan honor dan insentif praktik
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="p-4 sm:p-6 space-y-4 min-w-0">
+        {loading ? (
+          <div className="space-y-4 animate-pulse">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Skeleton className="h-9 rounded-xl" />
+              <Skeleton className="h-9 rounded-xl" />
+              <Skeleton className="h-9 rounded-xl md:col-span-2" />
+            </div>
+            <Skeleton className="h-10 rounded-xl" />
+          </div>
+        ) : loadError ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 text-xs">
+              <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+              <div className="space-y-1 min-w-0">
+                <p className="font-semibold">Gagal Memuat Data Rekening</p>
+                <p className="text-rose-600 dark:text-rose-400 break-words">{loadError}</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" size="sm" onClick={retryLoad} className="text-xs rounded-xl gap-1.5 h-9 cursor-pointer">
+                <RefreshCw size={13} />
+                <span>Ulangi</span>
+              </Button>
+            </div>
+          </div>
+        ) : !isEditing && account ? (
+          <div className="space-y-4">
+            {saveSuccess && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span>Data rekening berhasil disimpan.</span>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5 min-w-0">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Bank</Label>
+                <div className="h-9 px-3 flex items-center text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-medium truncate">
+                  {account.bank_name}
+                </div>
+              </div>
+              <div className="space-y-1.5 min-w-0">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Nomor Rekening</span>
+                  <span className="text-[10px] text-slate-400 font-nunito font-normal">Disamarkan</span>
+                </Label>
+                <div className="h-9 px-3 flex items-center text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-mono font-bold tracking-wider truncate">
+                  {maskAccountNumber(account.account_number)}
+                </div>
+              </div>
+              <div className="space-y-1.5 md:col-span-2 min-w-0">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Pemilik Rekening</Label>
+                <div className="h-9 px-3 flex items-center text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-medium uppercase truncate">
+                  {account.bank_account_name}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-800 dark:text-amber-300 text-xs">
+              <Info size={15} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <p className="leading-relaxed font-nunito">{MITRA_BANK_VERIFICATION_NOTE}</p>
+            </div>
+            <div className="flex justify-end pt-1">
+              <Button type="button" variant="outline" size="sm" onClick={startEdit} className="text-xs rounded-xl gap-1.5 h-9 cursor-pointer">
+                <Edit3 size={13} />
+                <span>Ubah Rekening</span>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={submitSave} className="space-y-4">
+            {!account && (
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 text-xs">
+                <Info size={15} className="shrink-0 mt-0.5 text-teal-600 dark:text-teal-400" />
+                <p className="leading-relaxed font-nunito">
+                  Belum ada rekening tersimpan. Silakan masukkan data rekening bank Anda untuk pencairan honor.
+                </p>
+              </div>
+            )}
+            {generalError && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs">
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                <span>{generalError}</span>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5 min-w-0">
+                <Label htmlFor="counselorBankSelect" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Bank</Label>
+                <select
+                  id="counselorBankSelect"
+                  value={formBank}
+                  onChange={(e) => setFormBank(e.target.value)}
+                  disabled={isSaving}
+                  className="w-full h-9 text-xs sm:text-sm px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                >
+                  {POPULAR_BANKS.map((b) => (<option key={b} value={b}>{b}</option>))}
+                </select>
+                {fieldErrors.bank_name && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{fieldErrors.bank_name}</p>}
+              </div>
+              <div className="space-y-1.5 min-w-0">
+                <Label htmlFor="counselorAccountNumberInput" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nomor Rekening</Label>
+                <Input
+                  id="counselorAccountNumberInput"
+                  type="text"
+                  inputMode="numeric"
+                  value={formAccountNumber}
+                  onChange={(e) => setFormAccountNumber(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Contoh: 1234567890 (6-20 digit)"
+                  disabled={isSaving}
+                  className="h-9 text-xs sm:text-sm font-mono bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
+                  required
+                />
+                {fieldErrors.account_number && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{fieldErrors.account_number}</p>}
+              </div>
+              <div className="space-y-1.5 md:col-span-2 min-w-0">
+                <Label htmlFor="counselorAccountHolderInput" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Pemilik Rekening (Sesuai Buku Tabungan)</Label>
+                <Input
+                  id="counselorAccountHolderInput"
+                  type="text"
+                  value={formAccountName}
+                  onChange={(e) => setFormAccountName(e.target.value)}
+                  placeholder="Nama lengkap pemilik rekening"
+                  disabled={isSaving}
+                  className="h-9 text-xs sm:text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
+                  required
+                />
+                {fieldErrors.bank_account_name && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{fieldErrors.bank_account_name}</p>}
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-800 dark:text-amber-300 text-xs">
+              <Info size={15} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <p className="leading-relaxed font-nunito">{MITRA_BANK_VERIFICATION_NOTE}</p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              {account && (
+                <Button type="button" variant="outline" size="sm" onClick={cancelEdit} disabled={isSaving} className="text-xs rounded-xl h-9 cursor-pointer">
+                  Batal
+                </Button>
+              )}
+              <Button type="submit" disabled={isSaving} className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-5 h-9 shadow-xs gap-1.5 cursor-pointer disabled:opacity-50">
+                {isSaving ? (<><Loader2 size={13} className="animate-spin" /><span>Menyimpan...</span></>) : (<><Save size={13} /><span>{account ? "Simpan Perubahan" : "Simpan Rekening"}</span></>)}
+              </Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
   );
 }

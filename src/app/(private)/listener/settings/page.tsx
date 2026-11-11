@@ -21,12 +21,23 @@ import {
   Plus,
   X,
   Loader2,
+  Building2,
+  Edit3,
+  AlertCircle,
+  RefreshCw,
+  Info,
 } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
 import { userService, UserApiError } from "@/services/user.service";
 import type { RelawanProfile, UpdateMeRelawanPayload } from "@/types/user-profile";
 import { PasswordForm } from "@/components/views/settings/password-form";
+import { POPULAR_BANKS } from "@/constant/banks";
+import {
+  useMitraBankAccountCard,
+  MITRA_BANK_VERIFICATION_NOTE,
+  maskAccountNumber,
+} from "@/services/mitra-bank-account.client";
 
 const SUGGESTED_TOPICS = [
   "Stres Akademik & Skripsi",
@@ -411,7 +422,10 @@ export default function ListenerSettingsPage() {
         </div>
       </form>
 
-      {/* Card 3: Keamanan Akun */}
+      {/* Card 3: Rekening Bank Pencairan */}
+      <ListenerBankAccountCard />
+
+      {/* Card 4: Keamanan Akun */}
       <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs min-w-0">
         <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
           <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
@@ -429,5 +443,202 @@ export default function ListenerSettingsPage() {
       </div>
       )}
     </div>
+  );
+}
+
+function ListenerBankAccountCard() {
+  const {
+    loading,
+    account,
+    loadError,
+    isEditing,
+    formBank,
+    formAccountNumber,
+    formAccountName,
+    fieldErrors,
+    generalError,
+    isSaving,
+    saveSuccess,
+    setFormBank,
+    setFormAccountNumber,
+    setFormAccountName,
+    startEdit,
+    cancelEdit,
+    retryLoad,
+    submitSave,
+  } = useMitraBankAccountCard();
+
+  return (
+    <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs min-w-0">
+      <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
+            <Building2 size={18} className="text-teal-600 dark:text-teal-400 shrink-0" />
+            <span className="truncate">Rekening Bank Pencairan Honor</span>
+          </CardTitle>
+          {!loading && !loadError && (
+            <Badge
+              variant="outline"
+              className={
+                account
+                  ? "text-[10px] bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800 shrink-0"
+                  : "text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 shrink-0"
+              }
+            >
+              {account ? "Tersimpan" : "Belum Diatur"}
+            </Badge>
+          )}
+        </div>
+        <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+          Kelola rekening bank untuk menerima pencairan honor dan apresiasi pendengar
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="p-4 sm:p-6 space-y-4 min-w-0">
+        {loading ? (
+          <div className="space-y-4 animate-pulse">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Skeleton className="h-9 rounded-xl" />
+              <Skeleton className="h-9 rounded-xl" />
+              <Skeleton className="h-9 rounded-xl md:col-span-2" />
+            </div>
+            <Skeleton className="h-10 rounded-xl" />
+          </div>
+        ) : loadError ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 text-xs">
+              <AlertCircle size={16} className="shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+              <div className="space-y-1 min-w-0">
+                <p className="font-semibold">Gagal Memuat Data Rekening</p>
+                <p className="text-rose-600 dark:text-rose-400 break-words">{loadError}</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" size="sm" onClick={retryLoad} className="text-xs rounded-xl gap-1.5 h-9 cursor-pointer">
+                <RefreshCw size={13} />
+                <span>Ulangi</span>
+              </Button>
+            </div>
+          </div>
+        ) : !isEditing && account ? (
+          <div className="space-y-4">
+            {saveSuccess && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span>Data rekening berhasil disimpan.</span>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5 min-w-0">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Bank</Label>
+                <div className="h-9 px-3 flex items-center text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-medium truncate">
+                  {account.bank_name}
+                </div>
+              </div>
+              <div className="space-y-1.5 min-w-0">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Nomor Rekening</span>
+                  <span className="text-[10px] text-slate-400 font-nunito font-normal">Disamarkan</span>
+                </Label>
+                <div className="h-9 px-3 flex items-center text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-mono font-bold tracking-wider truncate">
+                  {maskAccountNumber(account.account_number)}
+                </div>
+              </div>
+              <div className="space-y-1.5 md:col-span-2 min-w-0">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Pemilik Rekening</Label>
+                <div className="h-9 px-3 flex items-center text-xs sm:text-sm bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl font-medium uppercase truncate">
+                  {account.bank_account_name}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-800 dark:text-amber-300 text-xs">
+              <Info size={15} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <p className="leading-relaxed font-nunito">{MITRA_BANK_VERIFICATION_NOTE}</p>
+            </div>
+            <div className="flex justify-end pt-1">
+              <Button type="button" variant="outline" size="sm" onClick={startEdit} className="text-xs rounded-xl gap-1.5 h-9 cursor-pointer">
+                <Edit3 size={13} />
+                <span>Ubah Rekening</span>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={submitSave} className="space-y-4">
+            {!account && (
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 text-xs">
+                <Info size={15} className="shrink-0 mt-0.5 text-teal-600 dark:text-teal-400" />
+                <p className="leading-relaxed font-nunito">
+                  Belum ada rekening tersimpan. Silakan masukkan data rekening bank Anda untuk pencairan honor.
+                </p>
+              </div>
+            )}
+            {generalError && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs">
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                <span>{generalError}</span>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5 min-w-0">
+                <Label htmlFor="listenerBankSelect" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Bank</Label>
+                <select
+                  id="listenerBankSelect"
+                  value={formBank}
+                  onChange={(e) => setFormBank(e.target.value)}
+                  disabled={isSaving}
+                  className="w-full h-9 text-xs sm:text-sm px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                >
+                  {POPULAR_BANKS.map((b) => (<option key={b} value={b}>{b}</option>))}
+                </select>
+                {fieldErrors.bank_name && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{fieldErrors.bank_name}</p>}
+              </div>
+              <div className="space-y-1.5 min-w-0">
+                <Label htmlFor="listenerAccountNumberInput" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nomor Rekening</Label>
+                <Input
+                  id="listenerAccountNumberInput"
+                  type="text"
+                  inputMode="numeric"
+                  value={formAccountNumber}
+                  onChange={(e) => setFormAccountNumber(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Contoh: 1234567890 (6-20 digit)"
+                  disabled={isSaving}
+                  className="h-9 text-xs sm:text-sm font-mono bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
+                  required
+                />
+                {fieldErrors.account_number && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{fieldErrors.account_number}</p>}
+              </div>
+              <div className="space-y-1.5 md:col-span-2 min-w-0">
+                <Label htmlFor="listenerAccountHolderInput" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Pemilik Rekening (Sesuai Buku Tabungan)</Label>
+                <Input
+                  id="listenerAccountHolderInput"
+                  type="text"
+                  value={formAccountName}
+                  onChange={(e) => setFormAccountName(e.target.value)}
+                  placeholder="Nama lengkap pemilik rekening"
+                  disabled={isSaving}
+                  className="h-9 text-xs sm:text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
+                  required
+                />
+                {fieldErrors.bank_account_name && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{fieldErrors.bank_account_name}</p>}
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-800 dark:text-amber-300 text-xs">
+              <Info size={15} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <p className="leading-relaxed font-nunito">{MITRA_BANK_VERIFICATION_NOTE}</p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              {account && (
+                <Button type="button" variant="outline" size="sm" onClick={cancelEdit} disabled={isSaving} className="text-xs rounded-xl h-9 cursor-pointer">
+                  Batal
+                </Button>
+              )}
+              <Button type="submit" disabled={isSaving} className="text-xs bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-5 h-9 shadow-xs gap-1.5 cursor-pointer disabled:opacity-50">
+                {isSaving ? (<><Loader2 size={13} className="animate-spin" /><span>Menyimpan...</span></>) : (<><Save size={13} /><span>{account ? "Simpan Perubahan" : "Simpan Rekening"}</span></>)}
+              </Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
   );
 }
