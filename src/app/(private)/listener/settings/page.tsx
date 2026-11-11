@@ -26,6 +26,7 @@ import {
   AlertCircle,
   RefreshCw,
   Info,
+  Volume2,
 } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
 import { notify } from "@/lib/toast";
@@ -38,6 +39,10 @@ import {
   MITRA_BANK_VERIFICATION_NOTE,
   maskAccountNumber,
 } from "@/services/mitra-bank-account.client";
+import {
+  useQueueNotificationSettings,
+  QUEUE_TAB_OPEN_NOTE,
+} from "@/lib/queue-alert";
 
 const SUGGESTED_TOPICS = [
   "Stres Akademik & Skripsi",
@@ -65,9 +70,6 @@ export default function ListenerSettingsPage() {
   const [phone, setPhone] = useState("");
   const [topics, setTopics] = useState<string[]>([]);
   const [newTopicInput, setNewTopicInput] = useState("");
-
-  // Preferences
-  const [notifyQueue, setNotifyQueue] = useState(true);
 
   // Status feedback
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -146,7 +148,6 @@ export default function ListenerSettingsPage() {
       if (res.success && res.data) {
         useUserStore.getState().setAuthSession(res.data.user, undefined, res.data.profile);
         await useUserStore.getState().syncSession();
-
         notify.success("Pengaturan Disimpan", "Profil relawan pendengar berhasil diperbarui.");
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
@@ -158,9 +159,7 @@ export default function ListenerSettingsPage() {
         } else if (err.status === 422 && err.details) {
           const fieldErrors: Record<string, string> = {};
           for (const [key, msgs] of Object.entries(err.details)) {
-            if (Array.isArray(msgs) && msgs.length > 0) {
-              fieldErrors[key] = msgs[0];
-            }
+            if (Array.isArray(msgs) && msgs.length > 0) fieldErrors[key] = msgs[0];
           }
           setErrors(fieldErrors);
         }
@@ -233,64 +232,34 @@ export default function ListenerSettingsPage() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Lock size={13} className="text-slate-400" />
-                    Nama Lengkap (KTP)
+                    <Lock size={13} className="text-slate-400" />Nama Lengkap (KTP)
                   </Label>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">
-                    Hubungi admin untuk mengubah
-                  </span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-nunito">Hubungi admin untuk mengubah</span>
                 </div>
                 <div className="relative">
-                  <Input
-                    disabled
-                    value={loadingProfile ? "Memuat..." : fullName}
-                    className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed pl-8"
-                  />
+                  <Input disabled value={loadingProfile ? "Memuat..." : fullName} className="h-9 text-xs sm:text-sm bg-slate-100/80 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 rounded-xl cursor-not-allowed pl-8" />
                   <Lock size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
               </div>
 
               {/* Nomor WhatsApp */}
               <div className="space-y-1.5">
-                <Label htmlFor="listenerPhone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nomor WhatsApp Relawan
-                </Label>
-                <PhoneInput
-                  id="listenerPhone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="812 3456 7890"
-                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-within:ring-teal-600"
-                />
-                {errors.no_wa && (
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.no_wa}</p>
-                )}
+                <Label htmlFor="listenerPhone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nomor WhatsApp Relawan</Label>
+                <PhoneInput id="listenerPhone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="812 3456 7890" className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl focus-within:ring-teal-600" />
+                {errors.no_wa && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.no_wa}</p>}
               </div>
 
               {/* Nama Samaran / Alias */}
               <div className="space-y-1.5 md:col-span-2">
-                <Label htmlFor="listenerAlias" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nama Panggilan / Alias Pendengar di Chat (Tampil ke Teman Bicara)
-                </Label>
-                <Input
-                  id="listenerAlias"
-                  value={aliasName}
-                  onChange={(e) => setAliasName(e.target.value)}
-                  placeholder="Contoh: Sahabat Dewi"
-                  className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl"
-                  required
-                />
-                {errors.alias_name && (
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.alias_name}</p>
-                )}
+                <Label htmlFor="listenerAlias" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Panggilan / Alias Pendengar di Chat (Tampil ke Teman Bicara)</Label>
+                <Input id="listenerAlias" value={aliasName} onChange={(e) => setAliasName(e.target.value)} placeholder="Contoh: Sahabat Dewi" className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 dark:text-slate-100 border-slate-200 dark:border-slate-700 rounded-xl" required />
+                {errors.alias_name && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.alias_name}</p>}
               </div>
             </div>
 
             {/* Topik Keahlian & Kesiapan Pendampingan */}
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Topik Keahlian & Minat Pendampingan Empati ({topics.length}/10)
-              </Label>
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Topik Keahlian & Minat Pendampingan Empati ({topics.length}/10)</Label>
 
               {/* Selected Topics */}
               <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
@@ -298,19 +267,9 @@ export default function ListenerSettingsPage() {
                   <span className="text-xs text-slate-400 italic">Belum ada topik dipilih</span>
                 ) : (
                   topics.map((t) => (
-                    <span
-                      key={t}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs font-semibold"
-                    >
+                    <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs font-semibold">
                       {t}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTopic(t)}
-                        className="hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
-                        title="Hapus"
-                      >
-                        <X size={12} />
-                      </button>
+                      <button type="button" onClick={() => handleRemoveTopic(t)} className="hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer" title="Hapus"><X size={12} /></button>
                     </span>
                   ))
                 )}
@@ -318,28 +277,8 @@ export default function ListenerSettingsPage() {
 
               {/* Input New Topic */}
               <div className="flex items-center gap-2">
-                <Input
-                  value={newTopicInput}
-                  onChange={(e) => setNewTopicInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddTopic(newTopicInput);
-                    }
-                  }}
-                  placeholder="Ketik topik baru lalu tekan Tambah"
-                  className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAddTopic(newTopicInput)}
-                  className="h-8 text-xs rounded-xl shrink-0 gap-1"
-                >
-                  <Plus size={13} />
-                  Tambah
-                </Button>
+                <Input value={newTopicInput} onChange={(e) => setNewTopicInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddTopic(newTopicInput); } }} placeholder="Ketik topik baru lalu tekan Tambah" className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl" />
+                <Button type="button" variant="outline" size="sm" onClick={() => handleAddTopic(newTopicInput)} className="h-8 text-xs rounded-xl shrink-0 gap-1"><Plus size={13} />Tambah</Button>
               </div>
 
               {/* Suggestions */}
@@ -347,56 +286,11 @@ export default function ListenerSettingsPage() {
                 <span className="text-[11px] text-slate-400 block font-nunito">Saran topik pendengar:</span>
                 <div className="flex flex-wrap gap-1">
                   {SUGGESTED_TOPICS.filter((st) => !topics.includes(st)).map((sug) => (
-                    <button
-                      key={sug}
-                      type="button"
-                      onClick={() => handleAddTopic(sug)}
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 hover:bg-teal-50 dark:bg-slate-800 dark:hover:bg-teal-950/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-                    >
-                      + {sug}
-                    </button>
+                    <button key={sug} type="button" onClick={() => handleAddTopic(sug)} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 hover:bg-teal-50 dark:bg-slate-800 dark:hover:bg-teal-950/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer">+ {sug}</button>
                   ))}
                 </div>
               </div>
-
-              {errors.topik_keahlian && (
-                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.topik_keahlian}</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Preferensi Notifikasi (Coming Soon) */}
-        <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Bell size={18} className="text-teal-600 dark:text-teal-400" />
-                Preferensi Notifikasi Antrean
-              </CardTitle>
-              <Badge
-                variant="outline"
-                className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-              >
-                Coming Soon
-              </Badge>
-            </div>
-            <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-              Notifikasi browser dan Web Audio untuk antrean curhat masuk sedang dalam tahap pengembangan
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="p-4 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                  Pemberitahuan Antrean Curhat Baru
-                </p>
-                <p className="text-xs text-slate-500 font-nunito">
-                  Bunyikan nada lembut saat ada teman bicara yang masuk antrean saat status Anda sedang Siaga.
-                </p>
-              </div>
-              <Switch checked={notifyQueue} onCheckedChange={setNotifyQueue} className="cursor-pointer" />
+              {errors.topik_keahlian && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.topik_keahlian}</p>}
             </div>
           </CardContent>
         </Card>
@@ -422,6 +316,9 @@ export default function ListenerSettingsPage() {
         </div>
       </form>
 
+      {/* Card 2: Preferensi Notifikasi Antrean */}
+      <ListenerQueueNotificationCard />
+
       {/* Card 3: Rekening Bank Pencairan */}
       <ListenerBankAccountCard />
 
@@ -446,26 +343,162 @@ export default function ListenerSettingsPage() {
   );
 }
 
+function ListenerQueueNotificationCard() {
+  const {
+    notifyQueue,
+    notifStatus,
+    isRequestingPerm,
+    isPlayingChime,
+    handleToggle,
+    handleRequestPerm,
+    handleTestChime,
+  } = useQueueNotificationSettings();
+
+  return (
+    <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs min-w-0">
+      <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <CardTitle className="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
+            <Bell size={18} className="text-teal-600 dark:text-teal-400 shrink-0" />
+            <span className="truncate">Preferensi Notifikasi Antrean</span>
+          </CardTitle>
+          <Badge
+            variant="outline"
+            className={
+              notifyQueue
+                ? "text-[10px] bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800 shrink-0"
+                : "text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 shrink-0"
+            }
+          >
+            {notifyQueue ? "Aktif" : "Nonaktif"}
+          </Badge>
+        </div>
+        <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+          Atur nada suara dan notifikasi peramban saat teman bicara baru masuk antrean Ruang Dengar
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="p-4 sm:p-6 space-y-4 min-w-0">
+        {/* 1. Switch */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 min-w-0">
+          <div className="space-y-0.5 min-w-0">
+            <Label htmlFor="listenerQueueNotifySwitch" className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white cursor-pointer block">
+              Pemberitahuan Antrean Curhat Baru
+            </Label>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
+              Bunyikan nada lembut dan tampilkan notifikasi saat ada teman bicara yang masuk antrean saat status Anda sedang Siaga.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <Switch
+              id="listenerQueueNotifySwitch"
+              aria-label="Pemberitahuan Antrean Curhat Baru"
+              checked={notifyQueue}
+              onCheckedChange={handleToggle}
+              className="cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {/* 2. Status Izin Browser */}
+        <div className="space-y-3 pt-1 border-t border-slate-100 dark:border-slate-800 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+            <div className="space-y-0.5 min-w-0">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">Status Notifikasi Peramban (Browser)</span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito">Menampilkan tanda generik di layar saat tiket baru tersedia di Ruang Dengar.</p>
+            </div>
+            <div className="shrink-0">
+              {notifStatus === "granted" && (
+                <Badge variant="outline" className="text-[10px] bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                  <CheckCircle2 size={11} className="text-emerald-600 dark:text-emerald-400" />
+                  Diizinkan
+                </Badge>
+              )}
+              {notifStatus === "default" && (
+                <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                  Belum Diizinkan
+                </Badge>
+              )}
+              {notifStatus === "denied" && (
+                <Badge variant="outline" className="text-[10px] bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 flex items-center gap-1">
+                  <AlertCircle size={11} className="text-rose-600 dark:text-rose-400" />
+                  Diblokir Browser
+                </Badge>
+              )}
+              {notifStatus === "unsupported" && (
+                <Badge variant="outline" className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700">
+                  Tidak Didukung
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {notifStatus === "default" && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200 min-w-0">
+              <div className="flex items-start gap-2 min-w-0">
+                <Info size={15} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <p className="font-nunito leading-relaxed">Peramban belum diberi izin untuk menampilkan pemberitahuan. Klik tombol untuk mengaktifkan.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={handleRequestPerm} disabled={isRequestingPerm} aria-label="Izinkan Notifikasi Browser" className="text-xs rounded-xl h-8 px-3.5 shrink-0 bg-white dark:bg-slate-900 border-amber-300 dark:border-amber-800 hover:bg-amber-100/50 cursor-pointer self-start sm:self-auto">
+                {isRequestingPerm ? (<><Loader2 size={12} className="animate-spin mr-1" />Meminta...</>) : "Izinkan Notifikasi Browser"}
+              </Button>
+            </div>
+          )}
+
+          {notifStatus === "denied" && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 text-xs text-rose-800 dark:text-rose-300 min-w-0">
+              <AlertCircle size={15} className="shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+              <div className="space-y-1 font-nunito leading-relaxed min-w-0">
+                <p className="font-semibold">Izin notifikasi diblokir di setelan peramban</p>
+                <p>Untuk mengaktifkannya, klik ikon gembok pada bilah alamat peramban lalu ubah izin Notifikasi menjadi <strong>Izinkan</strong> (Allow).</p>
+              </div>
+            </div>
+          )}
+
+          {notifStatus === "unsupported" && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 min-w-0">
+              <Info size={15} className="shrink-0 mt-0.5" />
+              <p className="font-nunito leading-relaxed">Peramban ini tidak mendukung Web Notification API. Nada Web Audio dan toast di halaman tetap aktif.</p>
+            </div>
+          )}
+
+          {notifStatus === "granted" && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60 text-xs text-emerald-800 dark:text-emerald-300 min-w-0">
+              <CheckCircle2 size={15} className="shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+              <p className="font-nunito leading-relaxed">Notifikasi peramban aktif. Anda akan menerima notifikasi ringkas generik saat ada tiket baru di Ruang Dengar.</p>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Uji Nada & Keterangan Tab Terbuka */}
+        <div className="space-y-3 pt-1 border-t border-slate-100 dark:border-slate-800 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+            <div className="space-y-0.5 min-w-0">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">Uji Coba Nada Pemberitahuan</span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito">Dengarkan contoh nada lembut Web Audio yang akan berbunyi saat tiket antrean masuk.</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={handleTestChime} disabled={isPlayingChime} aria-label="Coba dengarkan nada pemberitahuan antrean" className="text-xs rounded-xl h-8 px-3.5 gap-1.5 shrink-0 cursor-pointer self-start sm:self-auto">
+              {isPlayingChime ? (<><Loader2 size={13} className="animate-spin" /><span>Memutar...</span></>) : (<><Volume2 size={13} className="text-teal-600 dark:text-teal-400" /><span>Coba Nada</span></>)}
+            </Button>
+          </div>
+
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-400 min-w-0">
+            <Info size={15} className="shrink-0 mt-0.5 text-slate-400 dark:text-slate-500" />
+            <p className="leading-relaxed font-nunito">{QUEUE_TAB_OPEN_NOTE}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ListenerBankAccountCard() {
   const {
-    loading,
-    account,
-    loadError,
-    isEditing,
-    formBank,
-    formAccountNumber,
-    formAccountName,
-    fieldErrors,
-    generalError,
-    isSaving,
-    saveSuccess,
-    setFormBank,
-    setFormAccountNumber,
-    setFormAccountName,
-    startEdit,
-    cancelEdit,
-    retryLoad,
-    submitSave,
+    loading, account, loadError, isEditing,
+    formBank, formAccountNumber, formAccountName,
+    fieldErrors, generalError, isSaving, saveSuccess,
+    setFormBank, setFormAccountNumber, setFormAccountName,
+    startEdit, cancelEdit, retryLoad, submitSave,
   } = useMitraBankAccountCard();
 
   return (
@@ -477,14 +510,7 @@ function ListenerBankAccountCard() {
             <span className="truncate">Rekening Bank Pencairan Honor</span>
           </CardTitle>
           {!loading && !loadError && (
-            <Badge
-              variant="outline"
-              className={
-                account
-                  ? "text-[10px] bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800 shrink-0"
-                  : "text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 shrink-0"
-              }
-            >
+            <Badge variant="outline" className={account ? "text-[10px] bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800 shrink-0" : "text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 shrink-0"}>
               {account ? "Tersimpan" : "Belum Diatur"}
             </Badge>
           )}
@@ -498,8 +524,7 @@ function ListenerBankAccountCard() {
         {loading ? (
           <div className="space-y-4 animate-pulse">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Skeleton className="h-9 rounded-xl" />
-              <Skeleton className="h-9 rounded-xl" />
+              <Skeleton className="h-9 rounded-xl" /><Skeleton className="h-9 rounded-xl" />
               <Skeleton className="h-9 rounded-xl md:col-span-2" />
             </div>
             <Skeleton className="h-10 rounded-xl" />
@@ -515,8 +540,7 @@ function ListenerBankAccountCard() {
             </div>
             <div className="flex justify-end">
               <Button type="button" variant="outline" size="sm" onClick={retryLoad} className="text-xs rounded-xl gap-1.5 h-9 cursor-pointer">
-                <RefreshCw size={13} />
-                <span>Ulangi</span>
+                <RefreshCw size={13} /><span>Ulangi</span>
               </Button>
             </div>
           </div>
@@ -557,8 +581,7 @@ function ListenerBankAccountCard() {
             </div>
             <div className="flex justify-end pt-1">
               <Button type="button" variant="outline" size="sm" onClick={startEdit} className="text-xs rounded-xl gap-1.5 h-9 cursor-pointer">
-                <Edit3 size={13} />
-                <span>Ubah Rekening</span>
+                <Edit3 size={13} /><span>Ubah Rekening</span>
               </Button>
             </div>
           </div>
@@ -567,15 +590,12 @@ function ListenerBankAccountCard() {
             {!account && (
               <div className="flex items-start gap-2.5 p-3 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 text-xs">
                 <Info size={15} className="shrink-0 mt-0.5 text-teal-600 dark:text-teal-400" />
-                <p className="leading-relaxed font-nunito">
-                  Belum ada rekening tersimpan. Silakan masukkan data rekening bank Anda untuk pencairan honor.
-                </p>
+                <p className="leading-relaxed font-nunito">Belum ada rekening tersimpan. Silakan masukkan data rekening bank Anda untuk pencairan honor.</p>
               </div>
             )}
             {generalError && (
               <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs">
-                <AlertCircle size={15} className="shrink-0 mt-0.5" />
-                <span>{generalError}</span>
+                <AlertCircle size={15} className="shrink-0 mt-0.5" /><span>{generalError}</span>
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
