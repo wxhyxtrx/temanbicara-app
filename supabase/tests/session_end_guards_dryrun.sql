@@ -2,96 +2,23 @@
 -- TEMAN BICARA: DRY-RUN TEST MIGRATION 20261111000028 (SESSION END GUARDS)
 -- Path: supabase/tests/session_end_guards_dryrun.sql
 -- Scope:
--- 1. Setup role Supabase (anon, authenticated, service_role)
--- 2. Setup user test: 1 psikolog, 1 pasien di auth.users, public.users, profiles, wallets
--- 3. Setup system_settings: revenue_share, holding, patient_noshow
--- 4. DDL Salinan persis dari 20261111000028_session_end_guards.sql
--- 5. Uji 1: Penolakan end sebelum start_at (error SESSION_NOT_STARTED, tanpa settlement)
--- 6. Uji 2: Penolakan end saat pasien belum membalas sebelum batas no-show (error PATIENT_NO_SHOW_PENDING, tanpa settlement)
--- 7. Uji 3: Penolakan end saat psikolog & pasien belum pernah mengirim pesan (error PATIENT_NO_SHOW_PENDING, tanpa settlement)
--- 8. Uji 4: Sesi normal sesudah start_at dengan pesan pasien -> sukses completed & settlement membayar mitra
--- 9. Uji 5: Sesi sesudah start_at & batas no-show pasien terlewati -> sukses completed & settlement membayar
--- 10. Uji 6: Verifikasi fungsi SECURITY DEFINER dan search_path kosong
--- 11. Penanda DRYRUN_OK dan ROLLBACK
+-- 1. Setup fixture dinamis & terisolasi (UUID acak, tanpa CREATE ROLE, tanpa overwrite data dev)
+-- 2. DDL Salinan persis dari 20261111000028_session_end_guards.sql
+-- 3. Uji 1: Penolakan end sebelum start_at (error SESSION_NOT_STARTED, tanpa settlement)
+-- 4. Uji 2: Penolakan end saat pasien belum membalas sebelum batas no-show (error PATIENT_NO_SHOW_PENDING, tanpa settlement)
+-- 5. Uji 3: Penolakan end saat psikolog & pasien belum pernah mengirim pesan (error PATIENT_NO_SHOW_PENDING, tanpa settlement)
+-- 6. Uji 4: Sesi normal sesudah start_at dengan pesan pasien -> sukses completed & settlement membayar mitra
+-- 7. Uji 5: Sesi sesudah start_at & batas no-show pasien terlewati -> sukses completed & settlement membayar mitra
+-- 8. Uji 6: Verifikasi fungsi SECURITY DEFINER, search_path kosong, dan hak akses REVOKE/GRANT
+-- 9. Penanda DRYRUN_OK dan ROLLBACK
 -- SELURUH UJI BERJALAN DALAM SATU TRANSAKSI DAN OTOMATIS DI-ROLLBACK
+-- AMAN DIJALANKAN DI SUPABASE DEV (TIDAK MERUSAK/MENIMPA DATA EKSIS)
 -- ========================================================
 
 BEGIN;
 
 -- ========================================================
--- 1. SETUP ROLE SUPABASE
--- ========================================================
-
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-        CREATE ROLE anon;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-        CREATE ROLE authenticated;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-        CREATE ROLE service_role BYPASSRLS;
-    END IF;
-END $$;
-
--- ========================================================
--- 2. SETUP FIXTURE DATA
--- ========================================================
-
-INSERT INTO auth.users (
-    id, instance_id, aud, role, email, encrypted_password,
-    email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data
-)
-VALUES
-    ('d2800000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'psikolog_guard_test@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
-    ('d2800000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pasien_guard_test@temanbicara.test', '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb)
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.users (id, email, no_wa, role, status)
-VALUES
-    ('d2800000-0000-0000-0000-000000000001', 'psikolog_guard_test@temanbicara.test', '081299990281', 'psikolog'::public.user_role, 'active'::public.account_status),
-    ('d2800000-0000-0000-0000-000000000002', 'pasien_guard_test@temanbicara.test', '081299990282', 'pasien'::public.user_role, 'active'::public.account_status)
-ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, status = EXCLUDED.status;
-
-INSERT INTO public.psikolog_profiles (
-    user_id, nama_lengkap_gelar, nomor_sipp_str, dokumen_sipp_str_url,
-    spesialisasi, tahun_pengalaman, tarif_sesi, booking_paused, extension_price_coins, suspended_until
-) VALUES (
-    'd2800000-0000-0000-0000-000000000001', 'Dr. Psikolog Guard, M.Psi', 'SIPP-GUARD-001', 'https://storage.test/sipp-guard.pdf',
-    ARRAY['Depresi', 'Kecemasan'], 5, 150000, false, 2, NULL
-)
-ON CONFLICT (user_id) DO UPDATE SET
-    tarif_sesi = EXCLUDED.tarif_sesi,
-    booking_paused = false,
-    suspended_until = NULL;
-
-INSERT INTO public.pasien_profiles (user_id, nama_lengkap, nama_panggilan, kontak_darurat_nama, kontak_darurat_wa, is_anonim_default)
-VALUES
-    ('d2800000-0000-0000-0000-000000000002', 'Pasien Guard Uji', 'Budi Guard', 'Ibu Budi', '081100000282', false)
-ON CONFLICT (user_id) DO UPDATE SET
-    nama_lengkap = EXCLUDED.nama_lengkap,
-    nama_panggilan = EXCLUDED.nama_panggilan;
-
--- System settings untuk revenue share, holding, dan patient_noshow (30 menit)
-INSERT INTO public.system_settings (key, value)
-VALUES
-    ('revenue_share', '{"mitra_bps": 8500}'::jsonb),
-    ('holding', '{"hours": 48}'::jsonb),
-    ('patient_noshow', '{"minutes": 30}'::jsonb)
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
-
--- Inisialisasi wallets
-INSERT INTO public.wallets (user_id, coin_balance, pending_rupiah, available_rupiah)
-VALUES
-    ('d2800000-0000-0000-0000-000000000001', 0, 0, 0),
-    ('d2800000-0000-0000-0000-000000000002', 100, 0, 0)
-ON CONFLICT (user_id) DO UPDATE SET
-    pending_rupiah = 0,
-    available_rupiah = 0;
-
--- ========================================================
--- 3. DDL SALINAN DARI 20261111000028_session_end_guards.sql
+-- 1. DDL SALINAN PERSIS DARI 20261111000028_session_end_guards.sql
 -- ========================================================
 
 CREATE OR REPLACE FUNCTION public.session_end(
@@ -171,25 +98,81 @@ REVOKE ALL ON FUNCTION public.session_end(UUID, UUID) FROM PUBLIC, anon, authent
 GRANT EXECUTE ON FUNCTION public.session_end(UUID, UUID) TO service_role;
 
 -- ========================================================
--- 4. EKSEKUSI PENGUJIAN SKENARIO GUARD & SETTLEMENT
+-- 2. SETUP DATA SYSTEM_SETTINGS JIKA BELUM ADA (DO NOTHING)
+-- ========================================================
+
+INSERT INTO public.system_settings (key, value)
+VALUES
+    ('revenue_share', '{"mitra_bps": 8500}'::jsonb),
+    ('holding', '{"hours": 48}'::jsonb),
+    ('patient_noshow', '{"minutes": 30}'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
+-- ========================================================
+-- 3. EKSEKUSI PENGUJIAN DENGAN FIXTURE DINAMIS TERISOLASI
 -- ========================================================
 
 DO $$
 DECLARE
-    v_psikolog_id UUID := 'd2800000-0000-0000-0000-000000000001'::uuid;
-    v_pasien_id UUID := 'd2800000-0000-0000-0000-000000000002'::uuid;
+    -- UUID acak unik agar tidak bertabrakan dengan data dev eksis
+    v_psikolog_id UUID := gen_random_uuid();
+    v_pasien_id UUID := gen_random_uuid();
+    v_psi_email TEXT := 'guard_psi_' || replace(v_psikolog_id::text, '-', '') || '@temanbicara.test';
+    v_pas_email TEXT := 'guard_pas_' || replace(v_pasien_id::text, '-', '') || '@temanbicara.test';
+    v_psi_wa TEXT := '08' || substr(replace(replace(v_psikolog_id::text, '-', ''), 'a', '1'), 1, 10);
+    v_pas_wa TEXT := '08' || substr(replace(replace(v_pasien_id::text, '-', ''), 'b', '2'), 1, 10);
 
-    v_b1_id UUID := 'd2810000-0000-0000-0000-000000000001'::uuid;
-    v_b2_id UUID := 'd2810000-0000-0000-0000-000000000002'::uuid;
-    v_b3_id UUID := 'd2810000-0000-0000-0000-000000000003'::uuid;
-    v_b4_id UUID := 'd2810000-0000-0000-0000-000000000004'::uuid;
-    v_b5_id UUID := 'd2810000-0000-0000-0000-000000000005'::uuid;
+    v_b1_id UUID := gen_random_uuid();
+    v_b2_id UUID := gen_random_uuid();
+    v_b3_id UUID := gen_random_uuid();
+    v_b4_id UUID := gen_random_uuid();
+    v_b5_id UUID := gen_random_uuid();
 
+    v_patient_noshow_minutes INTEGER := 30;
     v_res public.bookings;
     v_err_caught BOOLEAN;
     v_earning_count INTEGER;
     v_pending_balance BIGINT;
 BEGIN
+    -- Baca konfigurasi patient_noshow aktif dari database
+    SELECT COALESCE((value->>'minutes')::INTEGER, 30)
+    INTO v_patient_noshow_minutes
+    FROM public.system_settings
+    WHERE key = 'patient_noshow';
+    v_patient_noshow_minutes := COALESCE(v_patient_noshow_minutes, 30);
+
+    -- Setup auth.users & public.users dinamis
+    INSERT INTO auth.users (
+        id, instance_id, aud, role, email, encrypted_password,
+        email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data
+    ) VALUES
+        (v_psikolog_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', v_psi_email, '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb),
+        (v_pasien_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', v_pas_email, '', pg_catalog.now(), pg_catalog.now(), pg_catalog.now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb);
+
+    INSERT INTO public.users (id, email, no_wa, role, status)
+    VALUES
+        (v_psikolog_id, v_psi_email, v_psi_wa, 'psikolog'::public.user_role, 'active'::public.account_status),
+        (v_pasien_id, v_pas_email, v_pas_wa, 'pasien'::public.user_role, 'active'::public.account_status);
+
+    INSERT INTO public.psikolog_profiles (
+        user_id, nama_lengkap_gelar, nomor_sipp_str, dokumen_sipp_str_url,
+        spesialisasi, tahun_pengalaman, tarif_sesi, booking_paused, extension_price_coins, suspended_until
+    ) VALUES (
+        v_psikolog_id, 'Dr. Psikolog Guard Test, M.Psi', 'SIPP-' || substr(replace(v_psikolog_id::text, '-', ''), 1, 8),
+        'https://storage.test/sipp-guard.pdf', ARRAY['Depresi', 'Kecemasan'], 5, 150000, false, 2, NULL
+    );
+
+    INSERT INTO public.pasien_profiles (
+        user_id, nama_lengkap, nama_panggilan, kontak_darurat_nama, kontak_darurat_wa, is_anonim_default
+    ) VALUES (
+        v_pasien_id, 'Pasien Guard Test', 'Budi', 'Ibu Budi', '081100000282', false
+    );
+
+    INSERT INTO public.wallets (user_id, coin_balance, pending_rupiah, available_rupiah)
+    VALUES
+        (v_psikolog_id, 0, 0, 0),
+        (v_pasien_id, 100, 0, 0);
+
     -- ----------------------------------------------------
     -- UJI 1: Penolakan end sebelum start_at (pg_catalog.now() < start_at)
     -- Harap: Exception SESSION_NOT_STARTED, status tetap in_progress, tanpa settlement
@@ -201,7 +184,7 @@ BEGIN
     ) VALUES (
         v_b1_id, v_pasien_id, v_psikolog_id, pg_catalog.now() + INTERVAL '30 minutes', 'in_progress',
         'Keluhan uji penolakan end sebelum sesi dimulai minimal dua puluh karakter.',
-        15, 8500, '[]'::jsonb, 'Pasien Guard Uji',
+        15, 8500, '[]'::jsonb, 'Pasien Guard Test',
         NULL, NULL
     );
 
@@ -228,7 +211,7 @@ BEGIN
 
     -- ----------------------------------------------------
     -- UJI 2: Penolakan bila pasien belum membalas sebelum batas no-show
-    -- (now() > start_at, psikolog sudah kirim pesan 10 menit lalu, patient_first_msg_at IS NULL, batas 30 menit)
+    -- (now() > start_at, psikolog sudah kirim pesan, patient_first_msg_at IS NULL, batas belum lewat)
     -- Harap: Exception PATIENT_NO_SHOW_PENDING, status tetap in_progress, tanpa settlement
     -- ----------------------------------------------------
     INSERT INTO public.bookings (
@@ -236,10 +219,10 @@ BEGIN
         price_coins, mitra_share_bps, refund_policy, patient_display_name,
         psikolog_first_msg_at, patient_first_msg_at
     ) VALUES (
-        v_b2_id, v_pasien_id, v_psikolog_id, pg_catalog.now() - INTERVAL '15 minutes', 'in_progress',
+        v_b2_id, v_pasien_id, v_psikolog_id, pg_catalog.now() - INTERVAL '10 minutes', 'in_progress',
         'Keluhan uji penolakan no-show pending sebelum batas waktu terlewati minimal dua puluh.',
-        15, 8500, '[]'::jsonb, 'Pasien Guard Uji',
-        pg_catalog.now() - INTERVAL '10 minutes', NULL
+        15, 8500, '[]'::jsonb, 'Pasien Guard Test',
+        pg_catalog.now() - INTERVAL '5 minutes', NULL
     );
 
     v_err_caught := false;
@@ -254,7 +237,7 @@ BEGIN
             END IF;
     END;
 
-    ASSERT v_err_caught = true, 'UJI 2 GAGAL: session_end harus melempar PATIENT_NO_SHOW_PENDING sebelum 30 mnt';
+    ASSERT v_err_caught = true, 'UJI 2 GAGAL: session_end harus melempar PATIENT_NO_SHOW_PENDING sebelum batas no-show';
 
     SELECT COUNT(*) INTO v_earning_count FROM public.mitra_earnings WHERE source_id = v_b2_id;
     ASSERT v_earning_count = 0, 'UJI 2 GAGAL: Tidak boleh ada settlement saat no-show pending';
@@ -271,7 +254,7 @@ BEGIN
     ) VALUES (
         v_b3_id, v_pasien_id, v_psikolog_id, pg_catalog.now() - INTERVAL '15 minutes', 'in_progress',
         'Keluhan uji penolakan saat psikolog belum menyapa dan pasien belum menyapa dua puluh.',
-        15, 8500, '[]'::jsonb, 'Pasien Guard Uji',
+        15, 8500, '[]'::jsonb, 'Pasien Guard Test',
         NULL, NULL
     );
 
@@ -301,7 +284,7 @@ BEGIN
     ) VALUES (
         v_b4_id, v_pasien_id, v_psikolog_id, pg_catalog.now() - INTERVAL '25 minutes', 'in_progress',
         'Keluhan uji sesi normal berhasil diselesaikan psikolog dengan balasan pasien dua puluh.',
-        15, 8500, '[]'::jsonb, 'Pasien Guard Uji',
+        15, 8500, '[]'::jsonb, 'Pasien Guard Test',
         pg_catalog.now() - INTERVAL '24 minutes', pg_catalog.now() - INTERVAL '20 minutes'
     );
 
@@ -325,8 +308,8 @@ BEGIN
     ASSERT v_pending_balance = 127500, 'UJI 4 GAGAL: Wallet pending_rupiah mitra harus 127500, didapat ' || COALESCE(v_pending_balance::text, 'NULL');
 
     -- ----------------------------------------------------
-    -- UJI 5: Pasien no-show tetapi batas waktu (30 menit) telah terlewati
-    -- (now() > start_at, psikolog menyapa 35 menit lalu, patient_first_msg_at NULL)
+    -- UJI 5: Pasien no-show tetapi batas waktu no-show telah terlewati
+    -- (now() > start_at, psikolog menyapa lebih dari batas no-show lalu, patient_first_msg_at NULL)
     -- Harap: Sukses completed & settlement berhasil
     -- ----------------------------------------------------
     INSERT INTO public.bookings (
@@ -334,10 +317,10 @@ BEGIN
         price_coins, mitra_share_bps, refund_policy, patient_display_name,
         psikolog_first_msg_at, patient_first_msg_at
     ) VALUES (
-        v_b5_id, v_pasien_id, v_psikolog_id, pg_catalog.now() - INTERVAL '40 minutes', 'in_progress',
-        'Keluhan uji pasien tidak menyapa namun batas tiga puluh menit telah lewat dua puluh.',
-        15, 8500, '[]'::jsonb, 'Pasien Guard Uji',
-        pg_catalog.now() - INTERVAL '35 minutes', NULL
+        v_b5_id, v_pasien_id, v_psikolog_id, pg_catalog.now() - ((v_patient_noshow_minutes + 10) * INTERVAL '1 minute'), 'in_progress',
+        'Keluhan uji pasien tidak menyapa namun batas waktu no show telah lewat dua puluh.',
+        15, 8500, '[]'::jsonb, 'Pasien Guard Test',
+        pg_catalog.now() - ((v_patient_noshow_minutes + 5) * INTERVAL '1 minute'), NULL
     );
 
     v_res := public.session_end(v_b5_id, v_psikolog_id);
