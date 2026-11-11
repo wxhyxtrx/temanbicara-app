@@ -45,6 +45,74 @@ const ALLOWED_VOICE_MIME_TYPES = [
   'audio/x-m4a',
 ];
 
+const BOOKING_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SESSION_MEDIA_FILE_RE =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-([1-9]\d*)-([0-9a-f]{8})\.([a-z0-9]{2,5})$/i;
+
+/**
+ * Memvalidasi apakah format media_path sesi konseling aman dan terikat pada booking tertentu:
+ * - Tidak boleh kosong, bukan string, atau memiliki spasi di awal/akhir
+ * - Tidak boleh mengandung traversal ('..'), backslash ('\'), atau diawali slash ('/')
+ * - Tidak boleh berupa path peer ('peer/...')
+ * - Wajib terdiri dari tepat 2 segmen: `${bookingId}/${userId}-${timestamp}-${random}.${ext}`
+ * - Segmen pertama wajib UUID valid dan cocok dengan bookingId
+ * - Segmen kedua wajib memiliki userId UUID, timestamp milidetik positif, random 8 hex lowercase, dan ekstensi 2-5 alfanumerik lowercase
+ */
+export function isValidSessionMediaPath(bookingId: string, mediaPath?: string | null): boolean {
+  if (!bookingId || typeof bookingId !== 'string' || bookingId !== bookingId.trim()) {
+    return false;
+  }
+  if (!BOOKING_UUID_RE.test(bookingId)) {
+    return false;
+  }
+  if (!mediaPath || typeof mediaPath !== 'string' || mediaPath !== mediaPath.trim()) {
+    return false;
+  }
+  if (
+    mediaPath.startsWith('/') ||
+    mediaPath.includes('\\') ||
+    mediaPath.includes('..') ||
+    mediaPath.toLowerCase().startsWith('peer/')
+  ) {
+    return false;
+  }
+
+  const segments = mediaPath.split('/');
+  if (segments.length !== 2) {
+    return false;
+  }
+
+  const [folderId, fileName] = segments;
+  if (!folderId || !fileName) {
+    return false;
+  }
+  if (!BOOKING_UUID_RE.test(folderId) || folderId.toLowerCase() !== bookingId.toLowerCase()) {
+    return false;
+  }
+
+  const match = SESSION_MEDIA_FILE_RE.exec(fileName);
+  if (!match) {
+    return false;
+  }
+
+  const [, userId, timestampStr, randomHex, ext] = match;
+  if (!BOOKING_UUID_RE.test(userId)) {
+    return false;
+  }
+  const timestamp = Number(timestampStr);
+  if (!Number.isSafeInteger(timestamp) || timestamp <= 0) {
+    return false;
+  }
+  if (!/^[0-9a-f]{8}$/.test(randomHex)) {
+    return false;
+  }
+  if (!/^[a-z0-9]{2,5}$/.test(ext)) {
+    return false;
+  }
+
+  return true;
+}
+
 export const sendSessionMessageSchema = z
   .object({
     kind: z.enum(['text', 'image', 'voice'], {

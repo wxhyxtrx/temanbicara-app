@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail } from '@/lib/auth/session';
+import { isValidSessionMediaPath } from '@/lib/validations/booking';
 import { isValidPeerMediaPath } from '@/lib/validations/peer-messages';
 
 export const dynamic = 'force-dynamic';
@@ -147,7 +148,11 @@ export async function GET(req: Request) {
           const terminalDateStr = booking.ended_at || booking.cancelled_at;
           if (!terminalDateStr) return false;
           const terminalTime = new Date(terminalDateStr).getTime();
-          return Number.isFinite(terminalTime) && terminalTime < cutoff.getTime();
+          if (!Number.isFinite(terminalTime) || terminalTime >= cutoff.getTime()) {
+            return false;
+          }
+
+          return isValidSessionMediaPath(booking.id, row.media_path);
         });
 
         sessionResult.scanned = sessionCandidates.length;

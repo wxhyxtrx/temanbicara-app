@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
-import { sessionMediaUploadSchema } from '@/lib/validations/booking';
+import { isValidSessionMediaPath, sessionMediaUploadSchema } from '@/lib/validations/booking';
 import type { BookingEntity, SessionMediaUploadResponse, SessionMediaUrlResponse } from '@/types/booking';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -30,8 +30,8 @@ export async function GET(
       return fail(400, 'INVALID_PAYLOAD', 'Parameter query "path" wajib disertakan');
     }
 
-    // Mencegah path traversal sederhana
-    if (mediaPath.includes('..') || mediaPath.startsWith('/')) {
+    // Validasi path terikat ke booking sesi ini
+    if (!isValidSessionMediaPath(id, mediaPath)) {
       return fail(400, 'INVALID_PATH', 'Format path berkas tidak valid');
     }
 
@@ -143,6 +143,80 @@ export async function POST(
       return fail(400, 'INVALID_PAYLOAD', 'Body request tidak valid');
     }
 
+    const bodyObj = body as Record<string, unknown>;
+    const rawCandidatePath =
+      typeof bodyObj.path === 'string'
+        ? bodyObj.path.trim()
+        : typeof bodyObj.media_path === 'string'
+          ? bodyObj.media_path.trim()
+          : null;
+
+    if (rawCandidatePath !== null && !isValidSessionMediaPath(id, rawCandidatePath)) {
+      return fail(400, 'INVALID_PATH', 'Format path berkas tidak valid');
+    }
+
+    if (bodyObj.action === 'view' || (rawCandidatePath !== null && !bodyObj.file_name)) {
+      if (!rawCandidatePath || !isValidSessionMediaPath(id, rawCandidatePath)) {
+        return fail(400, 'INVALID_PATH', 'Format path berkas tidak valid');
+      }
+
+      const { data: viewBooking, error: viewBookingError } = await supabaseAdmin
+        .from('bookings')
+        .select('id, patient_id, psikolog_id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (viewBookingError) {
+        console.error('[BOOKING_MEDIA_URL_ERROR]:', viewBookingError);
+        return fail(500, 'QUERY_FAILED', 'Gagal memproses berkas media sesi konseling');
+      }
+      if (!viewBooking) {
+        return fail(404, 'NOT_FOUND', 'Booking sesi tidak ditemukan');
+      }
+
+      const isViewPatient = user.id === viewBooking.patient_id;
+      const isViewPsikolog = user.id === viewBooking.psikolog_id;
+      const isViewAdmin = user.role === 'admin';
+
+      if (!isViewPatient && !isViewPsikolog && !isViewAdmin) {
+        return fail(403, 'FORBIDDEN', 'Hanya peserta sesi yang dapat mengakses berkas media ini');
+      }
+
+      const { data: msgMatch, error: matchError } = await supabaseAdmin
+        .from('session_messages')
+        .select('id')
+        .eq('booking_id', id)
+        .eq('media_path', rawCandidatePath)
+        .maybeSingle();
+
+      if (matchError) {
+        console.error('[BOOKING_MEDIA_MATCH_ERROR]:', matchError);
+        return fail(500, 'QUERY_FAILED', 'Gagal memverifikasi berkas media sesi konseling');
+      }
+      if (!msgMatch) {
+        return fail(404, 'MEDIA_NOT_FOUND', 'Berkas media tidak ditemukan pada riwayat obrolan sesi ini');
+      }
+
+      const { data: signedData, error: signError } = await supabaseAdmin.storage
+        .from('session-media')
+        .createSignedUrl(rawCandidatePath, SIGNED_URL_EXPIRES_IN_SECONDS);
+
+      if (signError || !signedData?.signedUrl) {
+        console.error('[BOOKING_MEDIA_SIGN_ERROR]:', signError);
+        return fail(500, 'STORAGE_ERROR', 'Gagal menghasilkan tautan berkas media');
+      }
+
+      const responseData: SessionMediaUrlResponse = {
+        signed_url: signedData.signedUrl,
+        expires_in: SIGNED_URL_EXPIRES_IN_SECONDS,
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: responseData,
+      });
+    }
+
     const parsed = sessionMediaUploadSchema.safeParse(body);
     if (!parsed.success) {
       return fail(
@@ -209,6 +283,10 @@ export async function POST(
 
     const randomSuffix = crypto.randomBytes(4).toString('hex');
     const filePath = `${id}/${user.id}-${Date.now()}-${randomSuffix}.${safeExt}`;
+
+    if (!isValidSessionMediaPath(id, filePath)) {
+      return fail(400, 'INVALID_PATH', 'Format path berkas tidak valid');
+    }
 
     // Buat signed upload URL dari bucket session-media
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage

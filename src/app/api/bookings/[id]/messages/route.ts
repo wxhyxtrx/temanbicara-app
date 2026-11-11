@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
-import { sendSessionMessageSchema } from '@/lib/validations/booking';
+import { isValidSessionMediaPath, sendSessionMessageSchema } from '@/lib/validations/booking';
 import { SystemSettingsService } from '@/services/system-settings.service';
 import type { BookingEntity, SessionMessageEntity, SessionMessageView } from '@/types/booking';
 
@@ -150,6 +150,20 @@ export async function POST(
         'VALIDATION_ERROR',
         parsed.error.issues[0]?.message || 'Data pesan tidak valid'
       );
+    }
+
+    if (
+      (parsed.data.media_path !== undefined && parsed.data.media_path !== null) ||
+      parsed.data.kind === 'image' ||
+      parsed.data.kind === 'voice'
+    ) {
+      if (!isValidSessionMediaPath(id, parsed.data.media_path)) {
+        return fail(
+          400,
+          'INVALID_PATH',
+          'Format media_path tidak valid atau berada di luar booking sesi ini'
+        );
+      }
     }
 
     // Ambil data booking lengkap untuk verifikasi peserta, status, dan jendela waktu sesi
