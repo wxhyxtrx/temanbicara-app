@@ -23,12 +23,18 @@ async function readToken(): Promise<string | null> {
   }
 }
 
+export interface GetSessionUserOptions {
+  allowInactive?: boolean;
+}
+
 /**
  * Resolusi user aktif dari JWT Supabase yang terverifikasi.
  * Sengaja TIDAK menerima UUID mentah sebagai token: user id psikolog/relawan terekspos
  * di katalog publik, jadi fallback UUID = siapa pun bisa menyamar jadi user lain.
  */
-export async function getSessionUser(): Promise<
+export async function getSessionUser(
+  options?: GetSessionUserOptions
+): Promise<
   { user: UserEntity; response?: never } | { user?: never; response: NextResponse }
 > {
   if (!supabaseAdmin) return { response: fail(500, 'SERVER_CONFIG_ERROR', 'Server configuration error') };
@@ -44,7 +50,22 @@ export async function getSessionUser(): Promise<
   const { data: user } = await supabaseAdmin.from('users').select('*').eq('id', authData.user.id).maybeSingle();
   if (!user) return { response: fail(404, 'USER_NOT_FOUND', 'Pengguna tidak ditemukan') };
 
-  return { user: user as UserEntity };
+  const typedUser = user as UserEntity;
+
+  if (!options?.allowInactive) {
+    if (typedUser.status === 'suspended') {
+      return {
+        response: fail(403, 'ACCOUNT_SUSPENDED', 'Akun Anda sedang ditangguhkan'),
+      };
+    }
+    if (typedUser.status === 'rejected') {
+      return {
+        response: fail(403, 'ACCOUNT_REJECTED', 'Pendaftaran akun Anda telah ditolak'),
+      };
+    }
+  }
+
+  return { user: typedUser };
 }
 
 export async function getRoleProfile(user: UserEntity) {

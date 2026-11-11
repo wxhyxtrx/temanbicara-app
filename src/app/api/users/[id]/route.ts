@@ -339,13 +339,40 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     }
 
+    // 6. Cabut seluruh sesi global jika status bertransisi ke suspended atau rejected
+    const isBlockingStatusTransition =
+      (body.status === 'suspended' || body.status === 'rejected') &&
+      targetUser.status !== body.status;
+
+    let sessionRevoked: boolean | null = null;
+    if (isBlockingStatusTransition) {
+      try {
+        const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(id, 'global');
+        if (signOutError) {
+          sessionRevoked = false;
+          console.warn('[USERS_PATCH_SIGN_OUT_WARN]: Gagal mencabut sesi global pengguna:', signOutError.message);
+        } else {
+          sessionRevoked = true;
+        }
+      } catch (signOutErr: unknown) {
+        sessionRevoked = false;
+        console.warn('[USERS_PATCH_SIGN_OUT_ERROR]: Exception saat mencabut sesi global pengguna:', signOutErr);
+      }
+    }
+
+    const responseMessage =
+      isBlockingStatusTransition && sessionRevoked === false
+        ? 'Data pengguna dan status akun berhasil diperbarui, namun pencabutan sesi global gagal dijalankan'
+        : 'Data pengguna dan status akun berhasil diperbarui';
+
     return NextResponse.json({
       success: true,
-      message: 'Data pengguna dan status akun berhasil diperbarui',
+      message: responseMessage,
       data: {
         id,
         status: body.status || targetUser.status,
         updated_fields: Object.keys(userUpdates),
+        ...(isBlockingStatusTransition ? { session_revoked: sessionRevoked } : {}),
       },
     });
   } catch (err: unknown) {

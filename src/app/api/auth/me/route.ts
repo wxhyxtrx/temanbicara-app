@@ -3,7 +3,7 @@ import { getSessionUser, getRoleProfile, displayName, fail } from '@/lib/auth/se
 
 export async function GET() {
   try {
-    const session = await getSessionUser();
+    const session = await getSessionUser({ allowInactive: true });
     if (session.response) return session.response;
     const { google_id: _googleId, ...user } = session.user;
 
