@@ -143,6 +143,20 @@ export async function POST(
       return fail(400, 'INVALID_PAYLOAD', 'Body request tidak valid');
     }
 
+    const bodyObj = body as Record<string, unknown>;
+    const rawKind =
+      bodyObj.kind === 'image' || bodyObj.kind === 'voice' ? bodyObj.kind : undefined;
+    if (
+      typeof bodyObj.media_path === 'string' &&
+      !isValidSessionMediaPath(id, bodyObj.media_path, rawKind)
+    ) {
+      return fail(
+        400,
+        'INVALID_PATH',
+        'Format media_path tidak valid atau berada di luar booking sesi ini'
+      );
+    }
+
     const parsed = sendSessionMessageSchema.safeParse(body);
     if (!parsed.success) {
       return fail(
@@ -157,7 +171,11 @@ export async function POST(
       parsed.data.kind === 'image' ||
       parsed.data.kind === 'voice'
     ) {
-      if (!isValidSessionMediaPath(id, parsed.data.media_path)) {
+      const expectedKind =
+        parsed.data.kind === 'image' || parsed.data.kind === 'voice'
+          ? parsed.data.kind
+          : undefined;
+      if (!isValidSessionMediaPath(id, parsed.data.media_path, expectedKind)) {
         return fail(
           400,
           'INVALID_PATH',

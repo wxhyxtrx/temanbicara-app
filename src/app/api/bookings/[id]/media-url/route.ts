@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
-import { isValidSessionMediaPath, sessionMediaUploadSchema } from '@/lib/validations/booking';
+import {
+  isValidSessionMediaPath,
+  resolveSessionMediaExtension,
+  sessionMediaUploadSchema,
+} from '@/lib/validations/booking';
 import type { BookingEntity, SessionMediaUploadResponse, SessionMediaUrlResponse } from '@/types/booking';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,7 +29,7 @@ export async function GET(
     }
 
     const { searchParams } = new URL(req.url);
-    const mediaPath = searchParams.get('path')?.trim();
+    const mediaPath = searchParams.get('path');
     if (!mediaPath) {
       return fail(400, 'INVALID_PAYLOAD', 'Parameter query "path" wajib disertakan');
     }
@@ -144,14 +148,16 @@ export async function POST(
     }
 
     const bodyObj = body as Record<string, unknown>;
+    const hasPathProp =
+      bodyObj.path !== undefined || bodyObj.media_path !== undefined;
     const rawCandidatePath =
       typeof bodyObj.path === 'string'
-        ? bodyObj.path.trim()
+        ? bodyObj.path
         : typeof bodyObj.media_path === 'string'
-          ? bodyObj.media_path.trim()
+          ? bodyObj.media_path
           : null;
 
-    if (rawCandidatePath !== null && !isValidSessionMediaPath(id, rawCandidatePath)) {
+    if (hasPathProp && !isValidSessionMediaPath(id, rawCandidatePath)) {
       return fail(400, 'INVALID_PATH', 'Format path berkas tidak valid');
     }
 
@@ -275,16 +281,22 @@ export async function POST(
       return fail(400, 'SESSION_WINDOW_CLOSED', 'Waktu sesi telah berakhir, tidak dapat mengunggah berkas');
     }
 
-    // Tentukan ekstensi berkas yang aman
-    const rawExt = parsed.data.file_name.split('.').pop()?.toLowerCase() || '';
-    const safeExt = /^[a-z0-9]{2,5}$/.test(rawExt)
-      ? rawExt
-      : (parsed.data.kind === 'image' ? 'jpg' : 'webm');
+    // Tentukan ekstensi berkas yang aman berdasarkan MIME type dan kind
+    const safeExt = resolveSessionMediaExtension(
+      parsed.data.file_name,
+      parsed.data.file_type,
+      parsed.data.kind
+    );
 
     const randomSuffix = crypto.randomBytes(4).toString('hex');
     const filePath = `${id}/${user.id}-${Date.now()}-${randomSuffix}.${safeExt}`;
 
-    if (!isValidSessionMediaPath(id, filePath)) {
+    if (
+      !isValidSessionMediaPath(id, filePath, {
+        kind: parsed.data.kind,
+        mimeType: parsed.data.file_type,
+      })
+    ) {
       return fail(400, 'INVALID_PATH', 'Format path berkas tidak valid');
     }
 
