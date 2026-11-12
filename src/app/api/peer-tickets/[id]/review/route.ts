@@ -69,9 +69,18 @@ export async function GET(
       return fail(500, 'QUERY_FAILED', 'Gagal memuat ulasan tiket');
     }
 
+    if (!review) {
+      return NextResponse.json({
+        success: true,
+        data: null,
+      });
+    }
+
+    const { patient_id: _patientId, ...reviewData } = review;
+
     return NextResponse.json({
       success: true,
-      data: (review as PeerReviewEntity | null) ?? null,
+      data: reviewData,
     });
   } catch (err: unknown) {
     console.error('[PEER_REVIEW_GET_INTERNAL_ERROR]:', err);
@@ -184,10 +193,16 @@ export async function POST(
       return fail(400, 'REVIEW_FAILED', 'Gagal menyimpan ulasan');
     }
 
+    if (!review) {
+      return fail(500, 'REVIEW_FAILED', 'Gagal memuat hasil ulasan');
+    }
+
+    const { patient_id: _patientId, ...reviewData } = review as PeerReviewEntity;
+
     return NextResponse.json(
       {
         success: true,
-        data: review as PeerReviewEntity,
+        data: reviewData,
       },
       { status: 200 }
     );

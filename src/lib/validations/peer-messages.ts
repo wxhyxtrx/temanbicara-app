@@ -145,6 +145,7 @@ export interface PeerMessageEntity {
   id: string;
   ticket_id: string;
   sender_id: string;
+  sender_role: 'patient' | 'relawan';
   kind: PeerMessageKind;
   body: string | null;
   media_path: string | null;
@@ -155,8 +156,8 @@ export interface PeerMessageEntity {
 export interface PeerMessageView {
   id: string;
   ticket_id: string;
-  sender_id: string;
-  sender_role: 'pasien' | 'relawan';
+  sender_id?: string;
+  sender_role: 'patient' | 'relawan' | 'pasien';
   sender_name: string;
   is_mine: boolean;
   kind: PeerMessageKind;

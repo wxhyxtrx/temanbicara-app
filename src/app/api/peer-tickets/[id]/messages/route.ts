@@ -91,14 +91,20 @@ export async function GET(
     const rawMessages = (messagesRes.data || []) as PeerMessageEntity[];
 
     const messagesView: PeerMessageView[] = rawMessages.map((msg) => {
-      const isMsgFromRelawan = msg.sender_id === ticket.claimed_by;
+      const isRelawan = msg.sender_role
+        ? msg.sender_role === 'relawan'
+        : msg.sender_id === ticket.claimed_by;
+      const role: 'patient' | 'relawan' = msg.sender_role
+        ? (msg.sender_role as 'patient' | 'relawan')
+        : (isRelawan ? 'relawan' : 'patient');
+      const isMine = msg.sender_id === user.id;
+
       return {
         id: msg.id,
         ticket_id: msg.ticket_id,
-        sender_id: msg.sender_id,
-        sender_role: isMsgFromRelawan ? 'relawan' : 'pasien',
-        sender_name: isMsgFromRelawan ? relawanName : patientName,
-        is_mine: msg.sender_id === user.id,
+        sender_role: role,
+        sender_name: role === 'relawan' ? relawanName : patientName,
+        is_mine: isMine,
         kind: msg.kind,
         body: msg.body,
         media_path: msg.media_path,
@@ -276,11 +282,12 @@ export async function POST(
       senderName = relawanProfile?.alias_name?.trim() || 'Pendengar Sebaya';
     }
 
+    const role: 'patient' | 'relawan' = insertedEntity.sender_role || (isRelawan ? 'relawan' : 'patient');
+
     const responseView: PeerMessageView = {
       id: insertedEntity.id,
       ticket_id: insertedEntity.ticket_id,
-      sender_id: insertedEntity.sender_id,
-      sender_role: isRelawan ? 'relawan' : 'pasien',
+      sender_role: role,
       sender_name: senderName,
       is_mine: true,
       kind: insertedEntity.kind,
