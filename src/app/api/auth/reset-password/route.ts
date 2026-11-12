@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { resetPasswordApiSchema } from '@/lib/validations/auth';
+import { revokeUserSessions } from '@/lib/auth/revoke-sessions';
 import {
   checkRateLimit,
   getClientIp,
@@ -158,6 +159,8 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+
+    await revokeUserSessions(user.id);
 
     return NextResponse.json({
       success: true,

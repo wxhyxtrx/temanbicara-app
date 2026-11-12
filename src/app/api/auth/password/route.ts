@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser } from '@/lib/auth/session';
 import { getPasswordStatus } from '@/lib/auth/password';
+import { revokeUserSessions } from '@/lib/auth/revoke-sessions';
 import { passwordFormSchema } from '@/lib/validations/auth';
 import { setSessionCookies, clearSessionCookies, SESSION_MAX_AGE } from '@/lib/auth/session-cookies';
 
@@ -161,6 +162,9 @@ export async function POST(req: Request) {
     if (updateError) {
       throw updateError;
     }
+
+    // Helper mencatat kegagalan; password sudah berubah, tetap lanjut login ulang.
+    await revokeUserSessions(session.user.id);
 
     const mode = hasPassword ? 'change' : 'create';
 

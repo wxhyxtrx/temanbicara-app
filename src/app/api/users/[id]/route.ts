@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail, displayName } from '@/lib/auth/session';
 import { normalizePhone } from '@/lib/validations/phone';
+import { revokeUserSessions } from '@/lib/auth/revoke-sessions';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = [
@@ -346,18 +347,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     let sessionRevoked: boolean | null = null;
     if (isBlockingStatusTransition) {
-      try {
-        const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(id, 'global');
-        if (signOutError) {
-          sessionRevoked = false;
-          console.warn('[USERS_PATCH_SIGN_OUT_WARN]: Gagal mencabut sesi global pengguna:', signOutError.message);
-        } else {
-          sessionRevoked = true;
-        }
-      } catch (signOutErr: unknown) {
-        sessionRevoked = false;
-        console.warn('[USERS_PATCH_SIGN_OUT_ERROR]: Exception saat mencabut sesi global pengguna:', signOutErr);
-      }
+      sessionRevoked = await revokeUserSessions(targetUser.id);
     }
 
     const responseMessage =
