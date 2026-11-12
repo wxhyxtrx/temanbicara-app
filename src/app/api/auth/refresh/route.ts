@@ -6,25 +6,20 @@ import { setSessionCookies, clearSessionCookies, SESSION_MAX_AGE } from '@/lib/a
 /**
  * POST /api/auth/refresh
  * Menukar refresh token yang tersimpan di cookie httpOnly tb_refresh_token
- * (atau dikirimkan melalui body) menggunakan supabase auth.refreshSession.
+ * menggunakan supabase auth.refreshSession.
  * Memperbarui cookie tb_access_token dan tb_refresh_token baru.
  */
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const cookieStore = await cookies();
-    let refreshToken = cookieStore.get('tb_refresh_token')?.value;
-
-    if (!refreshToken) {
-      const body = await req.json().catch(() => null);
-      refreshToken = body?.refresh_token;
-    }
+    const refreshToken = cookieStore.get('tb_refresh_token')?.value;
 
     if (!refreshToken) {
       return NextResponse.json(
         {
           success: false,
           error: 'MISSING_REFRESH_TOKEN',
-          message: 'Refresh token tidak ditemukan di cookie maupun request body',
+          message: 'Refresh token tidak ditemukan di cookie',
         },
         { status: 401 }
       );
