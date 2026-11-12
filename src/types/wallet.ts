@@ -1,6 +1,6 @@
 import type { UserRole } from './database';
 
-export type PaymentStatus = 'pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'refund';
+export type PaymentStatus = 'pending' | 'settlement' | 'deny' | 'expire' | 'cancel' | 'refund' | 'chargeback';
 export type PayoutStatus = 'requested' | 'paid' | 'rejected';
 export type LedgerAccount =
   | 'patient_coins'

@@ -9,6 +9,7 @@ import type { UserEntity, UserRole } from '@/types/database';
 import type {
   AdminPayoutItem,
   LedgerEntryEntity,
+  PaymentStatus,
   PayoutRequestEntity,
   PayoutStatus,
   TopupOrderEntity,
@@ -347,8 +348,12 @@ export class WalletService {
   /**
    * Menangani webhook notifikasi Midtrans secara atomik dan idempoten.
    */
-  public static async handleMidtransWebhook(payload: Record<string, unknown>): Promise<{ success: boolean; message: string }> {
-    if (!supabaseAdmin) {
+  public static async handleMidtransWebhook(
+    payload: Record<string, unknown>,
+    client: typeof supabaseAdmin = supabaseAdmin
+  ): Promise<{ success: boolean; message: string }> {
+    const db = client ?? supabaseAdmin;
+    if (!db) {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
     }
 
@@ -385,7 +390,7 @@ export class WalletService {
     }
 
     // Cek apakah order ada di DB
-    const { data: order, error: orderErr } = await supabaseAdmin
+    const { data: order, error: orderErr } = await db
       .from('topup_orders')
       .select('id, order_id, amount_rupiah, status')
       .eq('order_id', orderId)
@@ -400,7 +405,7 @@ export class WalletService {
 
     // Evaluasi status pembayaran
     if (transactionStatus === 'settlement' || (transactionStatus === 'capture' && fraudStatus === 'accept')) {
-      const { data: settled, error: rpcErr } = await supabaseAdmin.rpc('topup_settle', {
+      const { data: settled, error: rpcErr } = await db.rpc('topup_settle', {
         p_order_id: orderId,
         p_provider_reference: transactionId,
         p_paid_amount_rupiah: paidRupiah,
@@ -421,7 +426,7 @@ export class WalletService {
     }
 
     if (transactionStatus === 'deny' || transactionStatus === 'expire' || transactionStatus === 'cancel') {
-      const { error: failErr } = await supabaseAdmin.rpc('topup_fail', {
+      const { error: failErr } = await db.rpc('topup_fail', {
         p_order_id: orderId,
         p_status: transactionStatus,
         p_provider_reference: transactionId,
@@ -434,6 +439,46 @@ export class WalletService {
       return {
         success: true,
         message: `Order marked as ${transactionStatus}`,
+      };
+    }
+
+    if (transactionStatus === 'refund' || transactionStatus === 'partial_refund' || transactionStatus === 'chargeback') {
+      const targetStatus: PaymentStatus = transactionStatus === 'chargeback' ? 'chargeback' : 'refund';
+
+      // Idempoten: jika order sudah memiliki target status, kembalikan respon sukses tanpa update ulang
+      if (order.status === targetStatus) {
+        return {
+          success: true,
+          message: `Order already marked as ${targetStatus}`,
+        };
+      }
+
+      // Perbarui status pesanan tanpa mengubah saldo koin pasien (keputusan Q1 Opsi B)
+      const { error: updateErr } = await db
+        .from('topup_orders')
+        .update({
+          status: targetStatus,
+          provider_reference: transactionId,
+        })
+        .eq('order_id', orderId);
+
+      if (updateErr) {
+        console.error('Error updating topup order status for refund/chargeback:', {
+          order_id: orderId,
+          status: targetStatus,
+        });
+        throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memperbarui status pesanan');
+      }
+
+      console.log('[MIDTRANS_WEBHOOK_STATUS_UPDATE]', {
+        order_id: orderId,
+        status: targetStatus,
+        transaction_status: transactionStatus,
+      });
+
+      return {
+        success: true,
+        message: `Order marked as ${targetStatus}`,
       };
     }
 
