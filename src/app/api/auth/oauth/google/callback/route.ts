@@ -4,6 +4,14 @@ import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { signRole } from '@/lib/auth/role-cookie';
 
+const ROLLBACK_MAX_AGE_MS = 5 * 60 * 1000;
+
+// Hapus auth user hanya jika baris public.users terbukti tidak ada DAN akun < 5 menit.
+function canRollbackAuthUser(rowAbsent: boolean, createdAt: string | undefined, now: number): boolean {
+  const created = createdAt ? new Date(createdAt).getTime() : NaN;
+  return rowAbsent && Number.isFinite(created) && now - created < ROLLBACK_MAX_AGE_MS;
+}
+
 export async function GET(req: Request) {
   const requestUrl = new URL(req.url);
   const code = requestUrl.searchParams.get('code');
@@ -98,12 +106,36 @@ export async function GET(req: Request) {
       authUser.user_metadata?.picture ||
       null;
 
-    // 2. Cek apakah user sudah ada di public.users
-    const { data: existingUser } = await supabaseAdmin
+    // 2. Cek user lama: by id dulu, lalu by email (dibandingkan lowercase di JS).
+    // Query error != not found: jangan pernah lanjut ke jalur user baru (bisa berujung deleteUser).
+    const internalError = (stage: string, err: { code?: string; message?: string }) => {
+      console.error('[OAUTH_USER_LOOKUP_FAILED]', { stage, code: err.code, message: err.message });
+      return NextResponse.redirect(`${origin}/login?error=OAUTH_INTERNAL_ERROR`);
+    };
+
+    const byId = await supabaseAdmin
       .from('users')
       .select('id, role, status')
-      .eq('email', email)
+      .eq('id', authUser.id)
       .maybeSingle();
+    if (byId.error) return internalError('by_id', byId.error);
+
+    let existingUser: { id: string; role: string; status: string } | null = byId.data;
+    if (!existingUser) {
+      const emailLower = email.toLowerCase();
+      // Escape wildcard ILIKE (%, _, \) lalu verifikasi ulang persis di JS.
+      const pattern = emailLower.replace(/[\\%_]/g, (c) => `\\${c}`);
+      const byEmail = await supabaseAdmin
+        .from('users')
+        .select('id, role, status, email')
+        .ilike('email', pattern)
+        .limit(5);
+      if (byEmail.error) return internalError('by_email', byEmail.error);
+      const match = (byEmail.data ?? []).find(
+        (u: { email: string | null }) => (u.email ?? '').toLowerCase() === emailLower
+      );
+      existingUser = match ? { id: match.id, role: match.role, status: match.status } : null;
+    }
 
     if (existingUser) {
       // Akun ditangguhkan / ditolak: tetap pasang session, middleware membatasi ke /status
@@ -153,12 +185,25 @@ export async function GET(req: Request) {
       );
     }
 
-    // 3. User BARU: jika insert gagal, hapus auth user (cascade ke public.users) agar tidak jadi akun zombie
-    const failNewUser = async (insertError: unknown) => {
-      console.error('[OAUTH NEW USER INSERT FAILED]:', insertError);
+    // 3. User BARU: jika insert gagal, hapus auth user HANYA bila baris public.users terbukti
+    // tidak ada DAN akun auth berumur < 5 menit. Selain itu: signOut saja, tanpa delete.
+    const failNewUser = async (insertError: { code?: string; message?: string }) => {
+      console.error('[OAUTH NEW USER INSERT FAILED]', { code: insertError.code, message: insertError.message });
+      const recheck = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('id', authUser.id)
+        .maybeSingle();
+      const rowAbsent = !recheck.error && !recheck.data;
       await supabaseServer.auth.signOut();
+      if (!canRollbackAuthUser(rowAbsent, authUser.created_at, Date.now())) {
+        console.error('[OAUTH_FAIL_NEW_USER_SANITIZED]', {
+          reason: recheck.error ? 'recheck_error' : rowAbsent ? 'account_too_old' : 'row_exists',
+        });
+        return NextResponse.redirect(`${origin}/login?error=OAUTH_INTERNAL_ERROR`);
+      }
       const { error: rollbackError } = await supabaseAdmin.auth.admin.deleteUser(authUser.id);
-      if (rollbackError) console.error('[OAUTH ROLLBACK FAILED]:', rollbackError);
+      if (rollbackError) console.error('[OAUTH ROLLBACK FAILED]', { message: rollbackError.message });
       return NextResponse.redirect(`${origin}/login?error=OAUTH_INTERNAL_ERROR`);
     };
 
@@ -204,3 +249,20 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${origin}/login?error=OAUTH_INTERNAL_ERROR`);
   }
 }
+
+/* @self-test — T-203 cabang rollback OAuth (manual; ponytail: upgrade ke test runner bila proyek memasangnya)
+ *
+ * A. User lama via id: byId.data ada -> masuk blok `if (existingUser)` -> redirect sesuai role/status.
+ *    failNewUser tidak terjangkau -> deleteUser TIDAK dipanggil. (Sama untuk user lama via email.)
+ * B. Query error: byId.error / byEmail.error -> internalError() -> /login?error=OAUTH_INTERNAL_ERROR,
+ *    return sebelum signOut/deleteUser/insert -> deleteUser & signOut TIDAK dipanggil.
+ * C. User baru + insert gagal -> failNewUser: recheck public.users by id, lalu canRollbackAuthUser():
+ *    const now = Date.parse('2026-11-12T09:10:00Z');
+ *    canRollbackAuthUser(true,  '2026-11-12T09:06:00Z', now) === true   // umur 4 menit, baris tidak ada -> delete
+ *    canRollbackAuthUser(true,  '2026-11-12T09:05:00Z', now) === false  // umur tepat 5 menit -> tanpa delete
+ *    canRollbackAuthUser(true,  '2025-01-01T00:00:00Z', now) === false  // akun lama -> tanpa delete
+ *    canRollbackAuthUser(false, '2026-11-12T09:09:00Z', now) === false  // baris ada / recheck error -> tanpa delete
+ *    canRollbackAuthUser(true,  undefined, now)              === false  // created_at tidak valid -> tanpa delete
+ *    Cabang false: signOut + log '[OAUTH_FAIL_NEW_USER_SANITIZED]' (tanpa email/nama) + redirect, tanpa delete.
+ *    Catatan: gagal insert pasien_profiles terjadi setelah baris users ada -> recheck menemukan baris -> tanpa delete.
+ */
