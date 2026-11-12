@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getMaintenanceStatus } from '@/lib/maintenance';
 import { registerPsikologSchema } from '@/lib/validations/auth';
+import { validateMitraDocument } from '@/lib/validations/mitra-documents';
 import { normalizePhone } from '@/lib/validations/phone';
 import {
   checkRateLimit,
@@ -58,7 +59,27 @@ export async function POST(req: Request) {
       tarif_sesi,
     } = parsed.data;
 
-    // 2. Cek duplikasi email
+    // 2. Validasi kepemilikan dan integritas dokumen pendaftaran
+    const docValidation = await validateMitraDocument(
+      email,
+      dokumen_sipp_str_url,
+      'sipp_str',
+      'psikolog_profiles',
+      'dokumen_sipp_str_url'
+    );
+
+    if (!docValidation.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'INVALID_DOCUMENT',
+          message: docValidation.reason,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 3. Cek duplikasi email
     const { data: existingEmail } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -76,7 +97,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Cek keunikan nomor SIPP/STR
+    // 4. Cek keunikan nomor SIPP/STR
     const { data: existingSipp } = await supabaseAdmin
       .from('psikolog_profiles')
       .select('user_id')
@@ -94,7 +115,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Buat akun di Supabase Auth
+    // 5. Buat akun di Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -120,7 +141,7 @@ export async function POST(req: Request) {
     const userId = authData.user.id;
     const normalizedNoWa = normalizePhone(no_wa);
 
-    // 5. Insert public.users dengan status pending_verification
+    // 6. Insert public.users dengan status pending_verification
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: userId,
       email,
@@ -143,7 +164,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 6. Insert profil psikolog
+    // 7. Insert profil psikolog
     const { error: profileError } = await supabaseAdmin.from('psikolog_profiles').insert({
       user_id: userId,
       nama_lengkap_gelar,

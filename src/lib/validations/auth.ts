@@ -2,6 +2,15 @@ import { z } from 'zod';
 
 export const phoneRegex = /^(\+62|62|0)8[1-9][0-9]{6,11}$/;
 
+// PRD-048: Sanitasi prefix email dan regex key dokumen pendaftaran mitra
+export function sanitizeEmailPrefix(email: string): string {
+  return email.trim().toLowerCase().replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+export function buildDocumentKeyRegex(prefix: string, docType: 'sipp_str' | 'cv'): RegExp {
+  return new RegExp(`^${prefix}/(${docType})-[a-f0-9-]{36}\\.pdf$`);
+}
+
 // 1. REGISTER PASIEN
 export const registerPasienSchema = z
   .object({

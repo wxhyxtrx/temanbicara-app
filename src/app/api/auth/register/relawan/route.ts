@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getMaintenanceStatus } from '@/lib/maintenance';
 import { registerRelawanSchema } from '@/lib/validations/auth';
+import { validateMitraDocument } from '@/lib/validations/mitra-documents';
 import { normalizePhone } from '@/lib/validations/phone';
 import {
   checkRateLimit,
@@ -57,7 +58,27 @@ export async function POST(req: Request) {
       topik_keahlian,
     } = parsed.data;
 
-    // 2. Cek duplikasi email
+    // 2. Validasi kepemilikan dan integritas dokumen pendaftaran
+    const docValidation = await validateMitraDocument(
+      email,
+      dokumen_cv_url,
+      'cv',
+      'relawan_profiles',
+      'dokumen_cv_url'
+    );
+
+    if (!docValidation.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'INVALID_DOCUMENT',
+          message: docValidation.reason,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 3. Cek duplikasi email
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -75,7 +96,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Buat akun auth
+    // 4. Buat akun auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -101,7 +122,7 @@ export async function POST(req: Request) {
     const userId = authData.user.id;
     const normalizedNoWa = normalizePhone(no_wa);
 
-    // 4. Insert entitas public.users dengan status pending_approval
+    // 5. Insert entitas public.users dengan status pending_approval
     const { error: userError } = await supabaseAdmin.from('users').insert({
       id: userId,
       email,
@@ -124,7 +145,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 5. Insert profil relawan
+    // 6. Insert profil relawan
     const { error: profileError } = await supabaseAdmin.from('relawan_profiles').insert({
       user_id: userId,
       nama_lengkap,
