@@ -3,7 +3,7 @@ export type PeerMessageKind = 'text' | 'image' | 'voice';
 export interface PeerMessageEntity {
   id: string;
   ticket_id: string;
-  sender_id: string;
+  sender_id?: string;
   sender_role: 'patient' | 'relawan';
   kind: PeerMessageKind;
   body: string | null;

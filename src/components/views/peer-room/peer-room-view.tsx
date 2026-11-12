@@ -229,12 +229,11 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
             setMessages((prev) => {
               if (prev.some((m) => m.id === newRow.id)) return prev;
               const currentTicket = ticketRef.current;
-              const isMine = newRow.sender_id === userRef.current?.id;
-              const isRelawan = newRow.sender_id === currentTicket?.claimed_by;
+              const isMine = role === "pasien" ? newRow.sender_role === "patient" : newRow.sender_role === "relawan";
+              const isRelawan = newRow.sender_role === "relawan";
               const newMsgView: PeerMessageView = {
                 id: newRow.id,
                 ticket_id: newRow.ticket_id,
-                sender_id: newRow.sender_id,
                 sender_role: isRelawan ? "relawan" : "pasien",
                 sender_name: isRelawan
                   ? currentTicket?.relawan_alias || "Pendengar Sebaya"
