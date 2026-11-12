@@ -1,7 +1,118 @@
+import crypto from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { WalletHttpError } from '@/services/wallet.service';
 import type { UserEntity } from '@/types/database';
 import type { TopupOrderEntity } from '@/types/wallet';
+
+/**
+ * Bandingkan dua string dengan timingSafeEqual yang aman terhadap perbedaan panjang.
+ * Menggunakan digest SHA-256 (panjang 32 byte tetap) agar buffer selalu identik ukurannya.
+ */
+export function safeTimingCompare(a: string, b: string): boolean {
+  const hashA = crypto.createHash('sha256').update(Buffer.from(a, 'utf8')).digest();
+  const hashB = crypto.createHash('sha256').update(Buffer.from(b, 'utf8')).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
+
+export interface ReconcileStaleSummary {
+  success: boolean;
+  scanned: number;
+  reconciled: number;
+  settled: number;
+  failed: number;
+  pending: number;
+  errors: number;
+}
+
+export interface MidtransStatusResponse {
+  transaction_status?: string;
+  fraud_status?: string;
+  gross_amount?: string;
+  transaction_id?: string;
+  status_code?: string;
+  status_message?: string;
+  [key: string]: unknown;
+}
+
+export interface ReconcileStaleFetchResponse {
+  ok: boolean;
+  status: number;
+  json: () => Promise<MidtransStatusResponse>;
+}
+
+export type ReconcileStatusFetcher = (
+  orderId: string,
+  serverKey: string,
+  isProduction: boolean
+) => Promise<ReconcileStaleFetchResponse>;
+
+export interface ReconcileStaleDbClient {
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        lte: (column: string, value: string) => {
+          order: (column: string, options: { ascending: boolean }) => {
+            limit: (count: number) => Promise<{
+              data: Array<{
+                id: string;
+                order_id: string;
+                patient_id: string;
+                coins: number | string;
+                amount_rupiah: number | string;
+                status: string;
+                provider_reference: string | null;
+                settled_at: string | null;
+                created_at: string;
+                expires_at?: string | null;
+                snap_redirect_url?: string | null;
+              }> | null;
+              error: { message: string } | null;
+            }>;
+          };
+        };
+      };
+    };
+  };
+  rpc: (
+    fn: string,
+    args: Record<string, unknown>
+  ) => Promise<{ data?: unknown; error: { message: string; code?: string } | null }>;
+}
+
+export interface ReconcileStaleOptions {
+  dbClient?: ReconcileStaleDbClient;
+  statusFetcher?: ReconcileStatusFetcher;
+  nowMs?: number;
+  serverKey?: string;
+  isProduction?: boolean;
+}
+
+const defaultStatusFetcher: ReconcileStatusFetcher = async (
+  orderId: string,
+  serverKey: string,
+  isProduction: boolean
+): Promise<ReconcileStaleFetchResponse> => {
+  const baseUrl = isProduction
+    ? 'https://api.midtrans.com/v2'
+    : 'https://api.sandbox.midtrans.com/v2';
+  const statusUrl = `${baseUrl}/${encodeURIComponent(orderId)}/status`;
+  const authHeader = 'Basic ' + Buffer.from(serverKey + ':').toString('base64');
+
+  const res = await fetch(statusUrl, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: authHeader,
+    },
+  });
+
+  return {
+    ok: res.ok,
+    status: res.status,
+    json: () => res.json(),
+  };
+};
 
 // Debounce cache: order_id -> timestamp (ms)
 const lastCheckMap = new Map<string, number>();
@@ -172,6 +283,158 @@ export class WalletReconcileService {
       expires_at: currentData.expires_at ?? null,
       snap_redirect_url: snapRedirectUrl,
       reconciled_at: reconciledAt,
+    };
+  }
+
+  /**
+   * Rekonsiliasi batch untuk order top-up berstatus pending yang dibuat > 1 jam lalu tanpa batas 24 jam.
+   * Dijalankan oleh cron job /api/cron/reconcile-stale-topup.
+   */
+  public static async reconcileStaleOrders(
+    batchLimit = 50,
+    options?: ReconcileStaleOptions
+  ): Promise<ReconcileStaleSummary> {
+    const limit = Math.max(1, Math.min(batchLimit, 50));
+    const nowMs = options?.nowMs ?? Date.now();
+    const oneHourAgoIso = new Date(nowMs - 60 * 60 * 1000).toISOString();
+
+    const client = (options?.dbClient ?? supabaseAdmin) as unknown as ReconcileStaleDbClient | null;
+    if (!client) {
+      console.error('[RECONCILE_STALE] Supabase client belum terinisialisasi');
+      return {
+        success: false,
+        scanned: 0,
+        reconciled: 0,
+        settled: 0,
+        failed: 0,
+        pending: 0,
+        errors: 1,
+      };
+    }
+
+    const { data: staleOrders, error: fetchErr } = await client
+      .from('topup_orders')
+      .select('id, order_id, patient_id, coins, amount_rupiah, status, provider_reference, settled_at, created_at, expires_at, snap_redirect_url')
+      .eq('status', 'pending')
+      .lte('created_at', oneHourAgoIso)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+
+    if (fetchErr) {
+      console.error('[RECONCILE_STALE] Gagal memuat pesanan stale:', fetchErr.message);
+      return {
+        success: false,
+        scanned: 0,
+        reconciled: 0,
+        settled: 0,
+        failed: 0,
+        pending: 0,
+        errors: 1,
+      };
+    }
+
+    if (!staleOrders || staleOrders.length === 0) {
+      return {
+        success: true,
+        scanned: 0,
+        reconciled: 0,
+        settled: 0,
+        failed: 0,
+        pending: 0,
+        errors: 0,
+      };
+    }
+
+    const scanned = staleOrders.length;
+    let settled = 0;
+    let failed = 0;
+    let pending = 0;
+    let reconciled = 0;
+    let errors = 0;
+
+    const serverKey = options?.serverKey ?? process.env.PAYMENT_SERVER_KEY;
+    const isProduction = options?.isProduction ?? (process.env.PAYMENT_IS_PRODUCTION === 'true');
+    const fetcher = options?.statusFetcher ?? defaultStatusFetcher;
+
+    for (const order of staleOrders) {
+      try {
+        if (!serverKey) {
+          console.warn('[RECONCILE_STALE] PAYMENT_SERVER_KEY belum dikonfigurasi');
+          errors++;
+          continue;
+        }
+
+        const res = await fetcher(order.order_id, serverKey, isProduction);
+        if (res.ok) {
+          const midtrans = await res.json();
+          const txStatus = String(midtrans.transaction_status ?? '');
+          const fraudStatus = String(midtrans.fraud_status ?? '');
+          const txId = String(midtrans.transaction_id ?? order.order_id);
+          const paidRupiah = Math.round(Number(midtrans.gross_amount ?? '0'));
+
+          // 1. Settlement (atau capture dengan fraud accept) dan nominal cocok -> topup_settle
+          if (txStatus === 'settlement' || (txStatus === 'capture' && fraudStatus === 'accept')) {
+            if (paidRupiah === Number(order.amount_rupiah)) {
+              const { error: rpcErr } = await client.rpc('topup_settle', {
+                p_order_id: order.order_id,
+                p_provider_reference: txId,
+                p_paid_amount_rupiah: paidRupiah,
+              });
+
+              if (rpcErr) {
+                console.error(`[RECONCILE_STALE] RPC topup_settle gagal untuk order ${order.order_id}:`, rpcErr.message);
+                errors++;
+              } else {
+                settled++;
+                reconciled++;
+              }
+            } else {
+              console.warn(`[RECONCILE_STALE] Ketidakcocokan nominal order ${order.order_id}: ekspektasi ${order.amount_rupiah}, terbayar ${paidRupiah}`);
+              errors++;
+            }
+          } else if (txStatus === 'deny' || txStatus === 'expire' || txStatus === 'cancel') {
+            // 2. Deny / Expire / Cancel -> topup_fail
+            const { error: failErr } = await client.rpc('topup_fail', {
+              p_order_id: order.order_id,
+              p_status: txStatus,
+              p_provider_reference: txId,
+            });
+
+            if (failErr) {
+              console.error(`[RECONCILE_STALE] RPC topup_fail gagal untuk order ${order.order_id}:`, failErr.message);
+              errors++;
+            } else {
+              failed++;
+              reconciled++;
+            }
+          } else if (txStatus === 'pending') {
+            // 3. Status pending di Midtrans -> biarkan status DB tetap pending
+            pending++;
+          } else {
+            console.warn(`[RECONCILE_STALE] Status Midtrans tidak ditangani: '${txStatus}' untuk order ${order.order_id}`);
+            pending++;
+          }
+        } else if (res.status === 404) {
+          // 4. Order belum dibuka di Snap Midtrans -> biarkan tetap pending
+          pending++;
+        } else {
+          console.warn(`[RECONCILE_STALE] Midtrans API mengembalikan HTTP ${res.status} untuk order ${order.order_id}`);
+          errors++;
+        }
+      } catch (err: unknown) {
+        console.error(`[RECONCILE_STALE] Kesalahan tak terduga memproses order ${order.order_id}:`, err);
+        errors++;
+      }
+    }
+
+    return {
+      success: true,
+      scanned,
+      reconciled,
+      settled,
+      failed,
+      pending,
+      errors,
     };
   }
 }
