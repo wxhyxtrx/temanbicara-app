@@ -104,13 +104,13 @@ BEGIN
         v_target := v_hold.disputed_amount_rupiah;
 
         -- Porsi 1: potong dari available_rupiah sebatas saldo yang ada
-        v_deduct_avail := pg_catalog.least(v_wallet.available_rupiah, v_target);
+        v_deduct_avail := LEAST(v_wallet.available_rupiah, v_target);
         IF v_deduct_avail < 0 THEN
             v_deduct_avail := 0;
         END IF;
 
         -- Porsi 2: sisa target dipotong dari pending_rupiah sebatas saldo yang ada
-        v_deduct_pending := pg_catalog.least(v_wallet.pending_rupiah, v_target - v_deduct_avail);
+        v_deduct_pending := LEAST(v_wallet.pending_rupiah, v_target - v_deduct_avail);
         IF v_deduct_pending < 0 THEN
             v_deduct_pending := 0;
         END IF;
