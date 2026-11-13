@@ -80,3 +80,20 @@ export interface PaginationMeta {
   total: number;
   totalPages: number;
 }
+
+export type DisputedHoldStatus = 'active' | 'cleared' | 'deducted';
+
+export interface DisputedPayoutHoldEntity {
+  id: string;
+  topup_order_id: string;
+  mitra_id: string;
+  source_type: 'session' | 'extension' | 'tip';
+  source_id: string;
+  disputed_amount_rupiah: number;
+  status: DisputedHoldStatus;
+  reason: string;
+  created_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+}
+
