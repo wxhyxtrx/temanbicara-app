@@ -32,30 +32,64 @@ export class WalletHttpError extends Error {
 
 export class WalletService {
   /**
-   * Mengambil saldo dompet pengguna aktif.
+   * Mengambil saldo dompet pengguna aktif beserta saldo tertahan sengketa (held_rupiah).
    */
-  public static async getWalletInfo(userId: string, role: UserRole): Promise<WalletInfoResponse> {
-    if (!supabaseAdmin) {
+  public static async getWalletInfo(
+    userId: string,
+    role: UserRole | string,
+    client: typeof supabaseAdmin = supabaseAdmin
+  ): Promise<WalletInfoResponse> {
+    const db = client ?? supabaseAdmin;
+    if (!db) {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('wallets')
-      .select('coin_balance, pending_rupiah, available_rupiah, updated_at')
-      .eq('user_id', userId)
-      .maybeSingle();
+    const isMitra =
+      role === 'psikolog' ||
+      role === 'relawan' ||
+      role === 'counselor' ||
+      role === 'peer_listener';
 
-    if (error) {
-      console.error('Error fetching wallet info:', error);
+    const [walletRes, holdsRes] = await Promise.all([
+      db
+        .from('wallets')
+        .select('coin_balance, pending_rupiah, available_rupiah, updated_at')
+        .eq('user_id', userId)
+        .maybeSingle(),
+      isMitra
+        ? db
+            .from('disputed_payout_holds')
+            .select('disputed_amount_rupiah')
+            .eq('mitra_id', userId)
+            .eq('status', 'active')
+        : Promise.resolve({ data: [] as Array<{ disputed_amount_rupiah: number | string }>, error: null }),
+    ]);
+
+    if (walletRes.error) {
+      console.error('Error fetching wallet info:', walletRes.error);
       throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memuat saldo dompet');
     }
 
+    if (holdsRes.error) {
+      console.error('Error fetching disputed holds for wallet info:', holdsRes.error);
+      throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memuat status sengketa saldo dompet');
+    }
+
+    const held_rupiah = isMitra
+      ? (holdsRes.data ?? []).reduce(
+          (sum: number, row: { disputed_amount_rupiah: number | string }) =>
+            sum + Number(row.disputed_amount_rupiah ?? 0),
+          0
+        )
+      : 0;
+
     return {
-      role,
-      coin_balance: Number(data?.coin_balance ?? 0),
-      pending_rupiah: Number(data?.pending_rupiah ?? 0),
-      available_rupiah: Number(data?.available_rupiah ?? 0),
-      updated_at: data?.updated_at ?? new Date().toISOString(),
+      role: role as UserRole,
+      coin_balance: Number(walletRes.data?.coin_balance ?? 0),
+      pending_rupiah: Number(walletRes.data?.pending_rupiah ?? 0),
+      available_rupiah: Number(walletRes.data?.available_rupiah ?? 0),
+      held_rupiah,
+      updated_at: walletRes.data?.updated_at ?? new Date().toISOString(),
     };
   }
 

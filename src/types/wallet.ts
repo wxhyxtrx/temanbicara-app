@@ -23,6 +23,7 @@ export interface WalletInfoResponse {
   coin_balance: number;
   pending_rupiah: number;
   available_rupiah: number;
+  held_rupiah: number;
   updated_at: string;
 }
 
