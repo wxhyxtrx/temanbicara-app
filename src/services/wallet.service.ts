@@ -447,7 +447,7 @@ export class WalletService {
 
       // 1. Kondisi retry / duplikat dari Midtrans (order sudah memiliki target status)
       if (order.status === targetStatus) {
-        // Tetap memanggil RPC create_dispute_holds jika fungsi tersedia (idempoten via ON CONFLICT DO NOTHING)
+        // Tetap memanggil RPC create_dispute_holds jika fungsi tersedia (idempoten via ON CONFLICT DO NOTHING - PRD-050 / T-215)
         try {
           const { error: rpcHoldErr } = await db.rpc('create_dispute_holds', {
             p_topup_order_id: order.id,
@@ -460,7 +460,7 @@ export class WalletService {
             });
           }
         } catch {
-          // Graceful: abaikan jika fungsi RPC belum terpasang atau terjadi error jaringan
+          // Graceful: abaikan jika fungsi RPC belum terpasang atau terjadi error jaringan (PRD-050 / T-215)
         }
 
         return {

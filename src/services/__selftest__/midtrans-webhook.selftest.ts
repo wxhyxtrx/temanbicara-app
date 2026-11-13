@@ -721,7 +721,96 @@ export async function runSelfTests(): Promise<boolean> {
       );
     }
 
-    console.log('[SELFTEST] SEMUA PENGUJIAN T-214 LULUS DENGAN SUKSES.');
+    // ========================================================
+    // UJI 13: RPC Exception/Network Error Tidak Menyebabkan Crash (HTTP 200 Graceful)
+    // ========================================================
+    {
+      const orderId = 'topup-rpc-throw-013';
+      const statusCode = '200';
+      const grossAmount = '100000.00';
+      const signatureKey = computeMidtransSignature(orderId, statusCode, grossAmount, DUMMY_SERVER_KEY);
+
+      const mock = createMockDbClient({
+        initialOrder: {
+          id: 'ord-throw-13',
+          order_id: orderId,
+          amount_rupiah: 100000,
+          status: 'settlement',
+          provider_reference: 'prev-tx-13',
+        },
+        rpcHandler: () => {
+          // Simulasikan database throw exception jaringan tak terduga
+          throw new Error('Supabase network connection terminated');
+        },
+      });
+
+      const payload = {
+        order_id: orderId,
+        status_code: statusCode,
+        gross_amount: grossAmount,
+        signature_key: signatureKey,
+        transaction_status: 'refund',
+        transaction_id: 'tx-refund-throw-13',
+      };
+
+      // Webhook tidak boleh throw atau crash meskipun RPC melempar exception keras
+      const result = await WalletService.handleMidtransWebhook(payload, mock.client);
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.message, 'Order marked as refund');
+      assert.strictEqual(mock.getOrder()?.status, 'refund');
+      console.log(
+        '✓ UJI 13 LULUS: Kegagalan eksepsi keras pada RPC create_dispute_holds ditangani graceful (tidak crash/500)'
+      );
+    }
+
+    // ========================================================
+    // UJI 14: Validasi Presisi Parameter RPC create_dispute_holds (T-215)
+    // ========================================================
+    {
+      const orderId = 'topup-rpc-param-014';
+      const statusCode = '200';
+      const grossAmount = '100000.00';
+      const signatureKey = computeMidtransSignature(orderId, statusCode, grossAmount, DUMMY_SERVER_KEY);
+
+      let capturedArgs: unknown = null;
+      const mock = createMockDbClient({
+        initialOrder: {
+          id: '11111111-2222-3333-4444-555555555555',
+          order_id: orderId,
+          amount_rupiah: 100000,
+          status: 'settlement',
+          provider_reference: 'prev-tx-14',
+        },
+        rpcHandler: (fn: string, args: unknown) => {
+          if (fn === 'create_dispute_holds') {
+            capturedArgs = args;
+            return { data: 2, error: null }; // 2 hold berhasil dibuat
+          }
+          return { data: true, error: null };
+        },
+      });
+
+      const payload = {
+        order_id: orderId,
+        status_code: statusCode,
+        gross_amount: grossAmount,
+        signature_key: signatureKey,
+        transaction_status: 'chargeback',
+        transaction_id: 'tx-cb-param-14',
+      };
+
+      const result = await WalletService.handleMidtransWebhook(payload, mock.client);
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.message, 'Order marked as chargeback');
+      assert.deepStrictEqual(capturedArgs, {
+        p_topup_order_id: '11111111-2222-3333-4444-555555555555',
+      });
+      console.log(
+        '✓ UJI 14 LULUS: Parameter RPC create_dispute_holds tepat memuat p_topup_order_id dengan UUID pesanan'
+      );
+    }
+
+    console.log('[SELFTEST] SEMUA PENGUJIAN T-214 & T-215 LULUS DENGAN SUKSES.');
     return true;
   } finally {
     process.env.PAYMENT_SERVER_KEY = originalServerKey;
