@@ -13,6 +13,7 @@ import {
   Headphones,
   BookOpen,
   ShieldCheck,
+  ShieldAlert,
   FileCheck2,
   SlidersHorizontal,
   AlertTriangle,
@@ -218,6 +219,12 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         description: "Audit koin & pembayaran",
         url: "/admin/transactions",
         icon: History,
+      },
+      {
+        title: "Sengketa Payout",
+        description: "Resolusi penahanan & sengketa pencairan dana",
+        url: "/admin/sengketa",
+        icon: ShieldAlert,
       },
       {
         title: "Pengaturan Sistem",
