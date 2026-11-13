@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { WalletHttpError } from '@/services/wallet.service';
-import type { UserEntity } from '@/types/database';
-import type { DisputedHoldStatus, DisputedPayoutHoldEntity } from '@/types/wallet';
+import type { UserEntity, UserRole } from '@/types/database';
+import type { DisputedHoldStatus, DisputedPayoutHoldEntity, DisputedPayoutHoldItem } from '@/types/wallet';
 
 type DbClient = typeof supabaseAdmin;
 
@@ -54,6 +54,57 @@ function toEntity(row: Record<string, unknown>): DisputedPayoutHoldEntity {
   };
 }
 
+interface IdRow { id: string }
+interface UserRoleRow extends IdRow { role: UserRole }
+interface PsikologNameRow { user_id: string; nama_lengkap_gelar: string }
+interface RelawanNameRow { user_id: string; nama_lengkap: string }
+interface TopupRefRow extends IdRow { order_id: string; status: string }
+
+/**
+ * Batch enrichment (4 query paralel, tanpa N+1): nama & peran mitra, referensi & status topup.
+ * Kolom dipilih eksplisit: tidak ada email, no_wa, atau data rekening bank.
+ * Gagal enrichment tidak menggagalkan listing; item dikembalikan tanpa field opsional.
+ */
+async function enrichHolds(db: NonNullable<DbClient>, items: DisputedPayoutHoldEntity[]): Promise<DisputedPayoutHoldItem[]> {
+  if (items.length === 0) return items;
+  const mitraIds = Array.from(new Set(items.map((i) => i.mitra_id)));
+  const topupIds = Array.from(new Set(items.map((i) => i.topup_order_id)));
+
+  try {
+    const [usersRes, psikologRes, relawanRes, topupRes] = await Promise.all([
+      db.from('users').select('id, role').in('id', mitraIds),
+      db.from('psikolog_profiles').select('user_id, nama_lengkap_gelar').in('user_id', mitraIds),
+      db.from('relawan_profiles').select('user_id, nama_lengkap').in('user_id', mitraIds),
+      db.from('topup_orders').select('id, order_id, status').in('id', topupIds),
+    ]);
+    const firstErr = usersRes.error ?? psikologRes.error ?? relawanRes.error ?? topupRes.error;
+    if (firstErr) {
+      console.error('[disputed-holds] enrichment query error:', firstErr.message);
+      return items;
+    }
+
+    const roleMap = new Map(((usersRes.data ?? []) as UserRoleRow[]).map((u) => [u.id, u.role]));
+    const nameMap = new Map<string, string>();
+    for (const p of (psikologRes.data ?? []) as PsikologNameRow[]) nameMap.set(p.user_id, p.nama_lengkap_gelar);
+    for (const r of (relawanRes.data ?? []) as RelawanNameRow[]) nameMap.set(r.user_id, r.nama_lengkap);
+    const topupMap = new Map(((topupRes.data ?? []) as TopupRefRow[]).map((t) => [t.id, t]));
+
+    return items.map((item) => {
+      const topup = topupMap.get(item.topup_order_id);
+      return {
+        ...item,
+        mitra_name: nameMap.get(item.mitra_id),
+        mitra_role: roleMap.get(item.mitra_id),
+        topup_order_ref: topup?.order_id,
+        topup_status: topup?.status,
+      };
+    });
+  } catch {
+    // Fallback bila client mock tidak mengimplementasikan tabel relasi
+    return items;
+  }
+}
+
 export class DisputedPayoutHoldService {
   /**
    * Daftar hold sengketa terpaginasi, filter status (default 'active').
@@ -61,7 +112,7 @@ export class DisputedPayoutHoldService {
   public static async listDisputedHolds(
     options: { status?: DisputedHoldStatus; page: number; limit: number },
     deps?: { client?: DbClient }
-  ): Promise<{ items: DisputedPayoutHoldEntity[]; total: number }> {
+  ): Promise<{ items: DisputedPayoutHoldItem[]; total: number }> {
     const db = deps?.client ?? supabaseAdmin;
     if (!db) {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
@@ -83,7 +134,8 @@ export class DisputedPayoutHoldService {
     }
 
     const rows = (data ?? []) as Record<string, unknown>[];
-    return { items: rows.map(toEntity), total: count ?? 0 };
+    const items = await enrichHolds(db, rows.map(toEntity));
+    return { items, total: count ?? 0 };
   }
 
   /**

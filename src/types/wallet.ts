@@ -90,10 +90,10 @@ export interface DisputedPayoutHoldEntity {
   source_type: 'session' | 'extension' | 'tip';
   source_id: string;
   disputed_amount_rupiah: number;
-  deducted_amount_rupiah: number;
+  deducted_amount_rupiah?: number;
   status: DisputedHoldStatus;
   reason: string;
-  resolution_note: string | null;
+  resolution_note?: string | null;
   created_at: string;
   resolved_at: string | null;
   resolved_by: string | null;
@@ -104,5 +104,7 @@ export interface DisputedPayoutHoldItem extends DisputedPayoutHoldEntity {
   mitra_role?: UserRole;
   topup_order_ref?: string;
   topup_status?: string;
+  resolution_note?: string | null;
+  deducted_amount_rupiah?: number;
 }
 

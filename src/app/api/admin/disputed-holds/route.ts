@@ -10,8 +10,8 @@ import type { DisputedHoldStatus } from '@/types/wallet';
 
 /**
  * GET /api/admin/disputed-holds
- * Daftar penahanan sengketa payout mitra terpaginasi.
- * Dilindungi hak akses admin aktif.
+ * Daftar penahanan sengketa payout mitra terpaginasi dengan pengayaan data mitra & topup order.
+ * Dilindungi hak akses admin aktif; data bebas dari PII sensitif (email, no WA, nomor rekening).
  */
 export async function GET(req: Request) {
   try {
