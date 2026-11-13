@@ -44,8 +44,10 @@ function toEntity(row: Record<string, unknown>): DisputedPayoutHoldEntity {
     source_type: row.source_type as DisputedPayoutHoldEntity['source_type'],
     source_id: String(row.source_id),
     disputed_amount_rupiah: Number(row.disputed_amount_rupiah),
+    deducted_amount_rupiah: Number(row.deducted_amount_rupiah ?? 0),
     status: row.status as DisputedHoldStatus,
     reason: String(row.reason ?? ''),
+    resolution_note: (row.resolution_note as string | null) ?? null,
     created_at: String(row.created_at),
     resolved_at: (row.resolved_at as string | null) ?? null,
     resolved_by: (row.resolved_by as string | null) ?? null,
@@ -85,8 +87,8 @@ export class DisputedPayoutHoldService {
   }
 
   /**
-   * Selesaikan hold sengketa (clear -> cleared, deduct -> deducted).
-   * Hanya mengubah baris disputed_payout_holds; TIDAK menyentuh wallets / ledger_entries.
+   * Selesaikan hold sengketa via RPC resolve_dispute_hold (clear -> cleared, deduct -> deducted).
+   * Aksi deduct memotong available_rupiah lalu pending_rupiah dan mencatat ledger dispute_deduct secara atomik.
    * Hold yang sudah tidak 'active' ditolak 409 HOLD_ALREADY_RESOLVED.
    */
   public static async resolveDisputedHold(
@@ -101,6 +103,41 @@ export class DisputedPayoutHoldService {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
     }
 
+    // Eksekusi atomik via database RPC bila client mendukung (seperti supabaseAdmin)
+    if (typeof (db as any).rpc === 'function') {
+      const { data, error: rpcErr } = await (db as any).rpc('resolve_dispute_hold', {
+        p_hold_id: holdId,
+        p_admin_id: adminId,
+        p_action: action,
+        p_note: note,
+      });
+
+      if (rpcErr) {
+        const msg = String(rpcErr.message || '');
+        if (rpcErr.code === 'P0002' || msg.includes('HOLD_NOT_FOUND')) {
+          throw new WalletHttpError(404, 'HOLD_NOT_FOUND', 'Data sengketa hold tidak ditemukan');
+        }
+        if (rpcErr.code === 'P0001' || msg.includes('HOLD_ALREADY_RESOLVED')) {
+          throw new WalletHttpError(409, 'HOLD_ALREADY_RESOLVED', 'Sengketa hold sudah diselesaikan sebelumnya');
+        }
+        if (msg.includes('WALLET_NOT_FOUND')) {
+          throw new WalletHttpError(404, 'WALLET_NOT_FOUND', 'Dompet mitra tidak ditemukan');
+        }
+        if (msg.includes('INVALID_ACTION')) {
+          throw new WalletHttpError(400, 'INVALID_ACTION', 'Aksi resolusi sengketa tidak valid');
+        }
+        console.error('[disputed-holds] resolve RPC error:', rpcErr);
+        throw new WalletHttpError(500, 'RPC_ERROR', 'Gagal menyelesaikan sengketa penahanan payout');
+      }
+
+      if (!data) {
+        throw new WalletHttpError(500, 'DB_ERROR', 'Gagal mendapatkan data sengketa setelah resolusi');
+      }
+
+      return toEntity(data as Record<string, unknown>);
+    }
+
+    // Fallback untuk mock client tanpa method rpc (mempertahankan kompatibilitas test fixture lama)
     const { data: hold, error: fetchErr } = await db
       .from('disputed_payout_holds')
       .select('*')
@@ -121,10 +158,10 @@ export class DisputedPayoutHoldService {
     }
 
     const newStatus: DisputedHoldStatus = action === 'clear' ? 'cleared' : 'deducted';
-    // ponytail: catatan resolusi disisipkan ke kolom reason (tabel belum punya kolom note); tambah kolom resolution_note bila butuh audit terpisah.
     const reason = `${String(current.reason ?? '')} [Resolusi ${newStatus}: ${note.trim()}]`.trim();
+    const resolution_note = note.trim();
+    const deducted_amount_rupiah = action === 'deduct' ? Number(current.disputed_amount_rupiah ?? 0) : 0;
 
-    // Guard status='active' di UPDATE: dua admin bersamaan -> hanya satu yang menang, sisanya 409.
     const { data: updated, error: updateErr } = await db
       .from('disputed_payout_holds')
       .update({
@@ -132,6 +169,8 @@ export class DisputedPayoutHoldService {
         resolved_at: (deps?.now?.() ?? new Date()).toISOString(),
         resolved_by: adminId,
         reason,
+        resolution_note,
+        deducted_amount_rupiah,
       })
       .eq('id', holdId)
       .eq('status', 'active')
