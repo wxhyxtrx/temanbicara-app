@@ -4,6 +4,10 @@ import { WalletService, WalletHttpError } from '@/services/wallet.service';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * POST /api/admin/payouts/[id]/paid
+ * Menandai payout lunas. Ditolak jika mitra memiliki sengketa penahanan payout aktif (409 PAYOUT_HAS_ACTIVE_DISPUTE).
+ */
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }

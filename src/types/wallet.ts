@@ -70,6 +70,8 @@ export interface PayoutRequestEntity {
 export interface AdminPayoutItem extends PayoutRequestEntity {
   mitra_name?: string;
   mitra_role?: UserRole;
+  has_dispute_hold?: boolean;
+  dispute_hold_amount?: number;
 }
 
 export interface PaginationMeta {

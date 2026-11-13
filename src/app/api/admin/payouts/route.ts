@@ -5,6 +5,10 @@ import type { PayoutStatus } from '@/types/wallet';
 
 const VALID_STATUSES: PayoutStatus[] = ['requested', 'paid', 'rejected'];
 
+/**
+ * GET /api/admin/payouts
+ * Daftar antrean penarikan dana admin, diperkaya status has_dispute_hold & dispute_hold_amount (PRD-050).
+ */
 export async function GET(req: Request) {
   try {
     const session = await getSessionUser();

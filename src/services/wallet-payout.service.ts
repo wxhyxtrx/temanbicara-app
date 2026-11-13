@@ -16,9 +16,14 @@ export class WalletPayoutService {
    */
   public static async requestPayout(
     mitra: UserEntity,
-    input: { amount_rupiah: number; bank_name: string; account_number: string; bank_account_name: string }
+    input: { amount_rupiah: number; bank_name: string; account_number: string; bank_account_name: string },
+    options?: {
+      client?: typeof supabaseAdmin;
+      getProfile?: (mitra: UserEntity) => Promise<Record<string, unknown> | null>;
+    }
   ): Promise<{ payout_id: string; amount_rupiah: number; fee_rupiah: number; total_deducted: number; status: string; requested_at: string }> {
-    if (!supabaseAdmin) {
+    const db = options?.client ?? supabaseAdmin;
+    if (!db) {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
     }
 
@@ -30,7 +35,7 @@ export class WalletPayoutService {
     }
 
     // Validasi nama rekening dengan nama profil terverifikasi (buang gelar, wajib sama persis)
-    const profile = await getRoleProfile(mitra);
+    const profile = options?.getProfile ? await options.getProfile(mitra) : await getRoleProfile(mitra);
     const verifiedName = String(
       (profile?.nama_lengkap_gelar as string | undefined) ??
       (profile?.nama_lengkap as string | undefined) ??
@@ -53,7 +58,7 @@ export class WalletPayoutService {
     }
 
     // Ambil setting payout
-    const { data: settingRow, error: settingErr } = await supabaseAdmin
+    const { data: settingRow, error: settingErr } = await db
       .from('system_settings')
       .select('value')
       .eq('key', 'payout')
@@ -75,9 +80,51 @@ export class WalletPayoutService {
       );
     }
 
+    // Guardrail saldo sengketa (PRD-050 / T-216):
+    // Periksa apakah mitra memiliki penahanan payout sengketa aktif
+    const [walletRes, holdsRes] = await Promise.all([
+      db
+        .from('wallets')
+        .select('available_rupiah')
+        .eq('user_id', mitra.id)
+        .maybeSingle(),
+      db
+        .from('disputed_payout_holds')
+        .select('disputed_amount_rupiah')
+        .eq('mitra_id', mitra.id)
+        .eq('status', 'active'),
+    ]);
+
+    if (walletRes.error) {
+      console.error('Error fetching wallet for payout request:', walletRes.error);
+      throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memverifikasi saldo wallet');
+    }
+    if (holdsRes.error) {
+      console.error('Error fetching disputed holds for payout request:', holdsRes.error);
+      throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memeriksa status sengketa penahanan payout');
+    }
+
+    const currentAvailable = Number(walletRes.data?.available_rupiah ?? 0);
+    const totalHeld = (holdsRes.data ?? []).reduce(
+      (sum: number, row: { disputed_amount_rupiah: number | string }) => sum + Number(row.disputed_amount_rupiah ?? 0),
+      0
+    );
+
+    if (totalHeld > 0) {
+      const withdrawable = Math.max(0, currentAvailable - totalHeld);
+      if (input.amount_rupiah + feeRupiah > withdrawable) {
+        const maxWithdrawAmount = Math.max(0, withdrawable - feeRupiah);
+        throw new WalletHttpError(
+          422,
+          'PAYOUT_HELD_FOR_VERIFICATION',
+          `Sebagian saldo Anda (Rp ${totalHeld.toLocaleString('id-ID')}) sedang dalam status peninjauan verifikasi sengketa transaksi platform. Maksimal pencairan yang dapat diproses saat ini adalah Rp ${maxWithdrawAmount.toLocaleString('id-ID')}.`
+        );
+      }
+    }
+
     const payoutId = crypto.randomUUID();
 
-    const { error: rpcErr } = await supabaseAdmin.rpc('payout_request', {
+    const { error: rpcErr } = await db.rpc('payout_request', {
       p_payout_id: payoutId,
       p_mitra_id: mitra.id,
       p_amount: input.amount_rupiah,
@@ -119,9 +166,11 @@ export class WalletPayoutService {
    */
   public static async getMitraPayouts(
     mitraId: string,
-    options: { page: number; limit: number }
+    options: { page: number; limit: number },
+    client: typeof supabaseAdmin = supabaseAdmin
   ): Promise<{ items: PayoutRequestEntity[]; total: number }> {
-    if (!supabaseAdmin) {
+    const db = client ?? supabaseAdmin;
+    if (!db) {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
     }
 
@@ -129,7 +178,7 @@ export class WalletPayoutService {
     const from = (page - 1) * limit;
     const to = page * limit - 1;
 
-    const { data, error, count } = await supabaseAdmin
+    const { data, error, count } = await db
       .from('payout_requests')
       .select('id, mitra_id, amount_rupiah, fee_rupiah, bank_name, account_number, bank_account_name, status, requested_at, decided_at, decided_by', { count: 'exact' })
       .eq('mitra_id', mitraId)
@@ -165,9 +214,11 @@ export class WalletPayoutService {
    * Daftar antrean pengajuan payout untuk admin.
    */
   public static async getAdminPayouts(
-    options: { status?: PayoutStatus; page: number; limit: number }
+    options: { status?: PayoutStatus; page: number; limit: number },
+    client: typeof supabaseAdmin = supabaseAdmin
   ): Promise<{ items: AdminPayoutItem[]; total: number }> {
-    if (!supabaseAdmin) {
+    const db = client ?? supabaseAdmin;
+    if (!db) {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
     }
 
@@ -175,7 +226,7 @@ export class WalletPayoutService {
     const from = (page - 1) * limit;
     const to = page * limit - 1;
 
-    let query = supabaseAdmin
+    let query = db
       .from('payout_requests')
       .select('id, mitra_id, amount_rupiah, fee_rupiah, bank_name, account_number, bank_account_name, status, requested_at, decided_at, decided_by', { count: 'exact' });
 
@@ -194,11 +245,18 @@ export class WalletPayoutService {
 
     const mitraIds = Array.from(new Set((data ?? []).map((r) => r.mitra_id)));
 
-    // Fetch mitra roles and profiles
-    const [usersRes, psikologRes, relawanRes] = await Promise.all([
-      mitraIds.length > 0 ? supabaseAdmin.from('users').select('id, role').in('id', mitraIds) : { data: [] },
-      mitraIds.length > 0 ? supabaseAdmin.from('psikolog_profiles').select('user_id, nama_lengkap_gelar').in('user_id', mitraIds) : { data: [] },
-      mitraIds.length > 0 ? supabaseAdmin.from('relawan_profiles').select('user_id, nama_lengkap').in('user_id', mitraIds) : { data: [] },
+    // Fetch mitra roles, profiles, and active dispute holds
+    const [usersRes, psikologRes, relawanRes, holdsRes] = await Promise.all([
+      mitraIds.length > 0 ? db.from('users').select('id, role').in('id', mitraIds) : { data: [] },
+      mitraIds.length > 0 ? db.from('psikolog_profiles').select('user_id, nama_lengkap_gelar').in('user_id', mitraIds) : { data: [] },
+      mitraIds.length > 0 ? db.from('relawan_profiles').select('user_id, nama_lengkap').in('user_id', mitraIds) : { data: [] },
+      mitraIds.length > 0
+        ? db
+            .from('disputed_payout_holds')
+            .select('mitra_id, disputed_amount_rupiah')
+            .in('mitra_id', mitraIds)
+            .eq('status', 'active')
+        : { data: [] },
     ]);
 
     const roleMap = new Map((usersRes.data ?? []).map((u) => [u.id, u.role as UserRole]));
@@ -211,21 +269,32 @@ export class WalletPayoutService {
       nameMap.set(r.user_id, r.nama_lengkap);
     }
 
-    const items: AdminPayoutItem[] = (data ?? []).map((row) => ({
-      id: row.id,
-      mitra_id: row.mitra_id,
-      mitra_name: nameMap.get(row.mitra_id) ?? row.bank_account_name,
-      mitra_role: roleMap.get(row.mitra_id),
-      amount_rupiah: Number(row.amount_rupiah),
-      fee_rupiah: Number(row.fee_rupiah),
-      bank_name: row.bank_name,
-      account_number: row.account_number,
-      bank_account_name: row.bank_account_name,
-      status: row.status,
-      requested_at: row.requested_at,
-      decided_at: row.decided_at,
-      decided_by: row.decided_by,
-    }));
+    const holdsMap = new Map<string, number>();
+    for (const hold of (holdsRes.data ?? [])) {
+      const current = holdsMap.get(hold.mitra_id) ?? 0;
+      holdsMap.set(hold.mitra_id, current + Number(hold.disputed_amount_rupiah ?? 0));
+    }
+
+    const items: AdminPayoutItem[] = (data ?? []).map((row) => {
+      const holdAmount = holdsMap.get(row.mitra_id) ?? 0;
+      return {
+        id: row.id,
+        mitra_id: row.mitra_id,
+        mitra_name: nameMap.get(row.mitra_id) ?? row.bank_account_name,
+        mitra_role: roleMap.get(row.mitra_id),
+        amount_rupiah: Number(row.amount_rupiah),
+        fee_rupiah: Number(row.fee_rupiah),
+        bank_name: row.bank_name,
+        account_number: row.account_number,
+        bank_account_name: row.bank_account_name,
+        status: row.status,
+        has_dispute_hold: holdAmount > 0,
+        dispute_hold_amount: holdAmount,
+        requested_at: row.requested_at,
+        decided_at: row.decided_at,
+        decided_by: row.decided_by,
+      };
+    });
 
     return {
       items,
@@ -236,12 +305,17 @@ export class WalletPayoutService {
   /**
    * Admin menolak pengajuan payout & mengembalikan dana ke saldo available mitra.
    */
-  public static async rejectPayout(payoutId: string, adminId: string): Promise<{ payout_id: string; status: 'rejected' }> {
-    if (!supabaseAdmin) {
+  public static async rejectPayout(
+    payoutId: string,
+    adminId: string,
+    client: typeof supabaseAdmin = supabaseAdmin
+  ): Promise<{ payout_id: string; status: 'rejected' }> {
+    const db = client ?? supabaseAdmin;
+    if (!db) {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
     }
 
-    const { error: rpcErr } = await supabaseAdmin.rpc('payout_reject', {
+    const { error: rpcErr } = await db.rpc('payout_reject', {
       p_payout_id: payoutId,
       p_admin_id: adminId,
     });
@@ -269,12 +343,60 @@ export class WalletPayoutService {
   /**
    * Admin mengonfirmasi payout telah dibayarkan ke rekening mitra.
    */
-  public static async markPayoutPaid(payoutId: string, adminId: string): Promise<{ payout_id: string; status: 'paid' }> {
-    if (!supabaseAdmin) {
+  public static async markPayoutPaid(
+    payoutId: string,
+    adminId: string,
+    client: typeof supabaseAdmin = supabaseAdmin
+  ): Promise<{ payout_id: string; status: 'paid' }> {
+    const db = client ?? supabaseAdmin;
+    if (!db) {
       throw new WalletHttpError(500, 'SERVER_CONFIG_ERROR', 'Database client belum terinisialisasi');
     }
 
-    const { error: rpcErr } = await supabaseAdmin.rpc('payout_mark_paid', {
+    // 1. Ambil data pengajuan payout untuk mengetahui mitra_id dan status
+    const { data: payoutRow, error: payoutErr } = await db
+      .from('payout_requests')
+      .select('mitra_id, status')
+      .eq('id', payoutId)
+      .maybeSingle();
+
+    if (payoutErr) {
+      console.error('Error fetching payout request:', payoutErr);
+      throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memverifikasi pengajuan payout');
+    }
+
+    if (!payoutRow) {
+      throw new WalletHttpError(404, 'PAYOUT_NOT_FOUND', 'Pengajuan payout tidak ditemukan');
+    }
+
+    if (payoutRow.status !== 'requested') {
+      throw new WalletHttpError(409, 'PAYOUT_NOT_PAYABLE', 'Pengajuan payout tidak dalam status requested');
+    }
+
+    // 2. Proteksi hold sengketa aktif mitra (PRD-050 / T-216):
+    // Admin dilarang menandai paid jika mitra memiliki sengketa penahanan payout aktif
+    const { data: activeHolds, error: holdsErr } = await db
+      .from('disputed_payout_holds')
+      .select('id')
+      .eq('mitra_id', payoutRow.mitra_id)
+      .eq('status', 'active')
+      .limit(1);
+
+    if (holdsErr) {
+      console.error('Error checking active dispute holds:', holdsErr);
+      throw new WalletHttpError(500, 'DB_ERROR', 'Gagal memeriksa status sengketa penahanan payout');
+    }
+
+    if (activeHolds && activeHolds.length > 0) {
+      throw new WalletHttpError(
+        409,
+        'PAYOUT_HAS_ACTIVE_DISPUTE',
+        'Tidak dapat menandai paid: mitra memiliki sengketa penahanan payout aktif yang belum diselesaikan.'
+      );
+    }
+
+    // 3. Panggil RPC payout_mark_paid
+    const { error: rpcErr } = await db.rpc('payout_mark_paid', {
       p_payout_id: payoutId,
       p_admin_id: adminId,
     });
