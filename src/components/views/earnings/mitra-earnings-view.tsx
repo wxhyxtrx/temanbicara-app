@@ -183,7 +183,9 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
 
   const availableRupiah = wallet?.available_rupiah ?? 0;
   const pendingRupiah = wallet?.pending_rupiah ?? 0;
+  const heldRupiah = wallet?.held_rupiah ?? 0;
   const totalRupiah = availableRupiah + pendingRupiah;
+  const safeMaxWithdraw = Math.max(0, availableRupiah - heldRupiah - feePayout);
 
   const totalDeducted = amountRupiah + feePayout;
   const remainingAvailable = availableRupiah - totalDeducted;
@@ -195,9 +197,12 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
   };
 
   const handleMaxWithdraw = () => {
-    if (availableRupiah > feePayout) {
-      const maxPossible = Math.min(maxPayout, availableRupiah - feePayout);
+    const safeWithdrawable = Math.max(0, availableRupiah - heldRupiah);
+    if (safeWithdrawable > feePayout) {
+      const maxPossible = Math.min(maxPayout, safeWithdrawable - feePayout);
       setAmountRupiah(Math.max(0, maxPossible));
+    } else {
+      setAmountRupiah(0);
     }
   };
 
@@ -260,12 +265,25 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
       fetchWallet();
       fetchPayouts(1);
       setPage(1);
-    } catch (err) {
-      if (err instanceof WalletApiError) {
+    } catch (err: unknown) {
+      const isWalletApiErr = err instanceof WalletApiError;
+      const errorCode = isWalletApiErr ? err.code : (err as { code?: string })?.code;
+      const errorStatus = isWalletApiErr ? err.status : (err as { status?: number })?.status;
+      const errorMessage = isWalletApiErr ? err.message : (err as { message?: string })?.message;
+
+      if (errorCode === "PAYOUT_HELD_FOR_VERIFICATION" || (errorStatus === 422 && errorCode === "PAYOUT_HELD_FOR_VERIFICATION")) {
+        const friendlyMessage =
+          errorMessage ||
+          `Dana sebesar Rp ${heldRupiah.toLocaleString("id-ID")} sedang dalam peninjauan verifikasi transaksi platform. Batas maksimal penarikan saat ini adalah Rp ${safeMaxWithdraw.toLocaleString("id-ID")}.`;
+        setFormError(friendlyMessage);
+        setIsConfirmOpen(false);
+        notify.error("Penarikan Belum Dapat Diproses", friendlyMessage);
+        fetchWallet();
+      } else if (isWalletApiErr) {
         setFormError(err.message);
         notify.error("Pengajuan Gagal", err.message);
       } else {
-        const msg = "Terjadi kesalahan sistem saat mengajukan penarikan.";
+        const msg = errorMessage || "Terjadi kesalahan sistem saat mengajukan penarikan.";
         setFormError(msg);
         notify.error("Kesalahan Sistem", msg);
       }
@@ -287,8 +305,8 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
           minute: "2-digit",
         });
         return (
-          <div className="space-y-0.5">
-            <p className="font-semibold text-slate-900 dark:text-white text-xs">{dateStr} WIB</p>
+          <div className="space-y-0.5 min-w-0">
+            <p className="font-semibold text-slate-900 dark:text-white text-xs truncate">{dateStr} WIB</p>
             <span className="text-[10px] font-mono text-slate-400 block truncate max-w-[130px]">
               ID: {p.id.slice(0, 8)}...
             </span>
@@ -300,9 +318,9 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
       label: "Rekening Tujuan",
       className: "w-[26%]",
       renderCell: (p) => (
-        <div>
-          <p className="font-bold text-slate-900 dark:text-white text-xs">{p.bank_name}</p>
-          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400">
+        <div className="min-w-0">
+          <p className="font-bold text-slate-900 dark:text-white text-xs truncate">{p.bank_name}</p>
+          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400 truncate">
             {p.account_number} a.n. {p.bank_account_name}
           </p>
         </div>
@@ -370,8 +388,8 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
   return (
     <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Header Halaman */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-w-0">
+        <div className="space-y-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
             Honor & Penarikan Dana
           </h1>
@@ -380,10 +398,10 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="px-3.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 text-xs font-semibold flex items-center gap-2 shadow-2xs">
-            <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400" />
-            <span>Rekening Terverifikasi Sesuai Identitas</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="px-3.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 text-xs font-semibold flex items-center gap-2 shadow-2xs min-w-0">
+            <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />
+            <span className="truncate">Rekening Terverifikasi Sesuai Identitas</span>
           </div>
         </div>
       </div>
@@ -392,12 +410,12 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Saldo Siap Dicairkan (Available) */}
         <Card className="rounded-2xl border border-teal-200 dark:border-teal-800/80 bg-gradient-to-br from-teal-50/70 via-white to-teal-50/30 dark:from-teal-950/40 dark:via-slate-900 dark:to-slate-900 shadow-xs overflow-hidden">
-          <CardContent className="p-4 sm:p-5 flex items-start justify-between">
-            <div className="space-y-1">
+          <CardContent className="p-4 sm:p-5 flex items-start justify-between min-w-0 gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
               <span className="text-[11px] font-bold text-teal-800 dark:text-teal-300 uppercase tracking-wider block">
                 Siap Dicairkan
               </span>
-              <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono">
+              <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono truncate">
                 {loadingWallet ? (
                   <Loader2 size={18} className="animate-spin text-teal-600" />
                 ) : (
@@ -407,6 +425,12 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Saldo aktif yang dapat diajukan pencairan hari ini
               </p>
+              {heldRupiah > 0 ? (
+                <div className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400 min-w-0 pt-0.5">
+                  <AlertTriangle size={12} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span className="truncate">Rp {heldRupiah.toLocaleString("id-ID")} tertahan verifikasi</span>
+                </div>
+              ) : null}
             </div>
             <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-teal-700/20">
               <Wallet size={20} />
@@ -416,21 +440,21 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
 
         {/* Saldo Tertahan (Pending - Masa Holding 48 Jam) */}
         <Card className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/70 via-white to-amber-50/30 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900 shadow-xs overflow-hidden">
-          <CardContent className="p-4 sm:p-5 flex items-start justify-between">
-            <div className="space-y-1">
+          <CardContent className="p-4 sm:p-5 flex items-start justify-between min-w-0 gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
               <span className="text-[11px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider block">
                 Pendapatan Tertahan
               </span>
-              <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono">
+              <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono truncate">
                 {loadingWallet ? (
                   <Loader2 size={18} className="animate-spin text-amber-600" />
                 ) : (
                   `Rp ${pendingRupiah.toLocaleString("id-ID")}`
                 )}
               </p>
-              <div className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
-                <Clock size={12} />
-                <span>Masa holding 48 jam sebelum siap cair</span>
+              <div className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400 min-w-0">
+                <Clock size={12} className="shrink-0" />
+                <span className="truncate">Masa holding 48 jam sebelum siap cair</span>
               </div>
             </div>
             <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-600/20">
@@ -441,12 +465,12 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
 
         {/* Total Akumulasi Mitra */}
         <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-          <CardContent className="p-4 sm:p-5 flex items-start justify-between">
-            <div className="space-y-1">
+          <CardContent className="p-4 sm:p-5 flex items-start justify-between min-w-0 gap-3">
+            <div className="space-y-1 min-w-0 flex-1">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                 Total Akumulasi Saldo
               </span>
-              <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono">
+              <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white font-mono truncate">
                 {loadingWallet ? (
                   <Loader2 size={18} className="animate-spin text-slate-400" />
                 ) : (
@@ -480,11 +504,28 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
             </CardHeader>
 
             <CardContent className="p-4 sm:p-5">
+              {heldRupiah > 0 ? (
+                <div
+                  data-testid="dispute-hold-warning-banner"
+                  className="mb-4 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5 min-w-0"
+                >
+                  <AlertTriangle size={17} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <p className="font-bold text-amber-950 dark:text-amber-100">
+                      Pemberitahuan Saldo Tertahan Sengketa
+                    </p>
+                    <p className="leading-relaxed text-amber-800 dark:text-amber-300 break-words">
+                      Dana sebesar Rp {heldRupiah.toLocaleString("id-ID")} sedang dalam peninjauan verifikasi transaksi platform. Batas maksimal penarikan saat ini adalah Rp {safeMaxWithdraw.toLocaleString("id-ID")}.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
               <form onSubmit={handleOpenConfirm} className="space-y-4">
                 {formError && (
-                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2 min-w-0">
                     <AlertTriangle size={15} className="shrink-0 mt-0.5" />
-                    <span>{formError}</span>
+                    <span className="break-words flex-1 min-w-0">{formError}</span>
                   </div>
                 )}
 
@@ -608,28 +649,36 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
 
                 {/* Rincian Biaya & Total Terpotong */}
                 <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/90 dark:border-slate-700 space-y-2 text-xs">
-                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                    <span>Nominal Penarikan:</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 min-w-0 gap-2">
+                    <span className="truncate">Nominal Penarikan:</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white shrink-0">
                       Rp {amountRupiah.toLocaleString("id-ID")}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                    <span>Biaya Transfer Bank:</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white">
+                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 min-w-0 gap-2">
+                    <span className="truncate">Biaya Transfer Bank:</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white shrink-0">
                       Rp {feePayout.toLocaleString("id-ID")}
                     </span>
                   </div>
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                    <span className="font-bold text-slate-900 dark:text-white">Total Saldo Terpotong:</span>
-                    <span className="font-mono font-bold text-sm text-rose-600 dark:text-rose-400">
+                  {heldRupiah > 0 ? (
+                    <div className="flex justify-between items-center text-amber-700 dark:text-amber-400 min-w-0 gap-2">
+                      <span className="truncate">Tertahan Sengketa:</span>
+                      <span className="font-mono font-semibold shrink-0">
+                        -Rp {heldRupiah.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center min-w-0 gap-2">
+                    <span className="font-bold text-slate-900 dark:text-white truncate">Total Saldo Terpotong:</span>
+                    <span className="font-mono font-bold text-sm text-rose-600 dark:text-rose-400 shrink-0">
                       Rp {totalDeducted.toLocaleString("id-ID")}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-[11px] text-slate-500">
-                    <span>Sisa Saldo Siap Cair:</span>
+                  <div className="flex justify-between items-center text-[11px] text-slate-500 min-w-0 gap-2">
+                    <span className="truncate">Sisa Saldo Siap Cair:</span>
                     <span
-                      className={`font-mono font-semibold ${
+                      className={`font-mono font-semibold shrink-0 ${
                         remainingAvailable < 0 ? "text-rose-600 font-bold" : "text-emerald-700 dark:text-emerald-400"
                       }`}
                     >
@@ -768,9 +817,9 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
             </div>
 
             {formError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2 min-w-0">
                 <AlertTriangle size={15} className="shrink-0 mt-0.5" />
-                <span className="leading-snug">{formError}</span>
+                <span className="leading-snug break-words flex-1 min-w-0">{formError}</span>
               </div>
             )}
 
