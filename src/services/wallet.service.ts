@@ -445,15 +445,46 @@ export class WalletService {
     if (transactionStatus === 'refund' || transactionStatus === 'partial_refund' || transactionStatus === 'chargeback') {
       const targetStatus: PaymentStatus = transactionStatus === 'chargeback' ? 'chargeback' : 'refund';
 
-      // Idempoten: jika order sudah memiliki target status, kembalikan respon sukses tanpa update ulang
+      // 1. Kondisi retry / duplikat dari Midtrans (order sudah memiliki target status)
       if (order.status === targetStatus) {
+        // Tetap memanggil RPC create_dispute_holds jika fungsi tersedia (idempoten via ON CONFLICT DO NOTHING)
+        try {
+          const { error: rpcHoldErr } = await db.rpc('create_dispute_holds', {
+            p_topup_order_id: order.id,
+          });
+          if (rpcHoldErr) {
+            console.warn('[MIDTRANS_WEBHOOK_DISPUTE_HOLD_WARN] Gagal membuat dispute holds pada webhook duplikat:', {
+              order_id: orderId,
+              code: rpcHoldErr.code,
+              message: rpcHoldErr.message,
+            });
+          }
+        } catch {
+          // Graceful: abaikan jika fungsi RPC belum terpasang atau terjadi error jaringan
+        }
+
         return {
           success: true,
           message: `Order already marked as ${targetStatus}`,
         };
       }
 
-      // Perbarui status pesanan tanpa mengubah saldo koin pasien (keputusan Q1 Opsi B)
+      // 2. Proteksi order non-settlement: hanya order 'settlement' yang dapat dimutasi ke refund/chargeback
+      // Status pending, expire, cancel, deny diabaikan tanpa mutasi DB dan tanpa pemanggilan RPC
+      if (order.status !== 'settlement') {
+        console.log('[MIDTRANS_WEBHOOK_STATUS_IGNORED]', {
+          order_id: orderId,
+          status: order.status,
+          transaction_status: transactionStatus,
+        });
+
+        return {
+          success: true,
+          message: `Refund/chargeback notification ignored for order in ${order.status} status`,
+        };
+      }
+
+      // 3. Perbarui status pesanan tanpa mengubah saldo koin pasien (keputusan Q1 Opsi B)
       const { error: updateErr } = await db
         .from('topup_orders')
         .update({
@@ -475,6 +506,22 @@ export class WalletService {
         status: targetStatus,
         transaction_status: transactionStatus,
       });
+
+      // Panggil RPC create_dispute_holds (idempoten) untuk menahan payout mitra jika koin telah terpakai
+      try {
+        const { error: rpcHoldErr } = await db.rpc('create_dispute_holds', {
+          p_topup_order_id: order.id,
+        });
+        if (rpcHoldErr) {
+          console.warn('[MIDTRANS_WEBHOOK_DISPUTE_HOLD_WARN] Gagal membuat dispute holds:', {
+            order_id: orderId,
+            code: rpcHoldErr.code,
+            message: rpcHoldErr.message,
+          });
+        }
+      } catch {
+        // Graceful: abaikan jika fungsi RPC belum terpasang atau terjadi error jaringan
+      }
 
       return {
         success: true,
