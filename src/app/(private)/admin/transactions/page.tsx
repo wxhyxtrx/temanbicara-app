@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import {
   XCircle,
   Clock,
   ShieldCheck,
+  ShieldAlert,
   Check,
   X,
   FileText,
@@ -135,6 +137,11 @@ export default function AdminTransactionsPage() {
       setIsProcessing(true);
       setActionError(null);
       if (actionType === "paid") {
+        if (selectedPayout.has_dispute_hold) {
+          setActionError("Permohonan ini memiliki sengketa aktif. Selesaikan sengketa terlebih dahulu.");
+          notify.error("Tidak Dapat Memproses", "Selesaikan sengketa terlebih dahulu.");
+          return;
+        }
         await walletClient.markAdminPayoutPaid(selectedPayout.id);
         notify.success(
           "Payout Ditandai Lunas!",
@@ -246,27 +253,52 @@ export default function AdminTransactionsPage() {
       className: "w-[18%]",
       renderCell: (p) => {
         if (p.status === "requested") {
+          const isHeld = p.has_dispute_hold === true;
+          const holdHint = "Selesaikan sengketa terlebih dahulu";
           return (
-            <div className="flex items-center justify-center gap-1.5">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleOpenRejectModal(p)}
-                className="h-7 text-[11px] px-2 text-rose-700 border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-950 font-bold rounded-lg cursor-pointer"
-                title="Tolak pengajuan dan kembalikan saldo ke mitra"
-              >
-                <X size={12} className="mr-0.5" />
-                <span>Tolak</span>
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => handleOpenPaidModal(p)}
-                className="h-7 text-[11px] px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg cursor-pointer shadow-2xs"
-                title="Tandai pembayaran telah ditransfer ke rekening mitra"
-              >
-                <Check size={12} className="mr-0.5" />
-                <span>Tandai Lunas</span>
-              </Button>
+            <div className="flex flex-col items-center gap-1.5 min-w-0">
+              {isHeld && (
+                <Badge className="max-w-full bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900 text-[10px] font-bold gap-1 whitespace-normal text-center">
+                  <ShieldAlert size={11} className="shrink-0" />
+                  <span className="min-w-0">
+                    Tertahan sengketa Rp {(p.dispute_hold_amount ?? 0).toLocaleString("id-ID")}
+                  </span>
+                </Badge>
+              )}
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleOpenRejectModal(p)}
+                  className="h-7 text-[11px] px-2 text-rose-700 border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-950 font-bold rounded-lg cursor-pointer"
+                  title="Tolak pengajuan dan kembalikan saldo ke mitra"
+                >
+                  <X size={12} className="mr-0.5" />
+                  <span>Tolak</span>
+                </Button>
+                {/* span pembungkus: tombol disabled tidak menerima hover, jadi tooltip dipasang di sini juga */}
+                <span title={isHeld ? holdHint : undefined} className={isHeld ? "cursor-not-allowed" : undefined}>
+                  <Button
+                    size="sm"
+                    onClick={() => handleOpenPaidModal(p)}
+                    disabled={isHeld}
+                    aria-label={isHeld ? `Tandai Lunas — ${holdHint}` : undefined}
+                    className="h-7 text-[11px] px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg cursor-pointer shadow-2xs"
+                    title={isHeld ? holdHint : "Tandai pembayaran telah ditransfer ke rekening mitra"}
+                  >
+                    <Check size={12} className="mr-0.5" />
+                    <span>Tandai Lunas</span>
+                  </Button>
+                </span>
+              </div>
+              {isHeld && (
+                <Link
+                  href="/admin/sengketa"
+                  className="text-[11px] font-bold text-rose-700 dark:text-rose-400 underline underline-offset-2 hover:text-rose-800 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                >
+                  Lihat Sengketa
+                </Link>
+              )}
             </div>
           );
         }
@@ -386,13 +418,13 @@ export default function AdminTransactionsPage() {
               </CardDescription>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
               {/* Status Filter Buttons */}
-              <div className="inline-flex rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+              <div className="inline-flex max-w-full overflow-x-auto rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => handleFilterChange("requested")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
                     statusFilter === "requested"
                       ? "bg-amber-500 text-white shadow-2xs font-bold"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -403,7 +435,7 @@ export default function AdminTransactionsPage() {
                 <button
                   type="button"
                   onClick={() => handleFilterChange("paid")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
                     statusFilter === "paid"
                       ? "bg-emerald-600 text-white shadow-2xs font-bold"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -414,7 +446,7 @@ export default function AdminTransactionsPage() {
                 <button
                   type="button"
                   onClick={() => handleFilterChange("rejected")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
                     statusFilter === "rejected"
                       ? "bg-rose-600 text-white shadow-2xs font-bold"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -425,7 +457,7 @@ export default function AdminTransactionsPage() {
                 <button
                   type="button"
                   onClick={() => handleFilterChange("all")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
                     statusFilter === "all"
                       ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
@@ -436,13 +468,13 @@ export default function AdminTransactionsPage() {
               </div>
 
               {/* Search Bar */}
-              <div className="relative flex-1 sm:w-60">
+              <div className="relative flex-1 w-full sm:w-60 min-w-0">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
                   placeholder="Cari mitra, bank, nama..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8 h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
+                  className="pl-8 h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl w-full"
                 />
               </div>
             </div>
@@ -514,6 +546,19 @@ export default function AdminTransactionsPage() {
               <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
                 <AlertTriangle size={15} className="shrink-0 mt-0.5" />
                 <span className="leading-snug">{actionError}</span>
+              </div>
+            )}
+
+            {selectedPayout.has_dispute_hold && actionType === "paid" && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
+                <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                <span className="leading-snug">
+                  Mitra ini memiliki penahanan sengketa aktif sebesar Rp {(selectedPayout.dispute_hold_amount ?? 0).toLocaleString("id-ID")}. Selesaikan sengketa terlebih dahulu di{" "}
+                  <Link href="/admin/sengketa" className="underline font-bold text-rose-800 dark:text-rose-200">
+                    /admin/sengketa
+                  </Link>
+                  .
+                </span>
               </div>
             )}
 
