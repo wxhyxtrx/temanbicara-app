@@ -1,10 +1,9 @@
-// Selftest T-223 (PRD-051): resolusi sengketa payout (deduct bertingkat, clear, idempotensi) & held_rupiah.
-// Jalankan: npx tsx src/services/__selftest__/disputed-hold-resolution.selftest.ts
+// Test T-223 (PRD-051): resolusi sengketa payout (deduct bertingkat, clear, idempotensi) & held_rupiah.
 //
 // ponytail: RPC resolve_dispute_hold dijalankan oleh fake in-memory yang meniru persis aritmetika
 // migrasi 20261114000035 (LEAST available, lalu LEAST pending, ledger per akun > 0). SQL aslinya
 // diverifikasi oleh supabase/tests/20261114000035_resolve_dispute_hold_dryrun.sql (DRYRUN_OK).
-// Upgrade: jalankan selftest ini terhadap Postgres lokal (supabase start) bila tersedia di CI.
+// Upgrade: jalankan test ini terhadap Postgres lokal (supabase start) bila tersedia di CI.
 
 // Environment fallback sebelum modul supabase client di-import
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.SUPABASE_URL) {
@@ -17,7 +16,7 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'dummy-service-role-key';
 }
 
-import assert from 'node:assert/strict';
+import { assert, describe, expect, it } from 'vitest';
 import type { supabaseAdmin } from '@/lib/supabase/client';
 
 type DbClient = typeof supabaseAdmin;
@@ -176,100 +175,79 @@ const wallet = (userId: string, available: number, pending: number): WalletRow =
   updated_at: '2026-11-13T00:00:00Z',
 });
 
-async function runSelfTest() {
-  const { DisputedPayoutHoldService } = await import('../disputed-payout-hold.service');
-  const { WalletService, WalletHttpError } = await import('../wallet.service');
-  const resolve = DisputedPayoutHoldService.resolveDisputedHold;
-  let passed = 0;
 
-  // Skenario 1: deduct memotong available_rupiah terlebih dahulu
-  {
+const { DisputedPayoutHoldService } = await import('../disputed-payout-hold.service');
+const { WalletService, WalletHttpError } = await import('../wallet.service');
+
+describe('Resolusi sengketa payout (T-223)', () => {
+  const resolve = DisputedPayoutHoldService.resolveDisputedHold;
+
+  it('Skenario 1: deduct memotong available_rupiah terlebih dahulu', async () => {
     const db = createFakeDb({ holds: [makeHold('h1', 'mitra-1', 100_000)], wallets: [wallet('mitra-1', 500_000, 200_000)] });
     const res = await resolve('h1', 'admin-1', 'deduct', 'Chargeback dimenangkan bank', { client: db.client });
-    assert.deepStrictEqual(db.rpcCalls[0].args, { p_hold_id: 'h1', p_admin_id: 'admin-1', p_action: 'deduct', p_note: 'Chargeback dimenangkan bank' });
-    assert.strictEqual(res.status, 'deducted');
-    assert.strictEqual(res.deducted_amount_rupiah, 100_000);
-    assert.strictEqual(res.resolution_note, 'Chargeback dimenangkan bank');
-    assert.strictEqual(db.wallets[0].available_rupiah, 400_000);
-    assert.strictEqual(db.wallets[0].pending_rupiah, 200_000);
-    assert.deepStrictEqual(db.ledger.map((l) => [l.account, l.amount, l.reason, l.ref_type, l.ref_id]), [
+    expect(db.rpcCalls[0].args).toStrictEqual({ p_hold_id: 'h1', p_admin_id: 'admin-1', p_action: 'deduct', p_note: 'Chargeback dimenangkan bank' });
+    expect(res.status).toBe('deducted');
+    expect(res.deducted_amount_rupiah).toBe(100_000);
+    expect(res.resolution_note).toBe('Chargeback dimenangkan bank');
+    expect(db.wallets[0].available_rupiah).toBe(400_000);
+    expect(db.wallets[0].pending_rupiah).toBe(200_000);
+    expect(db.ledger.map((l) => [l.account, l.amount, l.reason, l.ref_type, l.ref_id])).toStrictEqual([
       ['mitra_available', -100_000, 'dispute_deduct', 'dispute_hold', 'h1'],
     ]);
-    console.log('✓ Skenario 1: deduct memotong available_rupiah terlebih dahulu');
-    passed++;
-  }
+  });
 
-  // Skenario 2: deduct meluber ke pending_rupiah
-  {
+  it('Skenario 2: deduct meluber memotong pending_rupiah', async () => {
     const db = createFakeDb({ holds: [makeHold('h2', 'mitra-2', 200_000)], wallets: [wallet('mitra-2', 50_000, 300_000)] });
     const res = await resolve('h2', 'admin-1', 'deduct', 'Refund disetujui', { client: db.client });
-    assert.strictEqual(res.deducted_amount_rupiah, 200_000);
-    assert.strictEqual(db.wallets[0].available_rupiah, 0);
-    assert.strictEqual(db.wallets[0].pending_rupiah, 150_000);
-    assert.deepStrictEqual(db.ledger.map((l) => [l.account, l.amount]), [
+    expect(res.deducted_amount_rupiah).toBe(200_000);
+    expect(db.wallets[0].available_rupiah).toBe(0);
+    expect(db.wallets[0].pending_rupiah).toBe(150_000);
+    expect(db.ledger.map((l) => [l.account, l.amount])).toStrictEqual([
       ['mitra_available', -50_000],
       ['mitra_pending', -150_000],
     ]);
-    console.log('✓ Skenario 2: deduct meluber memotong pending_rupiah');
-    passed++;
-  }
+  });
 
-  // Skenario 3: saldo total kurang dari hold -> potong sebatas saldo, tanpa saldo negatif
-  {
+  it('Skenario 3: deduct parsial aman tanpa saldo negatif', async () => {
     const db = createFakeDb({ holds: [makeHold('h3', 'mitra-3', 100_000)], wallets: [wallet('mitra-3', 30_000, 0)] });
     const res = await resolve('h3', 'admin-1', 'deduct', 'Potong sebatas saldo', { client: db.client });
-    assert.strictEqual(res.status, 'deducted');
-    assert.strictEqual(res.deducted_amount_rupiah, 30_000);
-    assert.strictEqual(db.wallets[0].available_rupiah, 0);
-    assert.strictEqual(db.wallets[0].pending_rupiah, 0);
-    assert.deepStrictEqual(db.ledger.map((l) => [l.account, l.amount]), [['mitra_available', -30_000]]);
+    expect(res.status).toBe('deducted');
+    expect(res.deducted_amount_rupiah).toBe(30_000);
+    expect(db.wallets[0].available_rupiah).toBe(0);
+    expect(db.wallets[0].pending_rupiah).toBe(0);
+    expect(db.ledger.map((l) => [l.account, l.amount])).toStrictEqual([['mitra_available', -30_000]]);
     assert(db.ledger.every((l) => l.account !== 'mitra_pending'), 'Pending nol tidak boleh menerbitkan ledger');
-    console.log('✓ Skenario 3: deduct parsial aman tanpa saldo negatif');
-    passed++;
-  }
+  });
 
-  // Skenario 4: clear tidak menyentuh saldo dompet & ledger
-  {
+  it('Skenario 4: clear tidak mengubah saldo dompet', async () => {
     const db = createFakeDb({ holds: [makeHold('h4', 'mitra-4', 250_000)], wallets: [wallet('mitra-4', 1_000_000, 0)] });
     const res = await resolve('h4', 'admin-1', 'clear', 'Mitra tidak bersalah', { client: db.client });
-    assert.strictEqual(res.status, 'cleared');
-    assert.strictEqual(res.deducted_amount_rupiah, 0);
-    assert.strictEqual(res.resolved_by, 'admin-1');
-    assert.strictEqual(db.wallets[0].available_rupiah, 1_000_000);
-    assert.strictEqual(db.wallets[0].pending_rupiah, 0);
-    assert.strictEqual(db.ledger.length, 0);
-    assert.strictEqual(db.touchedTables.length, 0, 'Resolusi wajib lewat RPC, bukan query tabel langsung');
-    console.log('✓ Skenario 4: clear tidak mengubah saldo dompet');
-    passed++;
-  }
+    expect(res.status).toBe('cleared');
+    expect(res.deducted_amount_rupiah).toBe(0);
+    expect(res.resolved_by).toBe('admin-1');
+    expect(db.wallets[0].available_rupiah).toBe(1_000_000);
+    expect(db.wallets[0].pending_rupiah).toBe(0);
+    expect(db.ledger.length).toBe(0);
+    expect(db.touchedTables.length, 'Resolusi wajib lewat RPC, bukan query tabel langsung').toBe(0);
+  });
 
-  // Skenario 5: resolusi berulang -> 409 HOLD_ALREADY_RESOLVED, saldo tidak terpotong dua kali
-  {
+  it('Skenario 5: resolusi berulang ditolak 409 HOLD_ALREADY_RESOLVED', async () => {
     const db = createFakeDb({ holds: [makeHold('h5', 'mitra-5', 100_000)], wallets: [wallet('mitra-5', 500_000, 0)] });
     await resolve('h5', 'admin-1', 'deduct', 'Eksekusi pertama', { client: db.client });
     for (const action of ['deduct', 'clear'] as const) {
-      await assert.rejects(
-        () => resolve('h5', 'admin-2', action, 'Eksekusi ulang', { client: db.client }),
-        (err: unknown) => {
+      await expect((() => resolve('h5', 'admin-2', action, 'Eksekusi ulang', { client: db.client }))()).rejects.toSatisfy((err: unknown) => {
           assert(err instanceof WalletHttpError);
-          assert.strictEqual(err.status, 409);
-          assert.strictEqual(err.code, 'HOLD_ALREADY_RESOLVED');
+          expect(err.status).toBe(409);
+          expect(err.code).toBe('HOLD_ALREADY_RESOLVED');
           return true;
-        }
-      );
+        });
     }
-    assert.strictEqual(db.wallets[0].available_rupiah, 400_000, 'Saldo hanya terpotong sekali');
-    assert.strictEqual(db.ledger.length, 1);
-    await assert.rejects(
-      () => resolve('tidak-ada', 'admin-1', 'clear', 'x', { client: db.client }),
-      (err: unknown) => err instanceof WalletHttpError && err.status === 404 && err.code === 'HOLD_NOT_FOUND'
-    );
-    console.log('✓ Skenario 5: resolusi berulang ditolak 409 HOLD_ALREADY_RESOLVED');
-    passed++;
-  }
+    expect(db.wallets[0].available_rupiah, 'Saldo hanya terpotong sekali').toBe(400_000);
+    expect(db.ledger.length).toBe(1);
+    await expect((() => resolve('tidak-ada', 'admin-1', 'clear', 'x', { client: db.client }))()).rejects.toSatisfy((err: unknown) => err instanceof WalletHttpError && err.status === 404 && err.code === 'HOLD_NOT_FOUND');
+  });
 
-  // Skenario 6: held_rupiah = SUM hold aktif untuk mitra; 0 untuk mitra bersih & non-mitra
-  {
+  it('Skenario 6: held_rupiah tepat untuk mitra bersengketa vs bersih', async () => {
     const db = createFakeDb({
       holds: [
         makeHold('a1', 'mitra-sengketa', 100_000),
@@ -281,21 +259,11 @@ async function runSelfTest() {
       wallets: [wallet('mitra-sengketa', 400_000, 150_000), wallet('mitra-bersih', 200_000, 0), wallet('pasien-1', 0, 0)],
     });
     const disputed = await WalletService.getWalletInfo('mitra-sengketa', 'psikolog', db.client);
-    assert.strictEqual(disputed.held_rupiah, 150_000, 'Hanya hold active yang dihitung');
-    assert.strictEqual(disputed.available_rupiah, 400_000);
+    expect(disputed.held_rupiah, 'Hanya hold active yang dihitung').toBe(150_000);
+    expect(disputed.available_rupiah).toBe(400_000);
     const clean = await WalletService.getWalletInfo('mitra-bersih', 'relawan', db.client);
-    assert.strictEqual(clean.held_rupiah, 0);
+    expect(clean.held_rupiah).toBe(0);
     const patient = await WalletService.getWalletInfo('pasien-1', 'pasien', db.client);
-    assert.strictEqual(patient.held_rupiah, 0, 'Non-mitra selalu 0');
-    console.log('✓ Skenario 6: held_rupiah tepat untuk mitra bersengketa vs bersih');
-    passed++;
-  }
-
-  assert.strictEqual(passed, 6);
-  console.log(`${passed} scenarios passed successfully`);
-}
-
-runSelfTest().catch((err) => {
-  console.error('[SELFTEST FAILED]', err);
-  process.exit(1);
+    expect(patient.held_rupiah, 'Non-mitra selalu 0').toBe(0);
+  });
 });

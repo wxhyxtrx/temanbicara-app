@@ -9,7 +9,7 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'dummy-service-role-key';
 }
 
-import assert from 'node:assert/strict';
+import { assert, describe, expect, it } from 'vitest';
 import type { UserRole, AccountStatus } from '@/types/database';
 import type { DisputedPayoutHoldEntity } from '@/types/wallet';
 import type { supabaseAdmin } from '@/lib/supabase/client';
@@ -119,30 +119,25 @@ function createMockDb(initialHolds: MockHoldRow[]) {
   };
 }
 
-async function runSelfTest() {
-  console.log('[SELFTEST] Memulai pengujian endpoint admin & resolusi sengketa hold (T-217)...');
 
-  // Dynamic import agar process.env fallback terpasang sebelum supabase client diinisialisasi
-  const {
-    DisputedPayoutHoldService,
-    resolveDisputedHoldSchema,
-    checkActiveAdmin,
-  } = await import('../disputed-payout-hold.service');
-  const { WalletHttpError } = await import('../wallet.service');
-  const { GET } = await import('@/app/api/admin/disputed-holds/route');
-  const { PATCH } = await import('@/app/api/admin/disputed-holds/[id]/route');
+const {
+  DisputedPayoutHoldService,
+  resolveDisputedHoldSchema,
+  checkActiveAdmin,
+} = await import('../disputed-payout-hold.service');
+const { WalletHttpError } = await import('../wallet.service');
+const { GET } = await import('@/app/api/admin/disputed-holds/route');
+const { PATCH } = await import('@/app/api/admin/disputed-holds/[id]/route');
 
-  // ========================================================
-  // UJI 1: Autorisasi Hak Akses Admin Aktif
-  // ========================================================
-  {
+describe('Admin disputed holds API (T-217)', () => {
+  it('UJI 1 LULUS: Hak akses admin aktif terlindungi ketat', async () => {
     // Role non-admin harus ditolak 403 FORBIDDEN
     const nonAdminRoles: UserRole[] = ['pasien', 'psikolog', 'relawan'];
     for (const role of nonAdminRoles) {
       const check = checkActiveAdmin({ role, status: 'active' });
       assert(check !== null, `Role ${role} harus ditolak`);
-      assert.strictEqual(check.status, 403);
-      assert.strictEqual(check.code, 'FORBIDDEN');
+      expect(check.status).toBe(403);
+      expect(check.code).toBe('FORBIDDEN');
     }
 
     // Admin dengan status non-active harus ditolak 403 USER_NOT_ACTIVE
@@ -150,30 +145,25 @@ async function runSelfTest() {
     for (const status of inactiveStatuses) {
       const check = checkActiveAdmin({ role: 'admin', status });
       assert(check !== null, `Admin status ${status} harus ditolak`);
-      assert.strictEqual(check.status, 403);
-      assert.strictEqual(check.code, 'USER_NOT_ACTIVE');
+      expect(check.status).toBe(403);
+      expect(check.code).toBe('USER_NOT_ACTIVE');
     }
 
     // Admin aktif harus lolos (null)
     const activeCheck = checkActiveAdmin({ role: 'admin', status: 'active' });
-    assert.strictEqual(activeCheck, null, 'Admin aktif harus lolos tanpa error');
+    expect(activeCheck, 'Admin aktif harus lolos tanpa error').toBe(null);
+  });
 
-    console.log('✓ UJI 1 LULUS: Hak akses admin aktif terlindungi ketat');
-  }
-
-  // ========================================================
-  // UJI 2: Validasi Skema Payload Zod (PATCH /api/admin/disputed-holds/[id])
-  // ========================================================
-  {
+  it('UJI 2 LULUS: Validasi skema Zod (clear|deduct, note) tepat sasaran', async () => {
     // Payload valid: action 'clear'
     const validClear = resolveDisputedHoldSchema.safeParse({
       action: 'clear',
       note: 'Chargeback dimenangkan merchant berdasarkan bukti sesi',
     });
-    assert.strictEqual(validClear.success, true);
+    expect(validClear.success).toBe(true);
     if (validClear.success) {
-      assert.strictEqual(validClear.data.action, 'clear');
-      assert.strictEqual(validClear.data.note, 'Chargeback dimenangkan merchant berdasarkan bukti sesi');
+      expect(validClear.data.action).toBe('clear');
+      expect(validClear.data.note).toBe('Chargeback dimenangkan merchant berdasarkan bukti sesi');
     }
 
     // Payload valid: action 'deduct'
@@ -181,9 +171,9 @@ async function runSelfTest() {
       action: 'deduct',
       note: 'Bank memenangkan pemegang kartu, sengketa deduct tercatat',
     });
-    assert.strictEqual(validDeduct.success, true);
+    expect(validDeduct.success).toBe(true);
     if (validDeduct.success) {
-      assert.strictEqual(validDeduct.data.action, 'deduct');
+      expect(validDeduct.data.action).toBe('deduct');
     }
 
     // Action invalid (misal: 'refund', 'cancel', '')
@@ -191,28 +181,23 @@ async function runSelfTest() {
       action: 'refund',
       note: 'Catatan valid',
     });
-    assert.strictEqual(invalidAction.success, false, 'Action selain clear/deduct harus ditolak');
+    expect(invalidAction.success, 'Action selain clear/deduct harus ditolak').toBe(false);
 
     // Note kosong / hanya spasi harus ditolak
     const emptyNote = resolveDisputedHoldSchema.safeParse({
       action: 'clear',
       note: '    ',
     });
-    assert.strictEqual(emptyNote.success, false, 'Note whitespace harus ditolak');
+    expect(emptyNote.success, 'Note whitespace harus ditolak').toBe(false);
 
     // Note missing harus ditolak
     const missingNote = resolveDisputedHoldSchema.safeParse({
       action: 'clear',
     });
-    assert.strictEqual(missingNote.success, false, 'Note missing harus ditolak');
+    expect(missingNote.success, 'Note missing harus ditolak').toBe(false);
+  });
 
-    console.log('✓ UJI 2 LULUS: Validasi skema Zod (clear|deduct, note) tepat sasaran');
-  }
-
-  // ========================================================
-  // UJI 3: List Disputed Holds Terpaginasi & Filter Status
-  // ========================================================
-  {
+  it('UJI 3 LULUS: Query terpaginasi & filter status berfungsi akurat', async () => {
     const mockData: MockHoldRow[] = [
       {
         id: 'hold-1',
@@ -262,36 +247,31 @@ async function runSelfTest() {
       { page: 1, limit: 10 },
       { client: mockDb.client }
     );
-    assert.strictEqual(resultActive.total, 2, 'Total active hold harus 2');
-    assert.strictEqual(resultActive.items.length, 2);
-    assert.strictEqual(resultActive.items[0].status, 'active');
-    assert.strictEqual(resultActive.items[1].status, 'active');
-    assert.strictEqual(typeof resultActive.items[0].disputed_amount_rupiah, 'number');
+    expect(resultActive.total, 'Total active hold harus 2').toBe(2);
+    expect(resultActive.items.length).toBe(2);
+    expect(resultActive.items[0].status).toBe('active');
+    expect(resultActive.items[1].status).toBe('active');
+    expect(typeof resultActive.items[0].disputed_amount_rupiah).toBe('number');
 
     // Filter status 'cleared'
     const resultCleared = await DisputedPayoutHoldService.listDisputedHolds(
       { status: 'cleared', page: 1, limit: 10 },
       { client: mockDb.client }
     );
-    assert.strictEqual(resultCleared.total, 1);
-    assert.strictEqual(resultCleared.items[0].id, 'hold-3');
-    assert.strictEqual(resultCleared.items[0].status, 'cleared');
+    expect(resultCleared.total).toBe(1);
+    expect(resultCleared.items[0].id).toBe('hold-3');
+    expect(resultCleared.items[0].status).toBe('cleared');
 
     // Filter status 'deducted' (kosong)
     const resultDeducted = await DisputedPayoutHoldService.listDisputedHolds(
       { status: 'deducted', page: 1, limit: 10 },
       { client: mockDb.client }
     );
-    assert.strictEqual(resultDeducted.total, 0);
-    assert.strictEqual(resultDeducted.items.length, 0);
+    expect(resultDeducted.total).toBe(0);
+    expect(resultDeducted.items.length).toBe(0);
+  });
 
-    console.log('✓ UJI 3 LULUS: Query terpaginasi & filter status berfungsi akurat');
-  }
-
-  // ========================================================
-  // UJI 4: Aksi Resolusi Sengketa (Clear & Deduct)
-  // ========================================================
-  {
+  it('UJI 4 LULUS: Aksi clear dan deduct memperbarui status, timestamp, dan identitas admin', async () => {
     const mockData: MockHoldRow[] = [
       {
         id: 'hold-active-1',
@@ -332,10 +312,10 @@ async function runSelfTest() {
       'Sengketa selesai, mitra tidak bersalah',
       { client: mockDb.client, now: () => fixedNow }
     );
-    assert.strictEqual(resClear.id, 'hold-active-1');
-    assert.strictEqual(resClear.status, 'cleared');
-    assert.strictEqual(resClear.resolved_at, fixedNow.toISOString());
-    assert.strictEqual(resClear.resolved_by, 'admin-super-1');
+    expect(resClear.id).toBe('hold-active-1');
+    expect(resClear.status).toBe('cleared');
+    expect(resClear.resolved_at).toBe(fixedNow.toISOString());
+    expect(resClear.resolved_by).toBe('admin-super-1');
     assert(resClear.reason.includes('mitra tidak bersalah'), 'Catatan resolusi harus tercantum');
     assert(resClear.reason.includes('Resolusi cleared'), 'Label status resolusi harus ada');
 
@@ -347,20 +327,15 @@ async function runSelfTest() {
       'Chargeback bank dieksekusi, dana dipotong',
       { client: mockDb.client, now: () => fixedNow }
     );
-    assert.strictEqual(resDeduct.id, 'hold-active-2');
-    assert.strictEqual(resDeduct.status, 'deducted');
-    assert.strictEqual(resDeduct.resolved_at, fixedNow.toISOString());
-    assert.strictEqual(resDeduct.resolved_by, 'admin-super-2');
+    expect(resDeduct.id).toBe('hold-active-2');
+    expect(resDeduct.status).toBe('deducted');
+    expect(resDeduct.resolved_at).toBe(fixedNow.toISOString());
+    expect(resDeduct.resolved_by).toBe('admin-super-2');
     assert(resDeduct.reason.includes('dana dipotong'), 'Catatan resolusi harus tercantum');
     assert(resDeduct.reason.includes('Resolusi deducted'), 'Label status resolusi harus ada');
+  });
 
-    console.log('✓ UJI 4 LULUS: Aksi clear dan deduct memperbarui status, timestamp, dan identitas admin');
-  }
-
-  // ========================================================
-  // UJI 5: Idempotensi Resolusi (409 HOLD_ALREADY_RESOLVED)
-  // ========================================================
-  {
+  it('UJI 5 LULUS: Idempotensi terjamin (409 HOLD_ALREADY_RESOLVED) & 404 saat tidak ditemukan', async () => {
     const mockData: MockHoldRow[] = [
       {
         id: 'hold-cleared',
@@ -393,8 +368,7 @@ async function runSelfTest() {
     const mockDb = createMockDb(mockData);
 
     // Coba resolve ulang hold 'cleared'
-    await assert.rejects(
-      async () => {
+    await expect((async () => {
         await DisputedPayoutHoldService.resolveDisputedHold(
           'hold-cleared',
           'admin-2',
@@ -402,19 +376,15 @@ async function runSelfTest() {
           'Coba resolve ulang',
           { client: mockDb.client }
         );
-      },
-      (err: unknown) => {
+      })(), 'Resolusi pada hold cleared harus ditolak 409').rejects.toSatisfy((err: unknown) => {
         assert(err instanceof WalletHttpError);
-        assert.strictEqual(err.status, 409);
-        assert.strictEqual(err.code, 'HOLD_ALREADY_RESOLVED');
+        expect(err.status).toBe(409);
+        expect(err.code).toBe('HOLD_ALREADY_RESOLVED');
         return true;
-      },
-      'Resolusi pada hold cleared harus ditolak 409'
-    );
+      });
 
     // Coba resolve ulang hold 'deducted'
-    await assert.rejects(
-      async () => {
+    await expect((async () => {
         await DisputedPayoutHoldService.resolveDisputedHold(
           'hold-deducted',
           'admin-2',
@@ -422,19 +392,15 @@ async function runSelfTest() {
           'Coba resolve ulang',
           { client: mockDb.client }
         );
-      },
-      (err: unknown) => {
+      })(), 'Resolusi pada hold deducted harus ditolak 409').rejects.toSatisfy((err: unknown) => {
         assert(err instanceof WalletHttpError);
-        assert.strictEqual(err.status, 409);
-        assert.strictEqual(err.code, 'HOLD_ALREADY_RESOLVED');
+        expect(err.status).toBe(409);
+        expect(err.code).toBe('HOLD_ALREADY_RESOLVED');
         return true;
-      },
-      'Resolusi pada hold deducted harus ditolak 409'
-    );
+      });
 
     // ID tidak ditemukan harus 404 HOLD_NOT_FOUND
-    await assert.rejects(
-      async () => {
+    await expect((async () => {
         await DisputedPayoutHoldService.resolveDisputedHold(
           'hold-non-existent',
           'admin-2',
@@ -442,23 +408,15 @@ async function runSelfTest() {
           'ID ngawur',
           { client: mockDb.client }
         );
-      },
-      (err: unknown) => {
+      })(), 'Hold tidak ditemukan harus 404').rejects.toSatisfy((err: unknown) => {
         assert(err instanceof WalletHttpError);
-        assert.strictEqual(err.status, 404);
-        assert.strictEqual(err.code, 'HOLD_NOT_FOUND');
+        expect(err.status).toBe(404);
+        expect(err.code).toBe('HOLD_NOT_FOUND');
         return true;
-      },
-      'Hold tidak ditemukan harus 404'
-    );
+      });
+  });
 
-    console.log('✓ UJI 5 LULUS: Idempotensi terjamin (409 HOLD_ALREADY_RESOLVED) & 404 saat tidak ditemukan');
-  }
-
-  // ========================================================
-  // UJI 6: Integritas Buku Besar (TIDAK menyentuh wallets / ledger_entries)
-  // ========================================================
-  {
+  it('UJI 6 LULUS: Tidak ada mutasi pada tabel wallets atau ledger_entries', async () => {
     const mockData: MockHoldRow[] = [
       {
         id: 'hold-isolated',
@@ -498,21 +456,16 @@ async function runSelfTest() {
       mockDb.touchedTables.every((t) => t === 'disputed_payout_holds'),
       'Hanya tabel disputed_payout_holds yang boleh diakses'
     );
+  });
 
-    console.log('✓ UJI 6 LULUS: Tidak ada mutasi pada tabel wallets atau ledger_entries');
-  }
-
-  // ========================================================
-  // UJI 7: Proteksi Endpoint Route (GET & PATCH Unauthenticated)
-  // ========================================================
-  {
+  it('UJI 7 LULUS: Endpoint API terlindungi otentikasi sesi (401)', async () => {
     // 7a. GET tanpa token -> 401 UNAUTHENTICATED
     const reqGet = new Request('http://localhost/api/admin/disputed-holds');
     const resGet = await GET(reqGet);
-    assert.strictEqual(resGet.status, 401, 'GET tanpa auth harus 401');
+    expect(resGet.status, 'GET tanpa auth harus 401').toBe(401);
     const jsonGet = (await resGet.json()) as { success: boolean; error: string };
-    assert.strictEqual(jsonGet.success, false);
-    assert.strictEqual(jsonGet.error, 'UNAUTHENTICATED');
+    expect(jsonGet.success).toBe(false);
+    expect(jsonGet.error).toBe('UNAUTHENTICATED');
 
     // 7b. PATCH tanpa token -> 401 UNAUTHENTICATED
     const reqPatch = new Request('http://localhost/api/admin/disputed-holds/00000000-0000-0000-0000-000000000001', {
@@ -523,18 +476,9 @@ async function runSelfTest() {
     const resPatch = await PATCH(reqPatch, {
       params: Promise.resolve({ id: '00000000-0000-0000-0000-000000000001' }),
     });
-    assert.strictEqual(resPatch.status, 401, 'PATCH tanpa auth harus 401');
+    expect(resPatch.status, 'PATCH tanpa auth harus 401').toBe(401);
     const jsonPatch = (await resPatch.json()) as { success: boolean; error: string };
-    assert.strictEqual(jsonPatch.success, false);
-    assert.strictEqual(jsonPatch.error, 'UNAUTHENTICATED');
-
-    console.log('✓ UJI 7 LULUS: Endpoint API terlindungi otentikasi sesi (401)');
-  }
-
-  console.log('[SELFTEST] SEMUA PENGUJIAN T-217 LULUS DENGAN SUKSES.');
-}
-
-runSelfTest().catch((err) => {
-  console.error('[SELFTEST FAILED]', err);
-  process.exit(1);
+    expect(jsonPatch.success).toBe(false);
+    expect(jsonPatch.error).toBe('UNAUTHENTICATED');
+  });
 });

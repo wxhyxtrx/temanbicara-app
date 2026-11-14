@@ -6,7 +6,7 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && !process.env.SUPABASE_ANON_KEY
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'dummy-anon-key';
 }
 
-import assert from 'node:assert/strict';
+import { describe, expect, it } from 'vitest';
 import type {
   ReconcileStaleDbClient,
   ReconcileStatusFetcher,
@@ -89,49 +89,40 @@ function createMockDbClient(config: {
   return { mockClient, queryLog, rpcCalls };
 }
 
-export async function runSelfTest(): Promise<boolean> {
-  console.log('[SELFTEST] Memulai pengujian rekonsiliasi order stale Midtrans (T-209)...');
 
-  // Dynamic import agar process.env fallback tereksekusi sebelum client.ts dievaluasi
-  const { GET } = await import('@/app/api/cron/reconcile-stale-topup/route');
-  const { WalletReconcileService, safeTimingCompare } = await import('@/services/wallet-reconcile.service');
+const { GET } = await import('@/app/api/cron/reconcile-stale-topup/route');
+const { WalletReconcileService, safeTimingCompare } = await import('@/services/wallet-reconcile.service');
 
-  // ========================================================
-  // UJI 1: safeTimingCompare (Timing-Safe String Comparison)
-  // ========================================================
-  {
-    assert.strictEqual(safeTimingCompare('secret123', 'secret123'), true, 'String identik harus bernilai true');
-    assert.strictEqual(safeTimingCompare('secret123', 'secret456'), false, 'String berbeda harus bernilai false');
-    assert.strictEqual(safeTimingCompare('short', 'much-longer-string'), false, 'Perbedaan panjang harus aman & false');
-    assert.strictEqual(safeTimingCompare('', 'non-empty'), false, 'String kosong dibanding non-kosong harus false');
-    assert.strictEqual(safeTimingCompare('', ''), true, 'String kosong identik harus true');
-    console.log('✓ UJI 1 LULUS: safeTimingCompare berfungsi benar & timing-safe');
-  }
+describe('Rekonsiliasi stale topup Midtrans (T-209)', () => {
+  it('UJI 1 LULUS: safeTimingCompare berfungsi benar & timing-safe', async () => {
+    expect(safeTimingCompare('secret123', 'secret123'), 'String identik harus bernilai true').toBe(true);
+    expect(safeTimingCompare('secret123', 'secret456'), 'String berbeda harus bernilai false').toBe(false);
+    expect(safeTimingCompare('short', 'much-longer-string'), 'Perbedaan panjang harus aman & false').toBe(false);
+    expect(safeTimingCompare('', 'non-empty'), 'String kosong dibanding non-kosong harus false').toBe(false);
+    expect(safeTimingCompare('', ''), 'String kosong identik harus true').toBe(true);
+  });
 
-  // ========================================================
-  // UJI 2: Proteksi Autentikasi Route GET (401 Unauthorized)
-  // ========================================================
-  {
+  it('UJI 2 LULUS: Endpoint dilindungi 401 untuk request unauthorized', async () => {
     const originalSecret = process.env.CRON_SECRET;
     try {
       // 2a. Server belum punya CRON_SECRET
       delete process.env.CRON_SECRET;
       const resNoSecret = await GET(new Request('http://localhost/api/cron/reconcile-stale-topup'));
-      assert.strictEqual(resNoSecret.status, 401, 'Harus 401 jika CRON_SECRET belum dikonfigurasi');
+      expect(resNoSecret.status, 'Harus 401 jika CRON_SECRET belum dikonfigurasi').toBe(401);
       const jsonNoSecret = (await resNoSecret.json()) as { success: boolean; error: string; message: string };
-      assert.strictEqual(jsonNoSecret.success, false);
-      assert.strictEqual(jsonNoSecret.error, 'UNAUTHORIZED');
-      assert.strictEqual(jsonNoSecret.message, 'Kredensial cron tidak valid');
+      expect(jsonNoSecret.success).toBe(false);
+      expect(jsonNoSecret.error).toBe('UNAUTHORIZED');
+      expect(jsonNoSecret.message).toBe('Kredensial cron tidak valid');
 
       // Pasang secret valid untuk sub-pengujian
       process.env.CRON_SECRET = 'super-secret-cron-key-123';
 
       // 2b. Request tanpa header Authorization
       const resNoHeader = await GET(new Request('http://localhost/api/cron/reconcile-stale-topup'));
-      assert.strictEqual(resNoHeader.status, 401, 'Harus 401 jika header Authorization tidak ada');
+      expect(resNoHeader.status, 'Harus 401 jika header Authorization tidak ada').toBe(401);
       const jsonNoHeader = (await resNoHeader.json()) as { success: boolean; error: string };
-      assert.strictEqual(jsonNoHeader.success, false);
-      assert.strictEqual(jsonNoHeader.error, 'UNAUTHORIZED');
+      expect(jsonNoHeader.success).toBe(false);
+      expect(jsonNoHeader.error).toBe('UNAUTHORIZED');
 
       // 2c. Request dengan token salah
       const resWrongToken = await GET(
@@ -139,10 +130,10 @@ export async function runSelfTest(): Promise<boolean> {
           headers: { Authorization: 'Bearer wrong-secret' },
         })
       );
-      assert.strictEqual(resWrongToken.status, 401, 'Harus 401 jika token Bearer salah');
+      expect(resWrongToken.status, 'Harus 401 jika token Bearer salah').toBe(401);
       const jsonWrongToken = (await resWrongToken.json()) as { success: boolean; error: string };
-      assert.strictEqual(jsonWrongToken.success, false);
-      assert.strictEqual(jsonWrongToken.error, 'UNAUTHORIZED');
+      expect(jsonWrongToken.success).toBe(false);
+      expect(jsonWrongToken.error).toBe('UNAUTHORIZED');
 
       // 2d. Request tanpa prefix Bearer
       const resNoBearer = await GET(
@@ -150,7 +141,7 @@ export async function runSelfTest(): Promise<boolean> {
           headers: { Authorization: 'super-secret-cron-key-123' },
         })
       );
-      assert.strictEqual(resNoBearer.status, 401, 'Harus 401 jika format header bukan Bearer <secret>');
+      expect(resNoBearer.status, 'Harus 401 jika format header bukan Bearer <secret>').toBe(401);
     } finally {
       if (originalSecret !== undefined) {
         process.env.CRON_SECRET = originalSecret;
@@ -158,13 +149,9 @@ export async function runSelfTest(): Promise<boolean> {
         delete process.env.CRON_SECRET;
       }
     }
-    console.log('✓ UJI 2 LULUS: Endpoint dilindungi 401 untuk request unauthorized');
-  }
+  });
 
-  // ========================================================
-  // UJI 3: Order Settlement & Capture-Accept
-  // ========================================================
-  {
+  it('UJI 3 LULUS: Order stale settlement berhasil memanggil topup_settle', async () => {
     const mockOrder = {
       id: 'uuid-topup-001',
       order_id: 'ORDER-STALE-SETTLE-001',
@@ -182,7 +169,7 @@ export async function runSelfTest(): Promise<boolean> {
     });
 
     const mockFetcher: ReconcileStatusFetcher = async (orderId) => {
-      assert.strictEqual(orderId, 'ORDER-STALE-SETTLE-001');
+      expect(orderId).toBe('ORDER-STALE-SETTLE-001');
       return {
         ok: true,
         status: 200,
@@ -201,29 +188,25 @@ export async function runSelfTest(): Promise<boolean> {
       serverKey: 'dummy-server-key',
     });
 
-    assert.strictEqual(summary.success, true);
-    assert.strictEqual(summary.scanned, 1);
-    assert.strictEqual(summary.settled, 1);
-    assert.strictEqual(summary.reconciled, 1);
-    assert.strictEqual(summary.failed, 0);
-    assert.strictEqual(summary.pending, 0);
-    assert.strictEqual(summary.errors, 0);
+    expect(summary.success).toBe(true);
+    expect(summary.scanned).toBe(1);
+    expect(summary.settled).toBe(1);
+    expect(summary.reconciled).toBe(1);
+    expect(summary.failed).toBe(0);
+    expect(summary.pending).toBe(0);
+    expect(summary.errors).toBe(0);
 
     // Verifikasi RPC topup_settle terpanggil dengan argumen tepat
-    assert.strictEqual(rpcCalls.length, 1);
-    assert.strictEqual(rpcCalls[0].fn, 'topup_settle');
-    assert.deepStrictEqual(rpcCalls[0].args, {
+    expect(rpcCalls.length).toBe(1);
+    expect(rpcCalls[0].fn).toBe('topup_settle');
+    expect(rpcCalls[0].args).toStrictEqual({
       p_order_id: 'ORDER-STALE-SETTLE-001',
       p_provider_reference: 'midtrans-tx-settle-999',
       p_paid_amount_rupiah: 50000,
     });
-    console.log('✓ UJI 3 LULUS: Order stale settlement berhasil memanggil topup_settle');
-  }
+  });
 
-  // ========================================================
-  // UJI 3b: Capture dengan fraud_status 'accept'
-  // ========================================================
-  {
+  it('UJI 3b LULUS: Status capture-accept memicu topup_settle', async () => {
     const mockOrder = {
       id: 'uuid-topup-002',
       order_id: 'ORDER-STALE-CAPTURE-002',
@@ -257,17 +240,13 @@ export async function runSelfTest(): Promise<boolean> {
       serverKey: 'dummy-server-key',
     });
 
-    assert.strictEqual(summary.settled, 1);
-    assert.strictEqual(summary.reconciled, 1);
-    assert.strictEqual(rpcCalls.length, 1);
-    assert.strictEqual(rpcCalls[0].fn, 'topup_settle');
-    console.log('✓ UJI 3b LULUS: Status capture-accept memicu topup_settle');
-  }
+    expect(summary.settled).toBe(1);
+    expect(summary.reconciled).toBe(1);
+    expect(rpcCalls.length).toBe(1);
+    expect(rpcCalls[0].fn).toBe('topup_settle');
+  });
 
-  // ========================================================
-  // UJI 4: Ketidakcocokan Nominal (Amount Mismatch Guard)
-  // ========================================================
-  {
+  it('UJI 4 LULUS: Ketidakcocokan nominal dicegah dari settlement', async () => {
     const mockOrder = {
       id: 'uuid-topup-003',
       order_id: 'ORDER-STALE-MISMATCH-003',
@@ -301,17 +280,13 @@ export async function runSelfTest(): Promise<boolean> {
     });
 
     // Harus mencatat error dan TIDAK memanggil topup_settle
-    assert.strictEqual(summary.errors, 1);
-    assert.strictEqual(summary.settled, 0);
-    assert.strictEqual(summary.reconciled, 0);
-    assert.strictEqual(rpcCalls.length, 0, 'RPC topup_settle tidak boleh dipanggil jika nominal tidak cocok');
-    console.log('✓ UJI 4 LULUS: Ketidakcocokan nominal dicegah dari settlement');
-  }
+    expect(summary.errors).toBe(1);
+    expect(summary.settled).toBe(0);
+    expect(summary.reconciled).toBe(0);
+    expect(rpcCalls.length, 'RPC topup_settle tidak boleh dipanggil jika nominal tidak cocok').toBe(0);
+  });
 
-  // ========================================================
-  // UJI 5: Order Deny / Expire / Cancel -> topup_fail
-  // ========================================================
-  {
+  it('UJI 5 LULUS: Status expire, deny, dan cancel memanggil topup_fail', async () => {
     const statuses = ['expire', 'deny', 'cancel'];
     for (const status of statuses) {
       const mockOrder = {
@@ -345,24 +320,20 @@ export async function runSelfTest(): Promise<boolean> {
         serverKey: 'dummy-server-key',
       });
 
-      assert.strictEqual(summary.failed, 1);
-      assert.strictEqual(summary.reconciled, 1);
-      assert.strictEqual(summary.settled, 0);
-      assert.strictEqual(rpcCalls.length, 1);
-      assert.strictEqual(rpcCalls[0].fn, 'topup_fail');
-      assert.deepStrictEqual(rpcCalls[0].args, {
+      expect(summary.failed).toBe(1);
+      expect(summary.reconciled).toBe(1);
+      expect(summary.settled).toBe(0);
+      expect(rpcCalls.length).toBe(1);
+      expect(rpcCalls[0].fn).toBe('topup_fail');
+      expect(rpcCalls[0].args).toStrictEqual({
         p_order_id: `ORDER-STALE-${status.toUpperCase()}`,
         p_status: status,
         p_provider_reference: `midtrans-tx-${status}`,
       });
     }
-    console.log('✓ UJI 5 LULUS: Status expire, deny, dan cancel memanggil topup_fail');
-  }
+  });
 
-  // ========================================================
-  // UJI 6: Order Pending di Midtrans & Midtrans HTTP 404
-  // ========================================================
-  {
+  it('UJI 6 LULUS: Order status pending dan HTTP 404 membiarkan status tetap pending di DB', async () => {
     // 6a. Midtrans mengembalikan transaction_status: 'pending'
     {
       const mockOrder = {
@@ -395,11 +366,11 @@ export async function runSelfTest(): Promise<boolean> {
         serverKey: 'dummy-server-key',
       });
 
-      assert.strictEqual(summary.pending, 1);
-      assert.strictEqual(summary.settled, 0);
-      assert.strictEqual(summary.failed, 0);
-      assert.strictEqual(summary.reconciled, 0);
-      assert.strictEqual(rpcCalls.length, 0, 'Tidak boleh ada RPC yang dipanggil saat Midtrans pending');
+      expect(summary.pending).toBe(1);
+      expect(summary.settled).toBe(0);
+      expect(summary.failed).toBe(0);
+      expect(summary.reconciled).toBe(0);
+      expect(rpcCalls.length, 'Tidak boleh ada RPC yang dipanggil saat Midtrans pending').toBe(0);
     }
 
     // 6b. Midtrans mengembalikan HTTP 404 (Snap link belum dibuka pengguna)
@@ -432,19 +403,15 @@ export async function runSelfTest(): Promise<boolean> {
         serverKey: 'dummy-server-key',
       });
 
-      assert.strictEqual(summary.pending, 1);
-      assert.strictEqual(summary.settled, 0);
-      assert.strictEqual(summary.failed, 0);
-      assert.strictEqual(summary.reconciled, 0);
-      assert.strictEqual(rpcCalls.length, 0, 'HTTP 404 membiarkan order tetap pending');
+      expect(summary.pending).toBe(1);
+      expect(summary.settled).toBe(0);
+      expect(summary.failed).toBe(0);
+      expect(summary.reconciled).toBe(0);
+      expect(rpcCalls.length, 'HTTP 404 membiarkan order tetap pending').toBe(0);
     }
-    console.log('✓ UJI 6 LULUS: Order status pending dan HTTP 404 membiarkan status tetap pending di DB');
-  }
+  });
 
-  // ========================================================
-  // UJI 7: Query Filter: status pending, created_at <= 1 jam, limit 50
-  // ========================================================
-  {
+  it('UJI 7 LULUS: Query DB memfilter status pending, created_at <= 1 jam lalu, limit 50', async () => {
     const fixedNow = 1731412800000; // 2026-11-12T12:00:00.000Z
     const expectedCutoffIso = new Date(fixedNow - 60 * 60 * 1000).toISOString();
 
@@ -458,26 +425,22 @@ export async function runSelfTest(): Promise<boolean> {
       serverKey: 'dummy-server-key',
     });
 
-    assert.strictEqual(queryLog.table, 'topup_orders');
-    assert.strictEqual(queryLog.statusFilter, 'pending');
-    assert.strictEqual(queryLog.lteFilter, expectedCutoffIso);
-    assert.strictEqual(queryLog.orderColumn, 'created_at');
-    assert.strictEqual(queryLog.orderAscending, true);
-    assert.strictEqual(queryLog.limitCount, 50);
+    expect(queryLog.table).toBe('topup_orders');
+    expect(queryLog.statusFilter).toBe('pending');
+    expect(queryLog.lteFilter).toBe(expectedCutoffIso);
+    expect(queryLog.orderColumn).toBe('created_at');
+    expect(queryLog.orderAscending).toBe(true);
+    expect(queryLog.limitCount).toBe(50);
 
-    assert.strictEqual(summary.scanned, 0);
-    assert.strictEqual(summary.reconciled, 0);
-    assert.strictEqual(summary.settled, 0);
-    assert.strictEqual(summary.failed, 0);
-    assert.strictEqual(summary.pending, 0);
-    assert.strictEqual(summary.errors, 0);
-    console.log('✓ UJI 7 LULUS: Query DB memfilter status pending, created_at <= 1 jam lalu, limit 50');
-  }
+    expect(summary.scanned).toBe(0);
+    expect(summary.reconciled).toBe(0);
+    expect(summary.settled).toBe(0);
+    expect(summary.failed).toBe(0);
+    expect(summary.pending).toBe(0);
+    expect(summary.errors).toBe(0);
+  });
 
-  // ========================================================
-  // UJI 8: Batch Campuran (Sesuai Contoh PRD: 12 scanned, 5 reconciled: 4 settled + 1 failed, 7 pending)
-  // ========================================================
-  {
+  it('UJI 8 LULUS: Batch 12 order cocok persis dengan contoh spesifikasi PRD-049', async () => {
     const batchOrders = [
       // 4 settled
       { id: '1', order_id: 'ORD-S1', patient_id: 'p1', coins: 10, amount_rupiah: 10000, status: 'pending', provider_reference: null, settled_at: null, created_at: '2026-11-12T00:00:00Z' },
@@ -550,7 +513,7 @@ export async function runSelfTest(): Promise<boolean> {
       serverKey: 'dummy-server-key',
     });
 
-    assert.deepStrictEqual(summary, {
+    expect(summary).toStrictEqual({
       success: true,
       scanned: 12,
       reconciled: 5,
@@ -559,21 +522,5 @@ export async function runSelfTest(): Promise<boolean> {
       pending: 7,
       errors: 0,
     });
-    console.log('✓ UJI 8 LULUS: Batch 12 order cocok persis dengan contoh spesifikasi PRD-049');
-  }
-
-  console.log('[SELFTEST] SEMUA PENGUJIAN T-209 LULUS DENGAN SUKSES.');
-  return true;
-}
-
-// Jalankan otomatis jika dieksekusi via tsx / node
-if (process.argv[1]?.includes('reconcile-stale-topup.selftest')) {
-  runSelfTest()
-    .then((ok) => {
-      if (!ok) process.exit(1);
-    })
-    .catch((err) => {
-      console.error('Self-test fatal error:', err);
-      process.exit(1);
-    });
-}
+  });
+});

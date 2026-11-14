@@ -9,9 +9,9 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'dummy-service-role-key';
 }
 
-import assert from 'node:assert/strict';
+import { assert, describe, expect, it } from 'vitest';
 import type { UserEntity } from '@/types/database';
-import type { WalletHttpError } from '@/services/wallet.service';
+import type { WalletHttpError as WalletHttpErrorType } from '@/services/wallet.service';
 import type { supabaseAdmin } from '@/lib/supabase/client';
 
 type SupabaseAdminType = typeof supabaseAdmin;
@@ -169,16 +169,12 @@ const mockGetProfile = async () => ({
   nama_lengkap_gelar: 'Dr. Jane Doe, M.Psi.',
 });
 
-export async function runSelfTests(): Promise<boolean> {
-  console.log('[SELFTEST] Memulai pengujian guardrail & proteksi payout hold (T-216)...');
 
-  const { WalletService, WalletHttpError } = await import('@/services/wallet.service');
-  const { WalletPayoutService } = await import('@/services/wallet-payout.service');
+const { WalletService, WalletHttpError } = await import('@/services/wallet.service');
+const { WalletPayoutService } = await import('@/services/wallet-payout.service');
 
-  // ========================================================
-  // UJI 1: requestPayout menolak dengan 422 PAYOUT_HELD_FOR_VERIFICATION saat saldo bersih tidak cukup
-  // ========================================================
-  {
+describe('Payout hold guardrail (T-216)', () => {
+  it('UJI 1 LULUS: requestPayout menolak 422 PAYOUT_HELD_FOR_VERIFICATION dengan pesan informatif', async () => {
     // Saldo 1.000.000, hold sengketa 400.000 -> withdrawable = 600.000
     // Pengajuan: 600.000 + fee 6.500 = 606.500 > 600.000
     const mock = createMockDbClient({
@@ -192,7 +188,7 @@ export async function runSelfTests(): Promise<boolean> {
       ],
     });
 
-    let thrownError: WalletHttpError | null = null;
+    let thrownError: WalletHttpErrorType | null = null;
     try {
       await WalletPayoutService.requestPayout(
         mockMitraPsikolog,
@@ -213,8 +209,8 @@ export async function runSelfTests(): Promise<boolean> {
     }
 
     assert(thrownError !== null, 'requestPayout harus melempar WalletHttpError');
-    assert.strictEqual(thrownError.status, 422, 'Status HTTP harus 422');
-    assert.strictEqual(thrownError.code, 'PAYOUT_HELD_FOR_VERIFICATION', 'Kode error harus PAYOUT_HELD_FOR_VERIFICATION');
+    expect(thrownError.status, 'Status HTTP harus 422').toBe(422);
+    expect(thrownError.code, 'Kode error harus PAYOUT_HELD_FOR_VERIFICATION').toBe('PAYOUT_HELD_FOR_VERIFICATION');
     assert(
       thrownError.message.includes('Sebagian saldo Anda'),
       'Pesan harus dimulai dengan "Sebagian saldo Anda"'
@@ -227,14 +223,10 @@ export async function runSelfTests(): Promise<boolean> {
       thrownError.message.includes('Rp 593.500'),
       'Pesan harus memuat batas pencairan Rp 593.500 (600.000 - 6.500)'
     );
-    assert.strictEqual(mock.getRpcCalls().length, 0, 'RPC payout_request tidak boleh dipanggil saat ditolak 422');
-    console.log('✓ UJI 1 LULUS: requestPayout menolak 422 PAYOUT_HELD_FOR_VERIFICATION dengan pesan informatif');
-  }
+    expect(mock.getRpcCalls().length, 'RPC payout_request tidak boleh dipanggil saat ditolak 422').toBe(0);
+  });
 
-  // ========================================================
-  // UJI 2: requestPayout berhasil jika penarikan <= withdrawable meski ada hold sengketa
-  // ========================================================
-  {
+  it('UJI 2 LULUS: requestPayout berhasil jika total penarikan berada dalam batas withdrawable', async () => {
     // Saldo 1.000.000, hold sengketa 400.000 -> withdrawable = 600.000
     // Pengajuan: 500.000 + fee 6.500 = 506.500 <= 600.000
     const mock = createMockDbClient({
@@ -259,19 +251,15 @@ export async function runSelfTests(): Promise<boolean> {
       { client: mock.client, getProfile: mockGetProfile }
     );
 
-    assert.strictEqual(result.amount_rupiah, 500000);
-    assert.strictEqual(result.fee_rupiah, 6500);
-    assert.strictEqual(result.total_deducted, 506500);
-    assert.strictEqual(result.status, 'requested');
-    assert.strictEqual(mock.getRpcCalls().length, 1, 'RPC payout_request harus dipanggil');
-    assert.strictEqual(mock.getRpcCalls()[0].fn, 'payout_request');
-    console.log('✓ UJI 2 LULUS: requestPayout berhasil jika total penarikan berada dalam batas withdrawable');
-  }
+    expect(result.amount_rupiah).toBe(500000);
+    expect(result.fee_rupiah).toBe(6500);
+    expect(result.total_deducted).toBe(506500);
+    expect(result.status).toBe('requested');
+    expect(mock.getRpcCalls().length, 'RPC payout_request harus dipanggil').toBe(1);
+    expect(mock.getRpcCalls()[0].fn).toBe('payout_request');
+  });
 
-  // ========================================================
-  // UJI 3: requestPayout berjalan normal jika mitra tidak memiliki hold sengketa aktif
-  // ========================================================
-  {
+  it('UJI 3 LULUS: Mitra tanpa hold aktif dapat mengajukan penarikan normal', async () => {
     const mock = createMockDbClient({
       wallets: [{ user_id: mockMitraPsikolog.id, available_rupiah: 1000000 }],
       holds: [], // Tidak ada hold
@@ -288,16 +276,12 @@ export async function runSelfTests(): Promise<boolean> {
       { client: mock.client, getProfile: mockGetProfile }
     );
 
-    assert.strictEqual(result.amount_rupiah, 600000);
-    assert.strictEqual(result.status, 'requested');
-    assert.strictEqual(mock.getRpcCalls().length, 1);
-    console.log('✓ UJI 3 LULUS: Mitra tanpa hold aktif dapat mengajukan penarikan normal');
-  }
+    expect(result.amount_rupiah).toBe(600000);
+    expect(result.status).toBe('requested');
+    expect(mock.getRpcCalls().length).toBe(1);
+  });
 
-  // ========================================================
-  // UJI 4: getAdminPayouts memperkaya item dengan has_dispute_hold dan dispute_hold_amount
-  // ========================================================
-  {
+  it('UJI 4 LULUS: getAdminPayouts memperkaya item dengan has_dispute_hold & dispute_hold_amount', async () => {
     const mitraAId = 'mitra-a-uuid';
     const mitraBId = 'mitra-b-uuid';
 
@@ -360,25 +344,20 @@ export async function runSelfTests(): Promise<boolean> {
       mock.client
     );
 
-    assert.strictEqual(result.items.length, 2);
+    expect(result.items.length).toBe(2);
 
     const itemA = result.items.find((i) => i.id === 'payout-1')!;
-    assert.strictEqual(itemA.has_dispute_hold, true, 'Mitra A harus memiliki has_dispute_hold: true');
-    assert.strictEqual(itemA.dispute_hold_amount, 240000, 'Total hold Mitra A harus 240.000 (160k + 80k)');
-    assert.strictEqual(itemA.mitra_name, 'Psikolog A, M.Psi.');
+    expect(itemA.has_dispute_hold, 'Mitra A harus memiliki has_dispute_hold: true').toBe(true);
+    expect(itemA.dispute_hold_amount, 'Total hold Mitra A harus 240.000 (160k + 80k)').toBe(240000);
+    expect(itemA.mitra_name).toBe('Psikolog A, M.Psi.');
 
     const itemB = result.items.find((i) => i.id === 'payout-2')!;
-    assert.strictEqual(itemB.has_dispute_hold, false, 'Mitra B tidak memiliki hold aktif, has_dispute_hold harus false');
-    assert.strictEqual(itemB.dispute_hold_amount, 0, 'dispute_hold_amount Mitra B harus 0');
-    assert.strictEqual(itemB.mitra_name, 'Relawan B');
+    expect(itemB.has_dispute_hold, 'Mitra B tidak memiliki hold aktif, has_dispute_hold harus false').toBe(false);
+    expect(itemB.dispute_hold_amount, 'dispute_hold_amount Mitra B harus 0').toBe(0);
+    expect(itemB.mitra_name).toBe('Relawan B');
+  });
 
-    console.log('✓ UJI 4 LULUS: getAdminPayouts memperkaya item dengan has_dispute_hold & dispute_hold_amount');
-  }
-
-  // ========================================================
-  // UJI 5: markPayoutPaid menolak dengan 409 PAYOUT_HAS_ACTIVE_DISPUTE jika mitra memiliki hold aktif
-  // ========================================================
-  {
+  it('UJI 5 LULUS: markPayoutPaid menolak 409 PAYOUT_HAS_ACTIVE_DISPUTE jika ada hold sengketa aktif', async () => {
     const mitraWithHoldId = 'mitra-hold-active-uuid';
     const payoutId = 'payout-held-uuid';
 
@@ -408,7 +387,7 @@ export async function runSelfTests(): Promise<boolean> {
       ],
     });
 
-    let thrownError: WalletHttpError | null = null;
+    let thrownError: WalletHttpErrorType | null = null;
     try {
       await WalletPayoutService.markPayoutPaid(payoutId, 'admin-uuid', mock.client);
     } catch (err) {
@@ -420,20 +399,16 @@ export async function runSelfTests(): Promise<boolean> {
     }
 
     assert(thrownError !== null, 'markPayoutPaid harus melempar WalletHttpError');
-    assert.strictEqual(thrownError.status, 409, 'Status HTTP harus 409');
-    assert.strictEqual(thrownError.code, 'PAYOUT_HAS_ACTIVE_DISPUTE', 'Kode error harus PAYOUT_HAS_ACTIVE_DISPUTE');
+    expect(thrownError.status, 'Status HTTP harus 409').toBe(409);
+    expect(thrownError.code, 'Kode error harus PAYOUT_HAS_ACTIVE_DISPUTE').toBe('PAYOUT_HAS_ACTIVE_DISPUTE');
     assert(
       thrownError.message.includes('mitra memiliki sengketa penahanan payout aktif'),
       'Pesan harus menjelaskan penolakan karena sengketa aktif'
     );
-    assert.strictEqual(mock.getRpcCalls().length, 0, 'RPC payout_mark_paid tidak boleh dipanggil saat ditolak');
-    console.log('✓ UJI 5 LULUS: markPayoutPaid menolak 409 PAYOUT_HAS_ACTIVE_DISPUTE jika ada hold sengketa aktif');
-  }
+    expect(mock.getRpcCalls().length, 'RPC payout_mark_paid tidak boleh dipanggil saat ditolak').toBe(0);
+  });
 
-  // ========================================================
-  // UJI 6: markPayoutPaid sukses jika mitra tidak memiliki hold aktif
-  // ========================================================
-  {
+  it('UJI 6 LULUS: markPayoutPaid berhasil menandai paid jika mitra tidak memiliki sengketa aktif', async () => {
     const cleanMitraId = 'clean-mitra-uuid';
     const payoutId = 'clean-payout-uuid';
 
@@ -457,17 +432,13 @@ export async function runSelfTests(): Promise<boolean> {
     });
 
     const result = await WalletPayoutService.markPayoutPaid(payoutId, 'admin-uuid', mock.client);
-    assert.strictEqual(result.payout_id, payoutId);
-    assert.strictEqual(result.status, 'paid');
-    assert.strictEqual(mock.getRpcCalls().length, 1);
-    assert.strictEqual(mock.getRpcCalls()[0].fn, 'payout_mark_paid');
-    console.log('✓ UJI 6 LULUS: markPayoutPaid berhasil menandai paid jika mitra tidak memiliki sengketa aktif');
-  }
+    expect(result.payout_id).toBe(payoutId);
+    expect(result.status).toBe('paid');
+    expect(mock.getRpcCalls().length).toBe(1);
+    expect(mock.getRpcCalls()[0].fn).toBe('payout_mark_paid');
+  });
 
-  // ========================================================
-  // UJI 7: rejectPayout tetap berjalan normal meski mitra memiliki hold sengketa aktif
-  // ========================================================
-  {
+  it('UJI 7 LULUS: rejectPayout tetap berjalan normal untuk membatalkan payout mitra ber-hold', async () => {
     const mitraWithHoldId = 'mitra-hold-active-uuid';
     const payoutId = 'payout-to-reject-uuid';
 
@@ -497,17 +468,13 @@ export async function runSelfTests(): Promise<boolean> {
     });
 
     const result = await WalletPayoutService.rejectPayout(payoutId, 'admin-uuid', mock.client);
-    assert.strictEqual(result.payout_id, payoutId);
-    assert.strictEqual(result.status, 'rejected');
-    assert.strictEqual(mock.getRpcCalls().length, 1);
-    assert.strictEqual(mock.getRpcCalls()[0].fn, 'payout_reject');
-    console.log('✓ UJI 7 LULUS: rejectPayout tetap berjalan normal untuk membatalkan payout mitra ber-hold');
-  }
+    expect(result.payout_id).toBe(payoutId);
+    expect(result.status).toBe('rejected');
+    expect(mock.getRpcCalls().length).toBe(1);
+    expect(mock.getRpcCalls()[0].fn).toBe('payout_reject');
+  });
 
-  // ========================================================
-  // UJI 8: markPayoutPaid validasi status payout (404 jika tidak ditemukan, 409 jika bukan requested)
-  // ========================================================
-  {
+  it('UJI 8 LULUS: Validasi integritas status payout (404 & 409) berfungsi akurat', async () => {
     const mock = createMockDbClient({
       payouts: [
         {
@@ -527,37 +494,13 @@ export async function runSelfTests(): Promise<boolean> {
     });
 
     // Test 404
-    await assert.rejects(
-      async () => {
+    await expect((async () => {
         await WalletPayoutService.markPayoutPaid('non-existent-uuid', 'admin-uuid', mock.client);
-      },
-      (err: any) => err instanceof WalletHttpError && err.status === 404 && err.code === 'PAYOUT_NOT_FOUND',
-      'Harus melempar 404 PAYOUT_NOT_FOUND untuk id fiktif'
-    );
+      })(), 'Harus melempar 404 PAYOUT_NOT_FOUND untuk id fiktif').rejects.toSatisfy((err: any) => err instanceof WalletHttpError && err.status === 404 && err.code === 'PAYOUT_NOT_FOUND');
 
     // Test 409 status bukan requested
-    await assert.rejects(
-      async () => {
+    await expect((async () => {
         await WalletPayoutService.markPayoutPaid('payout-already-paid', 'admin-uuid', mock.client);
-      },
-      (err: any) => err instanceof WalletHttpError && err.status === 409 && err.code === 'PAYOUT_NOT_PAYABLE',
-      'Harus melempar 409 PAYOUT_NOT_PAYABLE jika payout sudah berstatus paid'
-    );
-    console.log('✓ UJI 8 LULUS: Validasi integritas status payout (404 & 409) berfungsi akurat');
-  }
-
-  console.log('[SELFTEST] SEMUA PENGUJIAN T-216 LULUS DENGAN SUKSES.');
-  return true;
-}
-
-// Jalankan otomatis jika dieksekusi via tsx / node
-if (process.argv[1]?.includes('payout-hold.selftest')) {
-  runSelfTests()
-    .then((ok) => {
-      if (!ok) process.exit(1);
-    })
-    .catch((err) => {
-      console.error('Self-test fatal error:', err);
-      process.exit(1);
-    });
-}
+      })(), 'Harus melempar 409 PAYOUT_NOT_PAYABLE jika payout sudah berstatus paid').rejects.toSatisfy((err: any) => err instanceof WalletHttpError && err.status === 409 && err.code === 'PAYOUT_NOT_PAYABLE');
+  });
+});
