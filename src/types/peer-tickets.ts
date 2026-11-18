@@ -37,6 +37,7 @@ export interface PeerReviewEntity {
 export interface PeerRatingSummaryDTO {
   rating_avg: number | null;
   rating_count: number;
+  sessions_completed?: number;
 }
 
 export interface RelawanDailyQuotaEntity {

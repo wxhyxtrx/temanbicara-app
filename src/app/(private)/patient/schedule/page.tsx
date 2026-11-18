@@ -17,7 +17,7 @@ import {
   PlusCircle,
   Search,
   Clock,
-  CalendarCheck,
+
   RefreshCw,
   History,
   Sparkles,
@@ -240,20 +240,6 @@ function PatientScheduleContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            variant="outline"
-            className="text-xs border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-3.5 py-2 h-9 font-semibold gap-1.5"
-            onClick={() =>
-              notify.success(
-                "Sinkronisasi Kalender Berhasil",
-                "Jadwal sesi Anda telah disinkronkan ke kalender perangkat Anda."
-              )
-            }
-          >
-            <CalendarCheck size={15} className="text-teal-600 dark:text-teal-400" />
-            <span>Sinkronkan Kalender</span>
-          </Button>
-
           <Button
             onClick={() => setIsSelectPsychologistOpen(true)}
             className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-4 py-2 h-9 font-semibold shadow-xs gap-1.5 cursor-pointer"

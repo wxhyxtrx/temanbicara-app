@@ -401,7 +401,7 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
         <div className="flex items-center gap-2 shrink-0">
           <div className="px-3.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 text-xs font-semibold flex items-center gap-2 shadow-2xs min-w-0">
             <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />
-            <span className="truncate">Rekening Terverifikasi Sesuai Identitas</span>
+            <span className="truncate">Nama rekening dicek admin saat pencairan</span>
           </div>
         </div>
       </div>

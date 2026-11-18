@@ -57,7 +57,6 @@ function StatusContent() {
   const { user, logout, syncSession } = useUserStore();
   const [currentStatus, setCurrentStatus] =
     useState<string>("pending_approval");
-  const [resendingEmail, setResendingEmail] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
 
   // Ambil profil terbaru (termasuk alasan penolakan) dan sinkronkan cookie status dari server
@@ -124,34 +123,17 @@ function StatusContent() {
       : null;
   const accountEmail = user?.email || "-";
 
-  const handleResendEmail = () => {
-    setResendingEmail(true);
-    setTimeout(() => {
-      setResendingEmail(false);
-      notify.success(
-        "Email Terkirim",
-        "Tautan verifikasi baru telah dikirim ke alamat email Anda.",
-      );
-    }, 1200);
-  };
-
   const statusMap: Record<string, StatusDetail> = {
     unverified_email: {
       badge: "Email Belum Diverifikasi",
       badgeColor:
         "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300",
       title: "Verifikasi Alamat Email Anda",
-      description: `Kami telah mengirimkan tautan aktivasi ke ${user?.email || "email Anda"}. Silakan periksa kotak masuk atau folder spam Anda untuk mengaktifkan akun.`,
+      description: `Email ${user?.email || "akun Anda"} belum terverifikasi. Admin perlu memverifikasi akun ini sebelum dapat digunakan.`,
       icon: Mail,
       iconBg:
         "bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800",
       iconColor: "text-amber-600 dark:text-amber-400",
-      actionPrimary: {
-        label: resendingEmail
-          ? "Mengirim Ulang..."
-          : "Kirim Ulang Tautan Verifikasi",
-        onClick: handleResendEmail,
-      },
       contactSupport: true,
     },
     incomplete_profile: {
@@ -358,12 +340,12 @@ function StatusContent() {
               ) : (
                 <Button
                   onClick={activeConfig.actionPrimary.onClick}
-                  disabled={resendingEmail || checkingStatus}
+                  disabled={checkingStatus}
                   className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow-md shadow-teal-700/20 gap-2 cursor-pointer"
                 >
                   <RefreshCw
                     size={15}
-                    className={resendingEmail || checkingStatus ? "animate-spin" : ""}
+                    className={checkingStatus ? "animate-spin" : ""}
                   />
                   <span>{activeConfig.actionPrimary.label}</span>
                 </Button>

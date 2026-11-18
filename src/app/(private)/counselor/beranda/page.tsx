@@ -554,7 +554,7 @@ export default function CounselorBerandaPage() {
                   Jika klien menunjukkan indikasi risiko bahaya diri aktif (suicidal ideation), segera rujuk ke hotline nasional SEJIWA 119 ext. 8 dan koordinasikan dengan administrator.
                 </p>
                 <Link href="/help-center" className="text-[11px] text-teal-700 dark:text-teal-400 font-semibold hover:underline block">
-                  Lihat Dokumen SOP HIMPSI →
+                  Buka Pusat Bantuan →
                 </Link>
               </div>
             </CardContent>

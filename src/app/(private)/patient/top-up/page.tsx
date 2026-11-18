@@ -68,48 +68,35 @@ export default function PatientTopUpPage() {
   const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
   const [topupError, setTopupError] = useState<string | null>(null);
 
-  // 4 Paket Terapi Berorientasi Pemulihan (Harga murni: koin * COIN_TO_RUPIAH)
+  // Paket nominal koin (harga murni: koin * COIN_TO_RUPIAH). Tarif sesi berbeda per psikolog, jadi paket tidak menjanjikan jumlah sesi.
   const therapyPackages: TherapyPackage[] = [
     {
       id: "single",
-      name: "Sesi Eksplorasi",
-      subtitle: "1x Sesi Konseling Psikolog Klinis",
+      name: "Paket Kecil",
+      subtitle: "Cocok untuk mencoba satu sesi",
       coins: 20,
-      benefits: ["1x Konseling Psikolog Klinis", "Catatan Refleksi Emosi Mandiri"],
+      benefits: ["Dipakai untuk psikolog mana pun", "Tarif tiap psikolog tampil di profilnya"],
     },
     {
       id: "focus",
-      name: "Pemulihan Terstruktur",
-      subtitle: "2x Sesi Terstruktur + Evaluasi Emosi",
+      name: "Paket Sedang",
+      subtitle: "Untuk beberapa sesi atau tarif lebih tinggi",
       coins: 50,
-      popular: true,
-      benefits: [
-        "2x Konseling Psikolog Klinis",
-        "Rangkuman Sesi & Catatan Terapi",
-        "Prioritas Jadwal Reservasi",
-      ],
+      benefits: ["Dipakai untuk psikolog mana pun", "Sisa koin tetap tersimpan di dompet"],
     },
     {
       id: "intensive",
-      name: "Terapi Intensif",
-      subtitle: "4x Sesi Pemulihan Berkesinambungan",
+      name: "Paket Besar",
+      subtitle: "Untuk pendampingan rutin",
       coins: 100,
-      benefits: [
-        "4x Konseling Psikolog Klinis",
-        "Rencana Terapi CBT / Mindfulness",
-        "Monitoring Evaluasi Klinis",
-      ],
+      benefits: ["Dipakai untuk sesi dan tip apresiasi", "Koin kembali sesuai kebijakan refund"],
     },
     {
       id: "holistic",
-      name: "Program Holistik",
-      subtitle: "10x Sesi Pendampingan Menyeluruh",
+      name: "Paket Lengkap",
+      subtitle: "Untuk jangka panjang",
       coins: 250,
-      benefits: [
-        "10x Konseling Psikolog Bebas Pilih",
-        "Evaluasi Klinis Menyeluruh",
-        "Dukungan Penuh Jalur Prioritas",
-      ],
+      benefits: ["Dipakai untuk sesi dan tip apresiasi", "Koin kembali sesuai kebijakan refund"],
     },
   ];
 
@@ -295,7 +282,7 @@ export default function PatientTopUpPage() {
             Top Up Koin Konseling
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Pilih paket pemulihan terstruktur untuk reservasi sesi psikolog klinis & telekonseling privat
+            Beli koin untuk membayar sesi dengan psikolog. Tarif setiap psikolog tampil di profilnya.
           </p>
         </div>
 
@@ -353,7 +340,7 @@ export default function PatientTopUpPage() {
                     Pilih Paket Koin Konseling
                   </CardTitle>
                   <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Tarif tetap standar: 1 Koin = Rp 10.000. Tersedia untuk semua psikolog klinis berlisensi.
+                    Kurs tetap: 1 Koin = Rp 10.000. Koin berlaku untuk semua psikolog.
                   </CardDescription>
                 </div>
               </div>

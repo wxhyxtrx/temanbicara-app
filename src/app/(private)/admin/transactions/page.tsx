@@ -392,10 +392,10 @@ export default function AdminTransactionsPage() {
                 Integritas Buku Besar
               </span>
               <p className="text-sm font-bold text-teal-900 dark:text-teal-200 pt-1">
-                Double-Entry Ledger Aktif
+                Buku Besar Tercatat
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Pencatatan kas keluar dibukukan otomatis
+                Setiap mutasi saldo dicatat di ledger_entries
               </p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0">

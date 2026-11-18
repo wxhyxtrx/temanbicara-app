@@ -72,7 +72,7 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
       },
       {
         title: "Mutasi & Riwayat",
-        description: "Arus koin & invoice sesi",
+        description: "Arus koin & riwayat top-up",
         url: "/patient/top-up/history",
         icon: History,
       },
@@ -134,7 +134,7 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
       },
       {
         title: "Pusat Bantuan",
-        description: "Panduan etika klinis HIMPSI",
+        description: "FAQ & kontak darurat",
         url: "/help-center",
         icon: HelpCircle,
       },
@@ -178,7 +178,7 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
       },
       {
         title: "Pusat Bantuan",
-        description: "Kontak koordinator pendengar",
+        description: "FAQ & kontak darurat",
         url: "/help-center",
         icon: HelpCircle,
       },

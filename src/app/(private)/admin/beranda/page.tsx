@@ -12,8 +12,6 @@ import {
   Coins,
   ArrowRight,
   TrendingUp,
-  Server,
-  Lock,
   Wallet,
   RefreshCw,
   AlertCircle,
@@ -143,23 +141,6 @@ export default function AdminBerandaPage() {
                 <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
                 <span>Segarkan Data</span>
               </Button>
-            </div>
-          </div>
-
-          {/* System Health Assurance */}
-          <div className="rounded-2xl bg-teal-900/40 border border-teal-700/50 p-4 sm:p-5 backdrop-blur-md max-w-xs space-y-3 shrink-0">
-            <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
-              <Server size={16} />
-              <span>Infrastruktur Layanan Aktif</span>
-            </div>
-            <p className="text-xs text-teal-100/70 leading-relaxed font-nunito">
-              Semua saluran percakapan dan basis data dilindungi standar perlindungan data klinis & ledger akuntansi terpusat.
-            </p>
-            <div className="pt-2 border-t border-teal-800/80 flex items-center justify-between text-[11px] text-teal-300">
-              <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-                <Lock size={12} /> RPC PostgreSQL Aktif
-              </span>
-              <span>Versi 2.5.0</span>
             </div>
           </div>
         </div>

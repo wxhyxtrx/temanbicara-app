@@ -252,7 +252,7 @@ export default function CounselorRegistrationPage() {
                 </div>
                 <div className="text-xs">
                   <p className="font-bold text-slate-800 dark:text-slate-200">Verifikasi Dokumen SIPPK/STR</p>
-                  <p className="text-[11px] text-slate-500">Pengecekan ke database HIMPSI/Kemenkes (1-3 hari kerja)</p>
+                  <p className="text-[11px] text-slate-500">Admin memeriksa dokumen yang Anda unggah (1-3 hari kerja)</p>
                 </div>
               </div>
 

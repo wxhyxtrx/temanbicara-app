@@ -49,9 +49,20 @@ export async function GET() {
       ? Number(row.rating_count)
       : 0;
 
+    // relawan_profiles.total_sesi tidak dipelihara di DB, jadi hitung langsung dari tiket yang sudah ditutup.
+    const { count: sessionsCompleted, error: countError } = await supabaseAdmin
+      .from('peer_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('claimed_by', user.id)
+      .eq('status', 'closed');
+    if (countError) {
+      console.error('[LISTENER_RATING_SUMMARY_COUNT_ERROR]:', countError);
+    }
+
     const summary: PeerRatingSummaryDTO = {
       rating_avg,
       rating_count,
+      sessions_completed: sessionsCompleted ?? 0,
     };
 
     return NextResponse.json({

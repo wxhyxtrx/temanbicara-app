@@ -159,7 +159,7 @@ export function CrisisFeedView() {
             )}
           </div>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-            Pusat pemantauan alarm keselamatan pasien, deteksi kata kunci risiko, dan protokol kontak darurat.
+            Laporan krisis yang dikirim psikolog dan relawan dari ruang sesi, beserta kontak darurat pasien.
           </p>
         </div>
 

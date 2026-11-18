@@ -157,37 +157,6 @@ export default function PatientBerandaPage() {
     );
   }, [psychologists, psychologistSearch]);
 
-  const convertToConsultant = (p: PublicPsychologist): Consultant => {
-    const initials =
-      p.nama_lengkap_gelar
-        .replace(/(Dr\.|M\.Psi|Psikolog|,|\.)/g, "")
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((w) => w[0]?.toUpperCase() || "")
-        .join("") || "PS";
-
-    return {
-      id: 1,
-      name: p.nama_lengkap_gelar,
-      title: `Psikolog Klinis (${p.tahun_pengalaman} Thn Pengalaman)`,
-      specialty: p.spesialisasi.join(", ") || "Konseling & Terapi Klinis",
-      licenseNumber: "SIPPK Terverifikasi",
-      experienceYears: p.tahun_pengalaman,
-      rating: 5.0,
-      reviews: 0,
-      initials,
-      available: true,
-      nextSlot: "Jadwal Tersedia",
-      almamater: "Magister Profesi Psikologi",
-      bio: `Psikolog klinis berlisensi dengan keahlian di bidang ${p.spesialisasi.join(", ") || "kesehatan mental"}.`,
-      approaches: ["CBT", "Mindfulness", "Solution-Focused Brief Therapy"],
-      handledTopics: p.spesialisasi,
-      hourlyRateCoins: Math.round(Number(p.tarif_sesi) / 10000) || 15,
-      consultationMethods: ["Chat Eksklusif", "Voice Call"],
-    };
-  };
-
   const getGreetingName = () => {
     if (!mounted) return "";
     if (user.alias) return user.alias;

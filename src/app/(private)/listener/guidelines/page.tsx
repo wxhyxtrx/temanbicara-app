@@ -27,7 +27,7 @@ export default function ListenerGuidelinesPage() {
           Panduan Etika & Pertolongan Pertama Psikologis (PFA)
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Pedoman operasional pendengar sebaya berbasis standar WHO dan kode etik kerelawanan HIMPSI
+          Pedoman operasional pendengar sebaya berbasis panduan Psychological First Aid (PFA) dari WHO
         </p>
       </div>
 

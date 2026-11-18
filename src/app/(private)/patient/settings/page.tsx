@@ -16,7 +16,6 @@ import {
   ShieldCheck,
   Bell,
   Lock,
-  Camera,
   AlertTriangle,
   HeartPulse,
   Save,
@@ -291,16 +290,6 @@ export default function PatientSettingsPage() {
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900 border-2 border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 font-bold text-xl flex items-center justify-center font-heading shadow-xs">
                     {user.avatarInitials || (fullName ? fullName.slice(0, 2).toUpperCase() : "TB")}
                   </div>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 shadow-xs cursor-pointer"
-                    title="Ganti foto avatar"
-                    type="button"
-                    onClick={() => notify.info("Unggah Avatar", "Fitur unggah avatar khusus segera hadir. Inisial otomatis diperbarui dari nama Anda.")}
-                  >
-                    <Camera size={13} />
-                  </Button>
                 </div>
 
                 <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
@@ -392,7 +381,7 @@ export default function PatientSettingsPage() {
                   {/* Nomor WhatsApp */}
                   <div className="space-y-1.5">
                     <Label htmlFor="phone" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Nomor WhatsApp (Pengingat Sesi)
+                      Nomor WhatsApp
                     </Label>
                     <PhoneInput
                       id="phone"
@@ -501,7 +490,7 @@ export default function PatientSettingsPage() {
                     Mode Anonim Otomatis
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
-                    Selalu gunakan inisial acak (&quot;Pengguna Anonim&quot;) setiap kali memulai percakapan baru dengan AI maupun psikolog.
+                    Selalu gunakan inisial acak (&quot;Pengguna Anonim&quot;) setiap kali memulai percakapan baru dengan psikolog maupun relawan.
                   </p>
                 </div>
                 <Switch

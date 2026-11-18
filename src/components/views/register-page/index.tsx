@@ -310,7 +310,7 @@ export default function Register() {
                 className="h-11 bg-slate-50/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100"
                 disabled={loading}
               />
-              <p className="text-[11px] text-slate-400">Digunakan untuk administrasi medis dan faktur sesi.</p>
+              <p className="text-[11px] text-slate-400">Digunakan untuk administrasi akun.</p>
             </div>
 
             <div className="space-y-1.5">
@@ -606,7 +606,7 @@ export default function Register() {
                 <p className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-pink-700 dark:group-hover:text-pink-400 truncate">
                   Relawan Pendengar Sebaya
                 </p>
-                <p className="text-[10px] text-slate-500 truncate">Pelatihan Empati PFA</p>
+                <p className="text-[10px] text-slate-500 truncate">Berbasis Panduan PFA</p>
               </div>
             </Link>
           </div>

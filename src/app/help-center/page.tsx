@@ -1,38 +1,114 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Navbar, Footer } from "@/components/shared/organisms";
-import {
-  Search,
-  HelpCircle,
-  MessageCircle,
-  FileText,
-  ShieldCheck,
-  HeartPulse,
-  Phone,
-  Mail,
-  Clock,
-  Sparkles,
-  BookOpen,
-  CalendarCheck,
-  Send,
-  AlertCircle,
-  CheckCircle2,
-  ArrowRight,
-} from "lucide-react";
+import { Search, FileText, ShieldCheck, HeartPulse, Phone, HeartHandshake, CalendarCheck, ArrowRight } from "lucide-react";
 import { useUserStore } from "@/store/user-store";
-import { useNotificationStore } from "@/store/notification-store";
 import Link from "next/link";
+
+// Jawaban disesuaikan dengan aturan yang benar-benar berjalan di kode (booking-utils, refund, reschedule, peer-tickets).
+const faqCategories = [
+  {
+    id: "clinical",
+    title: "Konseling dengan Psikolog",
+    icon: <ShieldCheck size={18} className="text-teal-600 dark:text-teal-400" />,
+    faqs: [
+      {
+        question: "Bagaimana psikolog di TemanBicara diverifikasi?",
+        answer:
+          "Saat mendaftar, psikolog wajib mengunggah dokumen izin praktik (SIPPK) dan dokumen pendukung dalam format PDF. Admin memeriksa dokumen tersebut, dan akun psikolog baru bisa menerima jadwal setelah disetujui.",
+      },
+      {
+        question: "Berapa lama satu sesi konseling?",
+        answer:
+          "Satu sesi berlangsung 45 menit dalam bentuk chat privat (teks, gambar, dan pesan suara). Ruang sesi terbuka 10 menit sebelum jadwal. Kamu bisa mengajukan perpanjangan 10 menit, dan perpanjangan berlaku jika psikolog menyetujuinya.",
+      },
+      {
+        question: "Bisakah saya memindahkan jadwal (reschedule)?",
+        answer:
+          "Bisa, maksimal 1 kali per sesi dan paling lambat 24 jam sebelum sesi dimulai, ke slot kosong milik psikolog yang sama. Jika kurang dari 24 jam, kamu bisa membatalkan sesi sesuai ketentuan refund.",
+      },
+      {
+        question: "Bagaimana jika psikolog membatalkan jadwal?",
+        answer:
+          "Kamu akan mendapat notifikasi dan bisa memilih: pindah ke slot lain, atau refund koin 100%.",
+      },
+      {
+        question: "Bagaimana dengan ulasan dan tip?",
+        answer:
+          "Setelah sesi selesai, kamu bisa memberi rating dan ulasan untuk psikolog. Kamu juga bisa memberi tip koin sebagai apresiasi (sekali per sesi).",
+      },
+    ],
+  },
+  {
+    id: "peer",
+    title: "Curhat Sebaya",
+    icon: <HeartHandshake size={18} className="text-teal-600 dark:text-teal-400" />,
+    faqs: [
+      {
+        question: "Apa bedanya Curhat Sebaya dengan konseling psikolog?",
+        answer:
+          "Curhat Sebaya adalah ruang bercerita dengan relawan pendengar yang dibekali panduan Psychological First Aid (PFA), tanpa biaya koin. Relawan bukan tenaga profesional: mereka mendengarkan dan menemani, bukan mendiagnosis atau memberi terapi. Untuk penanganan klinis, pesanlah sesi dengan psikolog.",
+      },
+      {
+        question: "Berapa lama sesi Curhat Sebaya?",
+        answer:
+          "Setelah tiketmu diambil relawan, relawan harus menyapa dalam 10 menit. Sejak sapaan pertama, ruang obrolan aktif hingga 24 jam, lalu berubah menjadi hanya-baca.",
+      },
+      {
+        question: "Apa yang terjadi jika ada tanda bahaya keselamatan?",
+        answer:
+          "Relawan dan psikolog dapat mengirim laporan krisis yang langsung masuk ke admin untuk ditindaklanjuti. Dalam keadaan darurat, segera hubungi layanan 119 ext. 8.",
+      },
+    ],
+  },
+  {
+    id: "privacy-mode",
+    title: "Kerahasiaan & Mode Anonim",
+    icon: <ShieldCheck size={18} className="text-teal-600 dark:text-teal-400" />,
+    faqs: [
+      {
+        question: "Siapa yang bisa membaca percakapan saya?",
+        answer:
+          "Isi sesi hanya bisa diakses oleh kamu dan psikolog atau relawan yang mendampingimu. Gambar dan pesan suara disimpan di penyimpanan privat dan dihapus otomatis setelah masa simpan berakhir.",
+      },
+      {
+        question: "Bisakah saya memakai nama samaran?",
+        answer:
+          "Bisa. Aktifkan \"Mode Anonim Otomatis\" di Pengaturan Akun, maka namamu ditampilkan sebagai nama samaran. Di Curhat Sebaya, kamu juga bisa memakai alias untuk setiap tiket.",
+      },
+    ],
+  },
+  {
+    id: "coins-packages",
+    title: "Koin & Pembayaran",
+    icon: <FileText size={18} className="text-teal-600 dark:text-teal-400" />,
+    faqs: [
+      {
+        question: "Berapa koin untuk satu sesi?",
+        answer:
+          "Tarif ditentukan oleh masing-masing psikolog dan tampil di profilnya dalam satuan koin (1 koin = Rp10.000). Curhat Sebaya tidak memakai koin.",
+      },
+      {
+        question: "Apakah koin bisa dikembalikan jika saya membatalkan sesi?",
+        answer:
+          "Bisa, sesuai kebijakan refund yang berlaku saat kamu memesan. Bawaannya: refund 100% jika dibatalkan 60 menit atau lebih sebelum sesi, 65% jika 30–60 menit sebelumnya, dan 0% jika kurang dari 30 menit.",
+      },
+      {
+        question: "Bagaimana cara membeli koin?",
+        answer:
+          "Lewat menu Top Up Koin. Pembayaran diproses oleh Midtrans; metode yang tersedia (virtual account, QRIS, e-wallet, kartu) tampil di halaman pembayaran. Koin masuk otomatis setelah pembayaran terkonfirmasi. Situs demo ini memakai Midtrans mode sandbox, jadi tidak ada uang sungguhan yang ditarik.",
+      },
+    ],
+  },
+];
 
 export default function PublicHelpCenterPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [ticketSent, setTicketSent] = useState(false);
   const [mounted, setMounted] = useState(false);
   const user = useUserStore((state) => state.user);
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
@@ -84,117 +160,13 @@ export default function PublicHelpCenterPage() {
   const targetHref = mounted && isAuthenticated ? getPortalHome(user?.role) : "/";
   const targetLabel = mounted && isAuthenticated ? getPortalLabel(user?.role) : "Ke Halaman Utama";
 
-  // Kategori FAQ Konseling & Layanan Psikologi
-  const faqCategories = [
-    {
-      id: "clinical",
-      title: "Layanan Konseling & Psikolog",
-      icon: <ShieldCheck size={18} className="text-teal-600 dark:text-teal-400" />,
-      faqs: [
-        {
-          question: "Apakah seluruh psikolog di TemanBicara memiliki izin praktik resmi?",
-          answer:
-            "Ya, 100% psikolog yang berpraktik di TemanBicara adalah psikolog klinis tersumpah yang memiliki Surat Izin Praktik Psikologi Klinis (SIPPK) dan Surat Tanda Registrasi (STR) aktif dari Himpunan Psikologi Indonesia (HIMPSI). Profil dan nomor lisensi dapat diverifikasi secara transparan.",
-        },
-        {
-          question: "Bagaimana kerahasiaan data dan isi percakapan saya dilindungi?",
-          answer:
-            "Setiap sesi dilindungi oleh Kode Etik Psikologi Indonesia dan standar kerahasiaan data medis. Isi sesi bersifat privat, hanya bisa diakses kamu dan psikologmu, serta tidak akan dibagikan kepada keluarga, atasan kantor, atau pihak ketiga mana pun tanpa persetujuan tertulis eksplisit dari Anda, kecuali dalam situasi darurat ancaman keselamatan jiwa (sesuai mandat hukum).",
-        },
-        {
-          question: "Apa perbedaan antara Konseling Psikolog Klinis dan Curhat AI?",
-          answer:
-            "Sesi Psikolog Klinis adalah sesi psikoterapi profesional 60 menit (CBT, ACT, Mindfulness) untuk diagnosis, penanganan trauma, kecemasan, atau depresi. Sedangkan TemanBicara AI adalah pendamping emosi instan 24/7 berbasis Psychological First Aid (PFA) untuk meredakan luapan kepanikan, overthinking, atau katarsis ringan gratis sehari-hari.",
-        },
-        {
-          question: "Bagaimana jika saya perlu menjadwalkan ulang (reschedule) sesi?",
-          answer:
-            "Anda dapat melakukan penjadwalan ulang bebas biaya maksimal sebelum waktu sesi dimulai melalui menu Jadwal > Detail Janji Temu. Koin Anda akan otomatis dikembalikan jika sesi dibatalkan.",
-        },
-      ],
-    },
-    {
-      id: "privacy-mode",
-      title: "Kerahasiaan & Mode Anonim",
-      icon: <ShieldCheck size={18} className="text-teal-600 dark:text-teal-400" />,
-      faqs: [
-        {
-          question: "Apakah saya bisa berkonsultasi secara anonim tanpa foto dan nama asli?",
-          answer:
-            "Sangat bisa. Anda dapat mengaktifkan 'Mode Anonim' di menu Ruang Chat atau Pengaturan. Nama Anda akan disamarkan menjadi inisial acak (Pengguna Anonim) di layar psikolog, dan Anda dapat memilih sesi via Voice Call atau Chat teks privat.",
-        },
-        {
-          question: "Apakah saya bisa mengunduh atau menghapus riwayat konsultasi saya?",
-          answer:
-            "Ya, Anda memiliki kendali penuh atas data pribadi Anda. Kunjungi menu Pengaturan > Kerahasiaan Medis untuk mengunduh rekam ringkasan konseling atau mengajukan penghapusan riwayat transkrip secara permanen.",
-        },
-      ],
-    },
-    {
-      id: "coins-packages",
-      title: "Koin, Paket Sesi & Pembayaran",
-      icon: <FileText size={18} className="text-teal-600 dark:text-teal-400" />,
-      faqs: [
-        {
-          question: "Berapa koin yang dibutuhkan untuk satu sesi konseling?",
-          answer:
-            "Sesi konseling Chat Eksklusif 60 menit membutuhkan 15 Koin. Panggilan suara privat (Voice Call) bertarif 5 Koin per jam. Pendampingan chatbot TemanBicara AI dapat diakses 100% gratis 24 jam.",
-        },
-        {
-          question: "Apakah koin yang saya miliki memiliki masa kedaluwarsa?",
-          answer:
-            "Tidak. Koin TemanBicara tidak memiliki masa kedaluwarsa dan tetap tersimpan aman di dompet akun Anda hingga Anda memutuskan menggunakannya untuk reservasi jadwal.",
-        },
-        {
-          question: "Metode pembayaran apa saja yang didukung?",
-          answer:
-            "Kami mendukung Virtual Account otomatis (BCA, Mandiri, BNI), QRIS instan dari semua aplikasi perbankan, serta E-Wallet (GoPay, OVO, ShopeePay) dengan konfirmasi otomatis 24 jam.",
-        },
-      ],
-    },
-  ];
-
-  // Panduan Pasien
-  const guides = [
-    {
-      title: "Persiapan Menjelang Sesi Konseling Pertama",
-      desc: "Langkah sederhana agar sesi terapi 60 menit bersama psikolog berjalan nyaman, tenang, dan efektif.",
-      time: "3 menit baca",
-      icon: <CalendarCheck className="text-teal-600 dark:text-teal-400" size={20} />,
-    },
-    {
-      title: "Teknik Pernapasan 4-7-8 untuk Serangan Panik",
-      desc: "Panduan relaksasi mandiri saat mengalami lonjakan kecemasan atau dada berdebar di malam hari.",
-      time: "4 menit baca",
-      icon: <HeartPulse className="text-teal-600 dark:text-teal-400" size={20} />,
-    },
-    {
-      title: "Panduan Pemanfaatan Mode Anonim di Chat",
-      desc: "Cara menyamarkan identitas dan menjaga privasi penuh selama sesi curhat dan telekonsultasi.",
-      time: "2 menit baca",
-      icon: <ShieldCheck className="text-teal-600 dark:text-teal-400" size={20} />,
-    },
-    {
-      title: "Memahami Kode Etik Kerahasiaan Psikologi (HIMPSI)",
-      desc: "Hak-hak hukum dan perlindungan privasi yang Anda miliki sebagai klien dalam layanan kesehatan jiwa.",
-      time: "5 menit baca",
-      icon: <BookOpen className="text-teal-600 dark:text-teal-400" size={20} />,
-    },
-  ];
-
-  const handleSendTicket = (e: React.FormEvent) => {
-    e.preventDefault();
-    setTicketSent(true);
-
-    useNotificationStore.getState().addNotification({
-      title: "Tiket Bantuan Terkirim",
-      message: "Pesan Anda telah diterima oleh tim koordinasi klinis TemanBicara.",
-      type: "sistem",
-      actionUrl: "/help-center",
-    });
-
-    setTimeout(() => setTicketSent(false), 3500);
-  };
+  const query = searchQuery.trim().toLowerCase();
+  const visibleCategories = faqCategories
+    .map((c) => ({
+      ...c,
+      faqs: query ? c.faqs.filter((f) => `${f.question} ${f.answer}`.toLowerCase().includes(query)) : c.faqs,
+    }))
+    .filter((c) => c.faqs.length > 0);
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-nunito transition-colors duration-200">
@@ -205,10 +177,10 @@ export default function PublicHelpCenterPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="space-y-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-              Pusat Bantuan & Panduan Pasien
+              Pusat Bantuan
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              Informasi seputar etika konseling, panduan terapi, regulasi privasi, dan kontak bantuan darurat
+              Jawaban seputar sesi konseling, curhat sebaya, privasi, koin, dan kontak bantuan darurat
             </p>
           </div>
 
@@ -262,229 +234,60 @@ export default function PublicHelpCenterPage() {
           </div>
         </div>
 
-        {/* 3. Search Bar */}
+        {/* 3. Search Bar (memfilter FAQ) */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400" size={17} />
           <Input
-            placeholder="Ketik kata kunci bantuan (contoh: lisensi psikolog, reschedule, privasi anonim, top-up)..."
+            aria-label="Cari pertanyaan"
+            placeholder="Cari pertanyaan (contoh: reschedule, refund, anonim, curhat sebaya)..."
             className="pl-11 h-11 text-xs sm:text-sm bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 dark:text-slate-100 rounded-2xl shadow-xs focus-visible:ring-teal-600"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {ticketSent && (
-          <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in duration-200">
-            <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>Pesan Anda telah diterima oleh tim koordinasi klinis. Kami akan membalas via email dalam 1x24 jam.</span>
-          </div>
-        )}
-
-        {/* 4. Main Tabs Navigation */}
-        <Tabs defaultValue="faq" className="w-full space-y-6">
-          <TabsList className="bg-slate-100/90 dark:bg-slate-900 p-1 rounded-xl flex w-full sm:w-auto overflow-x-auto justify-start border border-slate-200/80 dark:border-slate-800">
-            <TabsTrigger
-              value="faq"
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-teal-800 dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400 data-[state=active]:shadow-xs rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-            >
-              <HelpCircle size={15} />
-              <span>Pertanyaan Umum (FAQ)</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="guides"
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-teal-800 dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400 data-[state=active]:shadow-xs rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-            >
-              <BookOpen size={15} />
-              <span>Panduan Pasien</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="contact"
-              className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-teal-800 dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400 data-[state=active]:shadow-xs rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-            >
-              <MessageCircle size={15} />
-              <span>Bantuan Layanan & Tiket</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* TAB 1: FAQ ACCORDION */}
-          <TabsContent value="faq" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6">
-              {faqCategories.map((category) => (
-                <Card key={category.id} className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
-                  <CardHeader className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/80">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200/70 dark:border-teal-800 flex items-center justify-center shrink-0">
-                        {category.icon}
-                      </div>
-                      <div>
-                        <CardTitle className="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                          {category.title}
-                        </CardTitle>
-                        <CardDescription className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito">
-                          Jawaban terstandarisasi etika konseling TemanBicara
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-5 pt-2">
-                    <Accordion type="single" collapsible className="w-full">
-                      {category.faqs.map((faq, index) => (
-                        <AccordionItem key={index} value={`item-${index}`} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0 py-1">
-                          <AccordionTrigger className="text-left font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 hover:text-teal-700 dark:hover:text-teal-400 py-3 font-heading cursor-pointer">
-                            {faq.question}
-                          </AccordionTrigger>
-                          <AccordionContent className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-nunito pb-3">
-                            {faq.answer}
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  </CardContent>
-                </Card>
-              ))}
+        {/* 4. FAQ */}
+        <div className="grid grid-cols-1 gap-6">
+          {visibleCategories.length === 0 && (
+            <div className="py-12 text-center text-xs text-slate-500 dark:text-slate-400">
+              <CalendarCheck size={24} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+              Tidak ada pertanyaan yang cocok dengan &quot;{searchQuery}&quot;.
             </div>
-          </TabsContent>
-
-          {/* TAB 2: PATIENT GUIDES */}
-          <TabsContent value="guides">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {guides.map((guide, idx) => (
-                <Card key={idx} className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:border-teal-200 dark:hover:border-teal-700 transition-all cursor-pointer group">
-                  <CardContent className="p-4 sm:p-5 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200/60 dark:border-teal-800 flex items-center justify-center">
-                        {guide.icon}
-                      </div>
-                      <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 text-[10px] font-mono">
-                        {guide.time}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors">
-                        {guide.title}
-                      </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-nunito">
-                        {guide.desc}
-                      </p>
-                    </div>
-                    <div className="pt-2 flex items-center text-xs font-semibold text-teal-700 dark:text-teal-400 group-hover:translate-x-1 transition-transform">
-                      <span>Baca Panduan Selengkapnya →</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* TAB 3: CONTACT FORM & TICKETS */}
-          <TabsContent value="contact">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Form Pengajuan Tiket */}
-              <Card className="lg:col-span-7 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
-                <CardHeader className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/80">
-                  <CardTitle className="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                    Kirim Pertanyaan / Keluhan Layanan
-                  </CardTitle>
-                  <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Tim koordinasi klinis TemanBicara akan menindaklanjuti pesanmu dalam 1x24 jam kerja
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-5">
-                  <form onSubmit={handleSendTicket} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Nama Pasien</label>
-                        <Input
-                          defaultValue={mounted && user.fullName ? user.fullName : ""}
-                          placeholder="Nama lengkap Anda"
-                          className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Alamat Email</label>
-                        <Input
-                          type="email"
-                          defaultValue={mounted && user.email ? user.email : ""}
-                          placeholder="email@anda.com"
-                          className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Subjek Keluhan</label>
-                      <Input
-                        placeholder="Contoh: Kendala panggilan suara, pertanyaan jadwal, refund koin"
-                        className="h-9 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Detail Pesan / Pertanyaan</label>
-                      <textarea
-                        rows={4}
-                        placeholder="Deskripsikan kendala yang kamu alami secara rinci..."
-                        className="w-full p-3 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-teal-600 font-nunito resize-none"
-                        required
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl py-2 h-10 text-xs sm:text-sm shadow-xs cursor-pointer gap-2"
-                    >
-                      <Send size={14} />
-                      <span>Kirim Tiket Bantuan</span>
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-
-              {/* Saluran Bantuan Langsung */}
-              <div className="lg:col-span-5 space-y-4">
-                <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs p-4 sm:p-5 space-y-4">
-                  <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white">
-                    Saluran Bantuan Langsung
-                  </h4>
-
-                  <div className="space-y-3 text-xs">
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                      <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 shrink-0">
-                        <Mail size={16} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900 dark:text-white font-heading">Email Dukungan Medis</p>
-                        <p className="text-slate-500 dark:text-slate-400 text-[11px]">Konsultasi & keluhan akun</p>
-                        <a
-                          href="mailto:bantuan@temanbicara.id"
-                          className="text-teal-700 dark:text-teal-400 font-semibold text-xs hover:underline mt-1 inline-block"
-                        >
-                          bantuan@temanbicara.id
-                        </a>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                      <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 shrink-0">
-                        <Clock size={16} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900 dark:text-white font-heading">Jam Operasional Layanan</p>
-                        <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
-                          Senin – Minggu: 08:00 – 22:00 WIB<br />
-                          <strong className="text-teal-700 dark:text-teal-400">TemanBicara AI: Siaga 24 Jam Nonstop</strong>
-                        </p>
-                      </div>
-                    </div>
+          )}
+          {visibleCategories.map((category) => (
+            <Card key={category.id} className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
+              <CardHeader className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200/70 dark:border-teal-800 flex items-center justify-center shrink-0">
+                    {category.icon}
                   </div>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+                  <div>
+                    <CardTitle className="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                      {category.title}
+                    </CardTitle>
+                    <CardDescription className="text-[11px] text-slate-500 dark:text-slate-400 font-nunito">
+                      {category.faqs.length} pertanyaan
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-5 pt-2">
+                <Accordion type="single" collapsible className="w-full">
+                  {category.faqs.map((faq, index) => (
+                    <AccordionItem key={index} value={`item-${index}`} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0 py-1">
+                      <AccordionTrigger className="text-left font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 hover:text-teal-700 dark:hover:text-teal-400 py-3 font-heading cursor-pointer">
+                        {faq.question}
+                      </AccordionTrigger>
+                      <AccordionContent className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-nunito pb-3">
+                        {faq.answer}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </main>
 
       <Footer />

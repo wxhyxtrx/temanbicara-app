@@ -149,7 +149,7 @@ export default function ListenerBerandaPage() {
   }, [ratingSummary, profile?.rating_rata_rata]);
 
   const reviewCount = ratingSummary?.rating_count ?? 0;
-  const totalSesi = profile?.total_sesi ?? user.listenerData?.sessionsCompleted ?? 0;
+  const totalSesi = ratingSummary?.sessions_completed ?? 0;
 
   const displayName =
     profile?.alias_name ||
