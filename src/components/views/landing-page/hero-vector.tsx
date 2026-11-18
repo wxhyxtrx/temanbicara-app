@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck, Heart, Sparkles, CheckCircle2, Star, TrendingDown } from "lucide-react";
+import { ShieldCheck, Heart, Sparkles, CheckCircle2 } from "lucide-react";
 
 export function HeroVector() {
   return (
@@ -94,19 +94,12 @@ export function HeroVector() {
 
         {/* Floating Badge 2: Left Middle - Verified Psychologist */}
         <div className="absolute top-28 left-3 sm:left-6 bg-white/95 dark:bg-slate-900/95 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-lg shadow-slate-900/5 backdrop-blur-md flex items-center gap-2.5 max-w-[220px]">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-600 to-emerald-700 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 shadow-xs">
-            AW
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-600 to-emerald-700 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+            <CheckCircle2 size={16} />
           </div>
           <div className="leading-tight min-w-0">
-            <div className="flex items-center gap-1">
-              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">Dr. Anita Wijaya</p>
-              <CheckCircle2 size={12} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Psikolog Klinis (SIPPK)</p>
-            <div className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
-              <Star size={10} className="fill-amber-400 text-amber-400" />
-              <span>4.9 (240+ ulasan)</span>
-            </div>
+            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">Psikolog Terverifikasi</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">SIPPK dicek admin sebelum aktif</p>
           </div>
         </div>
 
@@ -114,15 +107,15 @@ export function HeroVector() {
         <div className="relative mt-2 bg-gradient-to-r from-teal-50/90 via-emerald-50/80 to-white dark:from-teal-950/70 dark:via-slate-900 dark:to-slate-950 border border-teal-200/70 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 shadow-sm flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
-              <TrendingDown size={16} />
+              <Heart size={16} />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-900 dark:text-white">Penurunan Tingkat Stres</p>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300">87% pengguna merasa lebih lega setelah 1 sesi</p>
+              <p className="text-xs font-bold text-slate-900 dark:text-white">Didampingi Saat Krisis</p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-300">Sinyal bahaya diteruskan ke admin & layanan darurat 119</p>
             </div>
           </div>
           <span className="hidden sm:inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-white dark:bg-slate-800 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-slate-700">
-            Terbukti Efektif
+            Eskalasi Krisis
           </span>
         </div>
       </div>

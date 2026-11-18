@@ -28,7 +28,7 @@ export default function StartNowSection() {
             </h2>
 
             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">
-              Beri dirimu izin untuk merasa lebih tenang. Mulai sesi pertamamu bersama psikolog klinis atau luapkan perasaanmu ke AI pendengar empatik kapan pun kamu butuh.
+              Beri dirimu izin untuk merasa lebih tenang. Mulai sesi pertamamu bersama psikolog klinis atau luapkan perasaanmu ke relawan pendengar sebaya yang siap mendengarkan.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
@@ -63,7 +63,7 @@ export default function StartNowSection() {
               </p>
               <div className="pt-1 flex items-center gap-1.5 text-[11px] text-teal-700 dark:text-teal-400 font-semibold">
                 <HeartPulse size={13} className="text-teal-600 dark:text-teal-400" />
-                <span>Siap Mendampingi 24 Jam</span>
+                <span>Psikolog &amp; Relawan Siap Mendampingi</span>
               </div>
             </div>
           </div>

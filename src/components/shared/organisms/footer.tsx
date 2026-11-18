@@ -40,11 +40,6 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/login" className="hover:text-teal-400 transition-colors">
-                    Curhat AI 24/7
-                  </Link>
-                </li>
-                <li>
                   <Link href="/help-center" className="hover:text-teal-400 transition-colors">
                     Pusat Bantuan
                   </Link>

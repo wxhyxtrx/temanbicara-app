@@ -17,13 +17,11 @@ import {
   Bell,
   Lock,
   Camera,
-  Download,
   AlertTriangle,
   HeartPulse,
   Save,
   CheckCircle2,
   Loader2,
-  Clock,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
@@ -50,7 +48,6 @@ export default function PatientSettingsPage() {
   const [isAnonymousDefault, setIsAnonymousDefault] = useState(false);
 
   // Security states
-  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
 
   // Status feedback
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -527,34 +524,6 @@ export default function PatientSettingsPage() {
                   Aktif Permanen
                 </span>
               </div>
-
-              <div className="flex items-center justify-between gap-4 pt-4">
-                <div className="space-y-0.5 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                      Unduh Catatan Rekam Medis Konseling
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className="text-[9px] px-1.5 py-0 bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                    >
-                      Coming Soon
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
-                    Ekspor seluruh catatan refleksi dan ringkasan sesi dalam format PDF.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-3 h-8 font-semibold shrink-0 gap-1.5"
-                  onClick={() => notify.info("Coming Soon", "Fitur ekspor berkas rekam medis PDF sedang dalam pengembangan.")}
-                >
-                  <Download size={13} />
-                  Ekspor PDF
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -596,26 +565,6 @@ export default function PatientSettingsPage() {
 
         {/* TAB 4: KEAMANAN AKUN */}
         <TabsContent value="security" className="space-y-4">
-          <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs">
-            <Clock className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5">
-                <p className="font-bold font-heading text-xs text-amber-950 dark:text-amber-100">
-                  Fitur Keamanan Lanjutan (Coming Soon)
-                </p>
-                <Badge
-                  variant="outline"
-                  className="text-[9px] px-1.5 py-0 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800"
-                >
-                  Dalam Pengembangan
-                </Badge>
-              </div>
-              <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-nunito">
-                Autentikasi dua langkah (2FA OTP) sedang disiapkan untuk rilis berikutnya.
-              </p>
-            </div>
-          </div>
-
           <Card className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
             <CardHeader className="p-4 sm:p-6 pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between gap-2">
@@ -627,30 +576,6 @@ export default function PatientSettingsPage() {
             </CardHeader>
 
             <CardContent className="p-4 sm:p-6 space-y-4">
-              <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white font-heading">
-                      Autentikasi Dua Langkah (2FA)
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className="text-[9px] px-1.5 py-0 bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                    >
-                      Coming Soon
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito">
-                    Amankan akunmu dengan kode OTP WhatsApp saat login dari perangkat baru.
-                  </p>
-                </div>
-                <Switch
-                  checked={twoFactorAuth}
-                  disabled={true}
-                  className="cursor-not-allowed opacity-60"
-                />
-              </div>
-
               <PasswordForm className="pt-1" />
             </CardContent>
           </Card>

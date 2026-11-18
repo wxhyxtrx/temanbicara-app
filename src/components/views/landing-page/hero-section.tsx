@@ -2,7 +2,7 @@ import Layouts from "@/components/shared/layouts";
 import { Button } from "@/components/ui/button";
 import React from "react";
 import Link from "next/link";
-import { ShieldCheck, MessageCircle, Calendar, Sparkles, HeartHandshake, Lock, Award, Clock } from "lucide-react";
+import { ShieldCheck, MessageCircle, Calendar, HeartHandshake, Lock, Award, Clock } from "lucide-react";
 import HeroVector from "./hero-vector";
 
 export default function HeroSection() {
@@ -38,7 +38,7 @@ export default function HeroSection() {
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 font-nunito leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              TemanBicara menghubungkanmu dengan psikolog klinis berlisensi (SIPPK) dan AI pendengar empatik 24/7. Curahkan isi hati tanpa rasa takut, tanpa stigma, dan dijamin privat & rahasia.
+              TemanBicara menghubungkanmu dengan psikolog klinis berlisensi (SIPPK) dan relawan pendengar sebaya yang terlatih. Curahkan isi hati tanpa rasa takut, tanpa stigma, dan dijamin privat & rahasia.
             </p>
 
             {/* Actions */}
@@ -84,27 +84,27 @@ export default function HeroSection() {
         <div className="rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 p-5 sm:p-7 shadow-xs">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-slate-800">
             <div className="pt-2 md:pt-0">
-              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">15.000+</p>
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">SIPPK</p>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-1 flex items-center justify-center gap-1">
-                <HeartHandshake size={14} className="text-teal-600 dark:text-teal-400" /> Sesi Konseling Selesai
+                <Award size={14} className="text-teal-600 dark:text-teal-400" /> Psikolog Diverifikasi Admin
               </p>
             </div>
             <div className="pt-2 md:pt-0">
-              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">100+</p>
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">Sebaya</p>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-1 flex items-center justify-center gap-1">
-                <Award size={14} className="text-teal-600 dark:text-teal-400" /> Psikolog & Konselor
+                <HeartHandshake size={14} className="text-teal-600 dark:text-teal-400" /> Relawan Pendengar Terlatih
               </p>
             </div>
             <div className="pt-2 md:pt-0">
-              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">4.9 / 5.0</p>
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">Anonim</p>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-1 flex items-center justify-center gap-1">
-                <Sparkles size={14} className="text-amber-500" /> Kepuasan Klien
+                <Lock size={14} className="text-teal-600 dark:text-teal-400" /> Pilihan Nama Samaran
               </p>
             </div>
             <div className="pt-2 md:pt-0">
-              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">24/7</p>
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white font-heading">Koin</p>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-nunito mt-1 flex items-center justify-center gap-1">
-                <Clock size={14} className="text-teal-600 dark:text-teal-400" /> Pendamping Emosional
+                <Clock size={14} className="text-teal-600 dark:text-teal-400" /> Bayar per Sesi via Midtrans
               </p>
             </div>
           </div>

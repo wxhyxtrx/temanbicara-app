@@ -38,7 +38,7 @@ export default function JoinSection() {
               </div>
               <div className="flex items-center justify-center lg:justify-start gap-2.5 text-xs text-teal-200">
                 <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
-                <span>Opsi pendampingan AI instan saat butuh teman bicara malam hari</span>
+                <span>Opsi curhat dengan relawan pendengar sebaya sebelum ke psikolog</span>
               </div>
             </div>
 
@@ -98,20 +98,20 @@ export default function JoinSection() {
         {/* 4 Pillars Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 pt-4 text-center">
           <div className="bg-teal-900/40 border border-teal-800/60 backdrop-blur-sm p-4 sm:p-5 rounded-2xl">
-            <p className="text-2xl sm:text-3xl font-bold font-heading text-white">12.000+</p>
-            <p className="text-xs sm:text-sm text-teal-300 font-nunito mt-1">Individu Terbantu</p>
+            <p className="text-2xl sm:text-3xl font-bold font-heading text-white">Chat</p>
+            <p className="text-xs sm:text-sm text-teal-300 font-nunito mt-1">Teks, Gambar & Pesan Suara</p>
           </div>
           <div className="bg-teal-900/40 border border-teal-800/60 backdrop-blur-sm p-4 sm:p-5 rounded-2xl">
-            <p className="text-2xl sm:text-3xl font-bold font-heading text-white">100%</p>
-            <p className="text-xs sm:text-sm text-teal-300 font-nunito mt-1">Privasi Terjaga</p>
+            <p className="text-2xl sm:text-3xl font-bold font-heading text-white">Privat</p>
+            <p className="text-xs sm:text-sm text-teal-300 font-nunito mt-1">Hanya Kamu & Pendampingmu</p>
           </div>
           <div className="bg-teal-900/40 border border-teal-800/60 backdrop-blur-sm p-4 sm:p-5 rounded-2xl">
-            <p className="text-2xl sm:text-3xl font-bold font-heading text-white">24/7</p>
-            <p className="text-xs sm:text-sm text-teal-300 font-nunito mt-1">Dukungan Siaga</p>
+            <p className="text-2xl sm:text-3xl font-bold font-heading text-white">Refund</p>
+            <p className="text-xs sm:text-sm text-teal-300 font-nunito mt-1">Koin Kembali Jika Batal</p>
           </div>
           <div className="bg-teal-900/40 border border-teal-800/60 backdrop-blur-sm p-4 sm:p-5 rounded-2xl">
-            <p className="text-2xl sm:text-3xl font-bold font-heading text-white">4.9★</p>
-            <p className="text-xs sm:text-sm text-teal-300 font-nunito mt-1">Kepuasan Klien</p>
+            <p className="text-2xl sm:text-3xl font-bold font-heading text-white">Ulasan</p>
+            <p className="text-xs sm:text-sm text-teal-300 font-nunito mt-1">Dari Klien yang Sudah Sesi</p>
           </div>
         </div>
       </div>

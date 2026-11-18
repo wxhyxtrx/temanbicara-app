@@ -1,18 +1,7 @@
 import React from "react";
 import Layouts from "@/components/shared/layouts";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Brain,
-  MessageSquareHeart,
-  ShieldCheck,
-  Activity,
-  CalendarCheck,
-  CheckCircle,
-  ArrowRight,
-  Sparkles,
-} from "lucide-react";
-import Link from "next/link";
+import { Brain, MessageSquareHeart, ShieldCheck, Activity, CheckCircle } from "lucide-react";
 
 export default function FeaturesSection() {
   const clinicalPillars = [
@@ -24,20 +13,20 @@ export default function FeaturesSection() {
         "Sesi mendalam bersama psikolog berlisensi resmi (SIPPK). Pendekatan berbasis bukti ilmiah seperti CBT, ACT, dan Mindfulness untuk mengatasi kecemasan, burnout, depresi, atau krisis hidup.",
       features: [
         "Psikolog tersumpah & anggota HIMPSI",
-        "Video, voice call, atau chat interaktif",
+        "Chat privat dengan gambar & pesan suara",
         "Rencana pemulihan terarah",
       ],
       highlight: true,
     },
     {
       icon: <MessageSquareHeart className="w-6 h-6 text-teal-600 dark:text-teal-400" />,
-      tag: "Dukungan Cepat 24 Jam",
-      title: "Teman Bicara AI Empatik",
+      tag: "Dukungan Sebaya",
+      title: "Curhat dengan Pendengar Sebaya",
       description:
-        "Ruang katarsis saat pikiran terasa penuh di tengah malam. AI terlatih dengan kerangka Psychological First Aid (PFA) untuk mendengarkan, memvalidasi emosi, dan meredakan kepanikan instan.",
+        "Ruang katarsis saat pikiran terasa penuh. Relawan pendengar terlatih dengan kerangka Psychological First Aid (PFA) siap mendengarkan dan memvalidasi emosimu tanpa penghakiman.",
       features: [
-        "Tanpa antre, respons dalam hitungan detik",
-        "Teknik grounding & pernapasan terpandu",
+        "Relawan terlatih panduan PFA",
+        "Diteruskan ke bantuan darurat 119 bila ada risiko",
         "Bebas meluapkan apa pun tanpa penghakiman",
       ],
       highlight: false,
@@ -57,34 +46,16 @@ export default function FeaturesSection() {
     },
     {
       icon: <Activity className="w-6 h-6 text-teal-600 dark:text-teal-400" />,
-      tag: "Alat Pemulihan Harian",
-      title: "Pelacak Emosi & Self-Care Tool",
+      tag: "Jadwal & Pembayaran",
+      title: "Reservasi Fleksibel dengan Koin",
       description:
-        "Latihan terukur untuk merawat ketahanan mental sehari-hari. Pantau fluktuasi suasana hati, jalani jurnal refleksi harian, dan akses panduan relaksasi mandiri.",
+        "Pilih psikolog dan slot waktu yang cocok, bayar dengan koin yang di-top-up lewat Midtrans. Jadwal bisa diubah, dan koin dikembalikan sesuai kebijakan bila sesi dibatalkan.",
       features: [
-        "Daily Emotion Check-in",
-        "Latihan pernapasan 4-7-8 interaktif",
-        "Laporan perkembangan berkala",
+        "Top-up koin via Midtrans",
+        "Reschedule & refund otomatis",
+        "Ulasan setelah sesi selesai",
       ],
       highlight: false,
-    },
-  ];
-
-  const steps = [
-    {
-      step: "01",
-      title: "Kenali Kebutuhanmu",
-      desc: "Pilih apakah kamu butuh pendengar cepat untuk curhat santai atau sesi terapi klinis terstruktur.",
-    },
-    {
-      step: "02",
-      title: "Pilih Jadwal & Psikolog",
-      desc: "Telusuri profil psikolog berdasarkan spesialisasi masalah, preferensi pendekatan, dan waktu luangmu.",
-    },
-    {
-      step: "03",
-      title: "Masuk ke Ruang Tenang",
-      desc: "Mulai sesi konsultasimu di ruang privat yang aman, nyaman, dan rahasia tanpa distraksi.",
     },
   ];
 
@@ -145,42 +116,6 @@ export default function FeaturesSection() {
               </CardContent>
             </Card>
           ))}
-        </div>
-
-        {/* Workflow / 3 Simple Steps */}
-        <div className="rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 md:p-12 space-y-10">
-          <div className="text-center max-w-xl mx-auto space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
-              Alur yang Menenangkan
-            </span>
-            <h3 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white">
-              3 Langkah Mudah Menuju Ruang Aman
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300 font-nunito">
-              Proses reservasi dan konsultasi kami rancang seringkas mungkin agar tidak membebani energimu.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {steps.map((st, i) => (
-              <div key={i} className="relative space-y-3 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                <div className="w-10 h-10 rounded-xl bg-teal-600 text-white font-bold flex items-center justify-center text-sm font-heading shadow-xs">
-                  {st.step}
-                </div>
-                <h4 className="text-lg font-bold font-heading text-slate-900 dark:text-white">{st.title}</h4>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-nunito leading-relaxed">{st.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex justify-center pt-2">
-            <Link href="/register">
-              <Button size="lg" className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-8 font-semibold cursor-pointer gap-2">
-                Mulai Perjalanan Pemulihanmu
-                <ArrowRight size={17} />
-              </Button>
-            </Link>
-          </div>
         </div>
       </Layouts>
     </div>

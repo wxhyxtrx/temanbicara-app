@@ -17,7 +17,7 @@ const nunito = Nunito({
 
 export const metadata: Metadata = {
   title: "TemanBicara - Layanan Telekonseling & Kesehatan Mental",
-  description: "Platform telekonseling kesehatan mental privat bersama psikolog klinis berlisensi HIMPSI dan pendamping emosi AI 24/7.",
+  description: "Platform telekonseling kesehatan mental privat bersama psikolog klinis berlisensi dan relawan pendengar sebaya.",
   icons: {
     icon: "/favicon.ico",
   },

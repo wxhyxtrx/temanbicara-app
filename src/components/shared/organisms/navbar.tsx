@@ -126,11 +126,11 @@ export function Navbar() {
               Layanan Terapi
             </Link>
             <Link
-              href={pathname === "/" ? "#testimonial" : "/#testimonial"}
-              onClick={(e) => handleNavClick(e, "testimonial")}
+              href={pathname === "/" ? "#cara-kerja" : "/#cara-kerja"}
+              onClick={(e) => handleNavClick(e, "cara-kerja")}
               className="cursor-pointer hover:text-teal-700 dark:hover:text-teal-400 transition-colors"
             >
-              Kisah Klien
+              Cara Kerja
             </Link>
             <Link
               href={pathname === "/" ? "#join" : "/#join"}
@@ -234,11 +234,11 @@ export function Navbar() {
                 Layanan Terapi
               </Link>
               <Link
-                href={pathname === "/" ? "#testimonial" : "/#testimonial"}
-                onClick={(e) => handleNavClick(e, "testimonial")}
+                href={pathname === "/" ? "#cara-kerja" : "/#cara-kerja"}
+                onClick={(e) => handleNavClick(e, "cara-kerja")}
                 className="cursor-pointer hover:text-teal-700 dark:hover:text-teal-400 transition-colors py-2 px-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-900"
               >
-                Kisah Klien
+                Cara Kerja
               </Link>
               <Link
                 href={pathname === "/" ? "#join" : "/#join"}
