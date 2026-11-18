@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser, fail } from '@/lib/auth/session';
 import { clearMaintenanceCache } from '@/lib/maintenance';
 import { SystemSettingsService } from '@/services/system-settings.service';
+import { logActivity } from '@/lib/activity-log';
 
 export async function GET() {
   try {
@@ -62,6 +63,16 @@ export async function PATCH(req: Request) {
 
     SystemSettingsService.invalidateCache();
     clearMaintenanceCache();
+
+    // Detail nilai lama/baru sudah ada di system_settings_audit; di sini cukup grup yang diubah.
+    await logActivity({
+      actorId: session.user.id,
+      actorRole: 'admin',
+      category: 'admin',
+      action: 'settings.updated',
+      targetType: 'system_settings',
+      metadata: { groups: Object.keys(body as Record<string, unknown>).join(',').slice(0, 200) },
+    });
 
     return NextResponse.json({
       success: true,

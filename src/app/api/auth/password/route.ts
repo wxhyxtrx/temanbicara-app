@@ -6,6 +6,7 @@ import { getPasswordStatus } from '@/lib/auth/password';
 import { revokeUserSessions } from '@/lib/auth/revoke-sessions';
 import { passwordFormSchema } from '@/lib/validations/auth';
 import { setSessionCookies, clearSessionCookies, SESSION_MAX_AGE } from '@/lib/auth/session-cookies';
+import { logActivity } from '@/lib/activity-log';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -167,6 +168,13 @@ export async function POST(req: Request) {
     await revokeUserSessions(session.user.id);
 
     const mode = hasPassword ? 'change' : 'create';
+
+    await logActivity({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      category: 'auth',
+      action: hasPassword ? 'auth.password_changed' : 'auth.password_created',
+    });
 
     let sessionRenewed = false;
     let newSessionTokens: { accessToken: string; refreshToken?: string | null } | null = null;

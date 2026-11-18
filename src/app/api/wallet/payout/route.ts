@@ -3,6 +3,7 @@ import { getSessionUser, fail } from '@/lib/auth/session';
 import { getMaintenanceStatus } from '@/lib/maintenance';
 import { WalletService, WalletHttpError } from '@/services/wallet.service';
 import { requestPayoutSchema } from '@/lib/validations/wallet';
+import { logActivity } from '@/lib/activity-log';
 
 export async function POST(req: Request) {
   try {
@@ -36,6 +37,15 @@ export async function POST(req: Request) {
     }
 
     const result = await WalletService.requestPayout(session.user, parsed.data);
+    // Tanpa nomor rekening / nama pemilik: hanya nominal dan bank.
+    await logActivity({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      category: 'money',
+      action: 'payout.requested',
+      targetType: 'payout_request',
+      metadata: { amount_rupiah: parsed.data.amount_rupiah, bank: parsed.data.bank_name },
+    });
 
     return NextResponse.json(
       {

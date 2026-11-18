@@ -9,6 +9,7 @@ import {
   rateLimitExceededResponse,
 } from '@/lib/rate-limit/distributed';
 import { internalErrorResponse } from '@/lib/api/error-response';
+import { logActivity } from '@/lib/activity-log';
 
 export async function POST(req: Request) {
   try {
@@ -83,6 +84,8 @@ export async function POST(req: Request) {
     }
 
     if (authError || !authData.user) {
+      // Tanpa email: log tidak boleh memuat PII.
+      await logActivity({ actorRole: 'guest', category: 'auth', action: 'auth.login_failed' });
       const failLimit = await checkRateLimit(failKey, 5, 900);
       if (!failLimit.allowed) {
         return rateLimitExceededResponse(failLimit.retryAfter);
@@ -169,6 +172,14 @@ export async function POST(req: Request) {
           break;
       }
     }
+
+    await logActivity({
+      actorId: userProfile.id,
+      actorRole: userProfile.role,
+      category: 'auth',
+      action: 'auth.login',
+      metadata: { remember_me: Boolean(remember_me) },
+    });
 
     // 6. Kembalikan session data dan metadata role
     const response = NextResponse.json({

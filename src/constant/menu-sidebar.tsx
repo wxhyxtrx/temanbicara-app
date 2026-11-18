@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Star,
   HeartHandshake,
+  ScrollText,
   LucideIcon,
 } from "lucide-react";
 import { UserRole } from "./mock-users";
@@ -225,6 +226,12 @@ export const roleMenuConfigs: Record<UserRole, RoleMenuConfig> = {
         description: "Resolusi penahanan & sengketa pencairan dana",
         url: "/admin/sengketa",
         icon: ShieldAlert,
+      },
+      {
+        title: "Log Aktivitas",
+        description: "Jejak audit login, aksi admin & transaksi",
+        url: "/admin/activity-log",
+        icon: ScrollText,
       },
       {
         title: "Pengaturan Sistem",

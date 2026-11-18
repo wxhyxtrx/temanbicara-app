@@ -8,6 +8,7 @@ import {
   adminCreatePasienSchema,
   adminCreateAdminSchema,
 } from '@/lib/validations/auth';
+import { logActivity } from '@/lib/activity-log';
 
 const ROLES = ['pasien', 'relawan', 'psikolog', 'admin'] as const;
 const STATUSES = [
@@ -399,6 +400,16 @@ export async function POST(req: Request) {
       await supabaseAdmin.auth.admin.deleteUser(userId);
       return fail(500, 'PROFILE_INSERT_FAILED', 'Gagal menyimpan profil pengguna');
     }
+
+    await logActivity({
+      actorId: session.user.id,
+      actorRole: 'admin',
+      category: 'admin',
+      action: 'user.created',
+      targetType: 'user',
+      targetId: userId,
+      metadata: { target_role: role, status },
+    });
 
     return NextResponse.json(
       {

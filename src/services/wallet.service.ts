@@ -5,6 +5,7 @@ import { TOPUP_PAYMENT_EXPIRY_MINUTES } from '@/constant/wallet';
 import { normalizePayeeName } from '@/lib/wallet/payee-name';
 import { WalletPayoutService } from '@/services/wallet-payout.service';
 import { WalletReconcileService } from '@/services/wallet-reconcile.service';
+import { logActivity } from '@/lib/activity-log';
 import type { UserEntity, UserRole } from '@/types/database';
 import type {
   AdminPayoutItem,
@@ -453,6 +454,18 @@ export class WalletService {
         throw new WalletHttpError(500, 'RPC_ERROR', 'Gagal memproses settlement top-up');
       }
 
+      // Hanya catat transisi nyata, bukan notifikasi ulang (idempoten).
+      if (settled) {
+        await logActivity({
+          actorRole: 'system',
+          category: 'money',
+          action: 'topup.settled',
+          targetType: 'topup_order',
+          targetId: order.id,
+          metadata: { order_id: orderId, amount_rupiah: paidRupiah },
+        });
+      }
+
       return {
         success: true,
         message: settled ? 'Order settled successfully' : 'Order already settled',
@@ -539,6 +552,15 @@ export class WalletService {
         order_id: orderId,
         status: targetStatus,
         transaction_status: transactionStatus,
+      });
+
+      await logActivity({
+        actorRole: 'system',
+        category: 'money',
+        action: targetStatus === 'chargeback' ? 'topup.chargeback' : 'topup.refunded',
+        targetType: 'topup_order',
+        targetId: order.id,
+        metadata: { order_id: orderId, amount_rupiah: Number(order.amount_rupiah ?? 0) },
       });
 
       // Panggil RPC create_dispute_holds (idempoten) untuk menahan payout mitra jika koin telah terpakai

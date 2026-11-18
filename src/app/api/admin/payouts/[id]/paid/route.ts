@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser, fail } from '@/lib/auth/session';
 import { WalletService, WalletHttpError } from '@/services/wallet.service';
+import { logActivity } from '@/lib/activity-log';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -28,6 +29,14 @@ export async function POST(
     }
 
     const result = await WalletService.markPayoutPaid(id, session.user.id);
+    await logActivity({
+      actorId: session.user.id,
+      actorRole: 'admin',
+      category: 'money',
+      action: 'payout.paid',
+      targetType: 'payout_request',
+      targetId: id,
+    });
 
     return NextResponse.json({
       success: true,

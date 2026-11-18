@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail, displayName } from '@/lib/auth/session';
 import { normalizePhone } from '@/lib/validations/phone';
 import { revokeUserSessions } from '@/lib/auth/revoke-sessions';
+import { logActivity } from '@/lib/activity-log';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = [
@@ -350,6 +351,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       sessionRevoked = await revokeUserSessions(targetUser.id);
     }
 
+    const statusChanged = Boolean(body.status) && body.status !== targetUser.status;
+    await logActivity({
+      actorId: session.user.id,
+      actorRole: 'admin',
+      category: 'admin',
+      action: statusChanged ? 'user.status_changed' : 'user.updated',
+      targetType: 'user',
+      targetId: id,
+      metadata: {
+        target_role: targetUser.role,
+        ...(statusChanged ? { from_status: targetUser.status, to_status: String(body.status) } : {}),
+        ...(userUpdates.role && userUpdates.role !== targetUser.role ? { to_role: String(userUpdates.role) } : {}),
+        fields: Object.keys(userUpdates).filter((k) => k !== 'updated_at').join(',') || 'profile',
+      },
+    });
+
     const responseMessage =
       isBlockingStatusTransition && sessionRevoked === false
         ? 'Data pengguna dan status akun berhasil diperbarui, namun pencabutan sesi global gagal dijalankan'
@@ -416,6 +433,15 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     if (deleteAuthError) {
       console.warn('[WARN] Gagal menghapus user dari Supabase Auth:', deleteAuthError.message);
     }
+
+    await logActivity({
+      actorId: session.user.id,
+      actorRole: 'admin',
+      category: 'admin',
+      action: 'user.deleted',
+      targetType: 'user',
+      targetId: id,
+    });
 
     return NextResponse.json({
       success: true,

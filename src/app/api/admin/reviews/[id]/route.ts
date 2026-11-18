@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { reviewHideSchema } from '@/lib/validations/booking';
 import type { SessionReviewEntity } from '@/types/booking';
+import { logActivity } from '@/lib/activity-log';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -56,6 +57,15 @@ export async function PATCH(
       console.error('[MODERATION_FAILED]:', rpcError);
       return fail(400, 'MODERATION_FAILED', 'Gagal memproses moderasi ulasan');
     }
+
+    await logActivity({
+      actorId: user.id,
+      actorRole: 'admin',
+      category: 'admin',
+      action: parsed.data.is_hidden ? 'review.hidden' : 'review.shown',
+      targetType: 'booking',
+      targetId: id,
+    });
 
     return NextResponse.json({
       success: true,

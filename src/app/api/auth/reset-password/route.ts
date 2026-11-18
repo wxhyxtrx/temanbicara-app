@@ -9,6 +9,7 @@ import {
   rateLimitExceededResponse,
 } from '@/lib/rate-limit/distributed';
 import { internalErrorResponse, sanitizeLogMessage } from '@/lib/api/error-response';
+import { logActivity, type ActivityActorRole } from '@/lib/activity-log';
 
 function parseJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -161,6 +162,18 @@ export async function POST(req: Request) {
     }
 
     await revokeUserSessions(user.id);
+
+    const { data: profile } = await supabaseAdmin
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    await logActivity({
+      actorId: user.id,
+      actorRole: (profile?.role as ActivityActorRole | undefined) ?? 'guest',
+      category: 'auth',
+      action: 'auth.password_reset',
+    });
 
     return NextResponse.json({
       success: true,

@@ -6,6 +6,7 @@ import {
   checkActiveAdmin,
 } from '@/services/disputed-payout-hold.service';
 import { WalletHttpError } from '@/services/wallet.service';
+import { logActivity } from '@/lib/activity-log';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -45,6 +46,19 @@ export async function PATCH(
       parsed.data.action,
       parsed.data.note
     );
+
+    await logActivity({
+      actorId: session.user.id,
+      actorRole: 'admin',
+      category: 'money',
+      action: parsed.data.action === 'clear' ? 'dispute.cleared' : 'dispute.deducted',
+      targetType: 'dispute_hold',
+      targetId: id,
+      metadata: {
+        mitra_id: result.mitra_id,
+        deducted_amount_rupiah: Number(result.deducted_amount_rupiah ?? 0),
+      },
+    });
 
     return NextResponse.json({
       success: true,
