@@ -1,7 +1,5 @@
 # TemanBicara
 
-[![CI](https://github.com/wxhyxtrx/temanbicara-app/actions/workflows/ci.yml/badge.svg)](https://github.com/wxhyxtrx/temanbicara-app/actions/workflows/ci.yml)
-
 Platform konseling dan kesehatan mental. Pasien bisa memesan sesi dengan psikolog, berbagi cerita dengan relawan pendengar sebaya, dan admin memantau seluruh platform.
 
 🔗 **[Demo live](https://temanbicara-app-eight.vercel.app)**
