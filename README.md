@@ -6,7 +6,7 @@ Platform konseling dan kesehatan mental. Pasien bisa memesan sesi dengan psikolo
 
 ![Landing page](screenshots/01-landing.png)
 
-## 📸 Tampilan per Peran
+## Tampilan per Peran
 
 | Pasien | Psikolog |
 |---|---|
