@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -8,5 +8,7 @@ export default defineConfig({
   test: {
     environment: "node",
     passWithNoTests: true,
+    // Salinan worktree di .claude/ membuat modul ganda (instanceof gagal) bila ikut dipindai.
+    exclude: [...configDefaults.exclude, ".claude/**"],
   },
 });
