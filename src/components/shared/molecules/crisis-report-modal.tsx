@@ -49,7 +49,7 @@ export function CrisisReportModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md w-full font-nunito p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md w-full font-nunito p-4 sm:p-6 max-h-[90dvh] overflow-y-auto">
         <DialogHeader className="space-y-1.5 text-left">
           <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
             <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 flex items-center justify-center shrink-0">

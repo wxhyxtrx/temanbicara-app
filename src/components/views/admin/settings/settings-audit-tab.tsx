@@ -355,7 +355,7 @@ export function SettingsAuditTab() {
 
       {/* Modal Detail Per Isian */}
       <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-        <DialogContent className="max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-h-[85dvh] overflow-y-auto">
           {selectedItem && (
             <>
               <DialogHeader className="space-y-2 pb-3 border-b border-slate-100 dark:border-slate-800">

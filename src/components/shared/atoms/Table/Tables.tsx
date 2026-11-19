@@ -25,6 +25,35 @@ export const Tables = <T,>({
     ? data?.slice((page - 1) * limit, page * limit)
     : data;
 
+  const getRowId = (row: T, rowIndex: number) =>
+    rowKey
+      ? rowKey(row, rowIndex)
+      : ((row as Record<string, unknown>)?.id ??
+         (row as Record<string, unknown>)?._id ??
+         rowIndex);
+
+  const renderCellContent = (column: TableProps<T>["columns"][number], row: T, actualIndex: number, calculatedNumber: number): React.ReactNode => {
+    if (column.label === "No") return calculatedNumber;
+    if (column.renderCell) return column.renderCell(row, actualIndex);
+    if (column.accessorKey) {
+      const val = (row as Record<string, unknown>)[column.accessorKey as string];
+      return val !== undefined && val !== null ? String(val) : "-";
+    }
+    return null;
+  };
+
+  const emptyState = emptyMessage ? (
+    emptyMessage
+  ) : (
+    <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-400 dark:text-slate-500">
+        <Inbox size={20} />
+      </div>
+      <p className="font-semibold text-slate-700 dark:text-slate-300 text-sm">{emptyTitle}</p>
+      <p className="text-xs text-slate-400 dark:text-slate-500">{emptyDescription}</p>
+    </div>
+  );
+
   const getAlignClass = (align?: "left" | "center" | "right") => {
     if (align === "center") return "text-center";
     if (align === "right") return "text-right";
@@ -32,7 +61,54 @@ export const Tables = <T,>({
   };
 
   return (
-    <div className="overflow-x-auto scrollbar rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors duration-200">
+    <>
+    {/* HP: setiap baris jadi kartu label + nilai (tabel lebar sulit dibaca di layar kecil) */}
+    <div className="md:hidden space-y-3">
+      {isLoading ? (
+        Array.from({ length: Math.min(skeletonRows, 3) }).map((_, i) => (
+          <div key={`m-skeleton-${i}`} className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-2.5 animate-pulse">
+            <Skeleton className="h-4 w-2/3 rounded bg-slate-200/80 dark:bg-slate-800" />
+            <Skeleton className="h-3 w-full rounded bg-slate-200/80 dark:bg-slate-800" />
+            <Skeleton className="h-3 w-4/5 rounded bg-slate-200/80 dark:bg-slate-800" />
+          </div>
+        ))
+      ) : displayData && displayData.length > 0 ? (
+        displayData.map((row, rowIndex) => {
+          const actualIndex = autoPaginate ? (page - 1) * limit + rowIndex : rowIndex;
+          const calculatedNumber = (page - 1) * limit + rowIndex + 1;
+          const [first, ...rest] = columns;
+          return (
+            <div
+              key={String(getRowId(row, rowIndex))}
+              onClick={() => onRowClick?.(row, actualIndex)}
+              className={cn(
+                "rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3 text-sm text-slate-800 dark:text-slate-200 font-nunito min-w-0",
+                onRowClick && "cursor-pointer",
+                rowClassName?.(row, actualIndex)
+              )}
+            >
+              {first && <div className="min-w-0">{renderCellContent(first, row, actualIndex, calculatedNumber)}</div>}
+              {rest.length > 0 && (
+                <dl className="space-y-2.5 border-t border-slate-100 dark:border-slate-800 pt-3">
+                  {rest.map((column, colIndex) => (
+                    <div key={colIndex} className="flex items-start justify-between gap-3 min-w-0">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 shrink-0 pt-0.5">{column.label}</dt>
+                      <dd className="min-w-0 text-right flex justify-end">{renderCellContent(column, row, actualIndex, calculatedNumber)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </div>
+          );
+        })
+      ) : (
+        <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-center px-6 py-10 text-xs text-slate-400 dark:text-slate-500 font-nunito">
+          {emptyState}
+        </div>
+      )}
+    </div>
+
+    <div className="hidden md:block overflow-x-auto scrollbar rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors duration-200">
       <table className={cn("w-full min-w-[680px] table-auto border-collapse", className)}>
         {/* Header */}
         <thead>
@@ -78,11 +154,7 @@ export const Tables = <T,>({
                 ? (page - 1) * limit + rowIndex
                 : rowIndex;
               const calculatedNumber = (page - 1) * limit + rowIndex + 1;
-              const rowId = rowKey
-                ? rowKey(row, rowIndex)
-                : ((row as Record<string, unknown>)?.id ??
-                   (row as Record<string, unknown>)?._id ??
-                   rowIndex);
+              const rowId = getRowId(row, rowIndex);
 
               return (
                 <tr
@@ -95,18 +167,7 @@ export const Tables = <T,>({
                   )}
                 >
                   {columns.map((column, colIndex) => {
-                    let cellContent: React.ReactNode = null;
-
-                    if (column.label === "No") {
-                      cellContent = calculatedNumber;
-                    } else if (column.renderCell) {
-                      cellContent = column.renderCell(row, actualIndex);
-                    } else if (column.accessorKey) {
-                      const val = (row as Record<string, unknown>)[
-                        column.accessorKey as string
-                      ];
-                      cellContent = val !== undefined && val !== null ? String(val) : "-";
-                    }
+                    const cellContent = renderCellContent(column, row, actualIndex, calculatedNumber);
 
                     return (
                       <td
@@ -130,27 +191,14 @@ export const Tables = <T,>({
                 colSpan={columns.length}
                 className="text-center px-6 py-12 text-xs sm:text-sm text-slate-400 dark:text-slate-500 font-nunito"
               >
-                {emptyMessage ? (
-                  emptyMessage
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-400 dark:text-slate-500">
-                      <Inbox size={20} />
-                    </div>
-                    <p className="font-semibold text-slate-700 dark:text-slate-300 text-sm">
-                      {emptyTitle}
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                      {emptyDescription}
-                    </p>
-                  </div>
-                )}
+                {emptyState}
               </td>
             </tr>
           )}
         </tbody>
       </table>
     </div>
+    </>
   );
 };
 

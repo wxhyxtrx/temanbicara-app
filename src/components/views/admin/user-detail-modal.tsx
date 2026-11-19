@@ -309,7 +309,7 @@ export function UserDetailModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-nunito p-6 min-h-[520px] max-h-[90vh] overflow-y-auto [scrollbar-gutter:stable]"
+        className="max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-nunito p-6 min-h-[520px] max-h-[90dvh] overflow-y-auto [scrollbar-gutter:stable]"
         style={{ scrollbarGutter: "stable" }}
       >
         <DialogHeader className="flex flex-col items-center justify-center text-center sm:text-center gap-1.5 pt-1 px-6">

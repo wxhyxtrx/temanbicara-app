@@ -499,7 +499,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
+      <div className="h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
         <Loader2 size={32} className="animate-spin text-teal-600" />
         <p className="text-sm text-slate-600 dark:text-slate-300">Menyiapkan ruang sesi konseling...</p>
       </div>
@@ -508,7 +508,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
 
   if (loadError || !booking) {
     return (
-      <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8 text-center space-y-4 font-nunito max-w-md mx-auto">
+      <div className="h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-4 font-nunito max-w-md mx-auto">
         <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 text-rose-600 flex items-center justify-center">
           <AlertCircle size={28} />
         </div>
@@ -536,7 +536,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
   const hasOpenCrisisAlert = Boolean((booking as PatientBookingView)?.has_open_crisis_alert);
 
   return (
-    <div className="h-[calc(100vh-115px)] min-h-[540px] flex flex-col font-nunito bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
+    <div className="h-[calc(100dvh-7rem)] min-h-[420px] flex flex-col font-nunito bg-slate-50/50 dark:bg-slate-950/40 rounded-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs">
       <SessionRoomHeader
         role={role}
         booking={booking}

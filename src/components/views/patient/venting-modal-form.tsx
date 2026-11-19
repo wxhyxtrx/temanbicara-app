@@ -156,7 +156,7 @@ export function VentingModalForm({ open, onOpenChange, onSuccess }: VentingModal
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800 font-nunito bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl">
+      <DialogContent className="max-w-lg p-0 overflow-y-auto rounded-3xl border border-slate-200 dark:border-slate-800 font-nunito bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-2xl">
         {/* Clean, Elegant Header */}
         <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/60 space-y-2">
           <div className="flex items-center gap-2.5">

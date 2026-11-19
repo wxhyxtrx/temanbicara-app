@@ -379,7 +379,7 @@ export function WeeklyPatternEditor({
                       <button
                         type="button"
                         onClick={() => handleClearDay(weekday)}
-                        className="text-[11px] text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400 px-2 py-1 rounded transition-colors cursor-pointer"
+                        className="text-[11px] text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400 px-2.5 min-h-9 rounded transition-colors cursor-pointer"
                         title="Kosongkan hari ini"
                       >
                         Liburkan
@@ -487,7 +487,8 @@ export function WeeklyPatternEditor({
                             <button
                               type="button"
                               onClick={() => handleDeleteSlot(weekday, slot.id)}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                              aria-label="Hapus rentang jam ini"
+                              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
                               title="Hapus rentang jam ini"
                             >
                               <Trash2 size={14} />

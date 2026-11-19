@@ -388,7 +388,7 @@ export default function AdminSengketaPage() {
 
       {/* Dialog Penyelesaian Sengketa (Konfirmasi 2-Langkah) */}
       <Dialog open={!!selectedHold} onOpenChange={(open) => !open && handleCloseDialog()}>
-        <DialogContent className="sm:max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading text-base font-bold flex items-center gap-2">
               <ShieldAlert size={20} className="text-teal-600 shrink-0" />

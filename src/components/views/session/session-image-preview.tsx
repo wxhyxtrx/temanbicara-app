@@ -122,7 +122,7 @@ export function SessionImagePreview({
             <img
               src={signedUrl}
               alt={caption || "Gambar Sesi"}
-              className="max-h-[80vh] w-auto max-w-full rounded-lg object-contain"
+              className="max-h-[80dvh] w-auto max-w-full rounded-lg object-contain"
             />
             {caption && (
               <p className="mt-3 text-xs sm:text-sm text-center text-white/90 max-w-lg">

@@ -159,7 +159,7 @@ function CounselorRoomContent() {
   // Jika tidak ada booking ID, tampilkan selektor sesi aktif & riwayat
   if (loading) {
     return (
-      <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
+      <div className="h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
         <Loader2 size={32} className="animate-spin text-teal-600" />
         <p className="text-sm text-slate-600 dark:text-slate-300">
           Memeriksa jadwal sesi konseling Anda...
@@ -170,7 +170,7 @@ function CounselorRoomContent() {
 
   if (loadError) {
     return (
-      <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8 text-center space-y-4 font-nunito max-w-md mx-auto">
+      <div className="h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-4 font-nunito max-w-md mx-auto">
         <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 text-rose-600 flex items-center justify-center">
           <AlertCircle size={28} />
         </div>
@@ -401,7 +401,7 @@ export default function CounselorRoomPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
+        <div className="h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
           <Loader2 size={32} className="animate-spin text-teal-600" />
           <p className="text-sm text-slate-600 dark:text-slate-300">
             Menyiapkan ruang sesi konselor...

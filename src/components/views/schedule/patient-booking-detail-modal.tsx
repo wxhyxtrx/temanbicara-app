@@ -71,7 +71,7 @@ export function PatientBookingDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-lg max-h-[92vh] overflow-y-auto overflow-x-hidden font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
+      <DialogContent className="w-full max-w-lg max-h-[92dvh] overflow-y-auto overflow-x-hidden font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
         <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800 w-full min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">

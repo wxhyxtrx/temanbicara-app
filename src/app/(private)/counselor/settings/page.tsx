@@ -365,7 +365,8 @@ export default function CounselorSettingsPage() {
                       <button
                         type="button"
                         onClick={() => handleRemoveTag(tag)}
-                        className="hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
+                        aria-label={`Hapus ${tag}`}
+                        className="inline-flex p-2.5 -my-2.5 -mr-2.5 rounded-md hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
                         title="Hapus"
                       >
                         <X size={12} />

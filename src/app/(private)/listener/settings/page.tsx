@@ -269,7 +269,7 @@ export default function ListenerSettingsPage() {
                   topics.map((t) => (
                     <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs font-semibold">
                       {t}
-                      <button type="button" onClick={() => handleRemoveTopic(t)} className="hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer" title="Hapus"><X size={12} /></button>
+                      <button type="button" onClick={() => handleRemoveTopic(t)} aria-label={`Hapus ${t}`} className="inline-flex p-2.5 -my-2.5 -mr-2.5 rounded-md hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer" title="Hapus"><X size={12} /></button>
                     </span>
                   ))
                 )}

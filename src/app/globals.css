@@ -245,3 +245,12 @@ a {
     @apply bg-background text-foreground;
   }
 }
+/* iOS Safari memperbesar layar saat fokus ke kolom isian berhuruf < 16px.
+   Sengaja di luar @layer agar menang dari utilitas text-xs/text-sm, hanya di layar HP. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
