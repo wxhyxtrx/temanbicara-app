@@ -50,8 +50,9 @@ next-env.d.ts
 superpowers/
 
 # internal documentation & scripts
-docs/*
-!docs/handover/
+# Dokumen internal & migrasi DB disimpan lokal saja (tidak dipublikasikan)
+docs/
+supabase/
 scripts/
 
 # local scratch (not part of the app)

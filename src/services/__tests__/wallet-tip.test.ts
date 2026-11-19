@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { NextResponse } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -59,8 +59,10 @@ describe('Tip konseling — batas saldo pasien', () => {
 
 describe('Bagi hasil 80% — pembulatan ke bawah', () => {
   // Produksi menghitung di PostgreSQL, bukan TS. Ikat model ke rumus SQL yang dipakai tip_create.
-  it('SQL tip_create memakai floor pada nilai gross * bps, bukan pembulatan terdekat', () => {
-    const sql = readFileSync('supabase/migrations/20261014000002_wallet_ledger.sql', 'utf8');
+  // Folder supabase/ tidak dipublikasikan ke GitHub; tes ini hanya jalan bila migrasi tersedia lokal.
+  const migration = 'supabase/migrations/20261014000002_wallet_ledger.sql';
+  it.skipIf(!existsSync(migration))('SQL tip_create memakai floor pada nilai gross * bps, bukan pembulatan terdekat', () => {
+    const sql = readFileSync(migration, 'utf8');
     const tipSql = sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION public.tip_create('));
     expect(tipSql).toContain('v_mitra := pg_catalog.floor((v_gross::NUMERIC * v_bps) / 10000.0)::BIGINT;');
   });

@@ -64,7 +64,7 @@ Semua mutasi uang (top-up, bayar sesi, tip, payout, potong saldo sengketa) berja
 npm test
 ```
 
-Migrasi SQL juga punya skrip dry-run transaksional di `supabase/tests/` untuk menguji sintaks dan constraint di PostgreSQL sungguhan.
+Migrasi SQL juga diuji dengan skrip dry-run transaksional di PostgreSQL sungguhan (folder migrasi disimpan privat, tidak dipublikasikan di repo ini).
 
 ## 💳 Mencoba Top-up (Sandbox)
 
