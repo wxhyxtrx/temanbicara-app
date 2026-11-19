@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { toPsikologBookingView } from '@/lib/booking/views';
@@ -58,6 +59,7 @@ export async function POST(
       return fail(400, 'END_SESSION_FAILED', 'Gagal mengakhiri sesi konseling');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'psikolog', category: 'session', action: 'booking.ended', targetType: 'booking', targetId: id });
     return NextResponse.json({
       success: true,
       data: toPsikologBookingView(updatedBooking),

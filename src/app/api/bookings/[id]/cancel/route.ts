@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { toPsikologBookingView } from '@/lib/booking/views';
@@ -56,6 +57,7 @@ export async function POST(
         return fail(400, 'CANCEL_FAILED', 'Gagal membatalkan sesi konseling');
       }
 
+      await logActivity({ actorId: user.id, actorRole: 'psikolog', category: 'session', action: 'booking.cancelled', targetType: 'booking', targetId: id, metadata: { by: 'psikolog' } });
       return NextResponse.json({
         success: true,
         data: toPsikologBookingView(updatedBooking),
@@ -84,6 +86,7 @@ export async function POST(
       return fail(400, 'CANCEL_FAILED', 'Gagal membatalkan sesi konseling');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'pasien', category: 'session', action: 'booking.cancelled', targetType: 'booking', targetId: id, metadata: { by: 'pasien', refund_coins: (updatedBooking as BookingEntity)?.refund_coins ?? null } });
     return NextResponse.json({
       success: true,
       data: updatedBooking as BookingEntity,

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { getMaintenanceStatus } from '@/lib/maintenance';
@@ -74,6 +75,7 @@ export async function POST(
       return fail(400, 'CLAIM_FAILED', 'Gagal mengklaim tiket curhat');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'relawan', category: 'session', action: 'peer.claimed', targetType: 'peer_ticket', targetId: id });
     // Buang patient_id demi privasi pasien
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { patient_id: _discard, ...safeTicket } = (ticket ?? {}) as Record<string, unknown>;

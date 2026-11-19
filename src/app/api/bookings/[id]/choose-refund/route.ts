@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import type { BookingEntity } from '@/types/booking';
@@ -53,6 +54,7 @@ export async function POST(
       return fail(400, 'CHOOSE_REFUND_FAILED', 'Gagal memproses pengembalian koin');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'pasien', category: 'session', action: 'booking.refund_chosen', targetType: 'booking', targetId: id, metadata: { refund_coins: (updatedBooking as BookingEntity)?.refund_coins ?? null } });
     return NextResponse.json({
       success: true,
       data: updatedBooking as BookingEntity,

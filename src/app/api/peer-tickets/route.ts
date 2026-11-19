@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { getMaintenanceStatus } from '@/lib/maintenance';
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
       return fail(400, 'CREATE_TICKET_FAILED', 'Gagal membuat tiket curhat');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'pasien', category: 'session', action: 'peer.created', targetType: 'peer_ticket', targetId: (ticket as PeerTicketEntity)?.id ?? null, metadata: { topic: parsed.data.topic, emotion: parsed.data.emotion } });
     return NextResponse.json(
       {
         success: true,

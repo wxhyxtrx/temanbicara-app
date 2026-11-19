@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { getMyTipStatus } from '@/lib/tip-status';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
@@ -82,6 +83,7 @@ export async function POST(
       return fail(400, 'TIP_FAILED', 'Gagal memberikan tip sesi konseling');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'pasien', category: 'money', action: 'tip.given', targetType: 'booking', targetId: id, metadata: { coins: parsed.data.coins } });
     return NextResponse.json({
       success: true,
       data: {

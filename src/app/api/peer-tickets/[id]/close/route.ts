@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity, type ActivityActorRole } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { getMaintenanceStatus } from '@/lib/maintenance';
@@ -88,6 +89,7 @@ export async function POST(
     }
 
     const ticket = closedTicket as PeerTicketEntity;
+    await logActivity({ actorId: user.id, actorRole: user.role as ActivityActorRole, category: 'session', action: 'peer.closed', targetType: 'peer_ticket', targetId: id });
 
     if (user.role === 'relawan' && !isAdmin) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars

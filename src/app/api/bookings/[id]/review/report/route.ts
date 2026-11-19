@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import type { SessionReviewEntity } from '@/types/booking';
@@ -53,6 +54,7 @@ export async function POST(
       return fail(400, 'REPORT_FAILED', 'Gagal melaporkan ulasan sesi');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'psikolog', category: 'feedback', action: 'review.reported', targetType: 'booking', targetId: id });
     return NextResponse.json({
       success: true,
       data: review as SessionReviewEntity,

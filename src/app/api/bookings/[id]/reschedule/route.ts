@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { rescheduleBookingSchema } from '@/lib/validations/booking';
@@ -77,6 +78,7 @@ export async function POST(
       return fail(400, 'RESCHEDULE_FAILED', 'Gagal memindahkan jadwal sesi');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'pasien', category: 'session', action: 'booking.rescheduled', targetType: 'booking', targetId: id, metadata: { new_start_at: parsed.data.new_start_at } });
     return NextResponse.json({
       success: true,
       data: updatedBooking as BookingEntity,

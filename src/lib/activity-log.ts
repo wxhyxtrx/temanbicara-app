@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/client';
 
-export type ActivityCategory = 'auth' | 'admin' | 'money';
+export type ActivityCategory = 'auth' | 'admin' | 'money' | 'session' | 'feedback';
 export type ActivityActorRole = 'pasien' | 'psikolog' | 'relawan' | 'admin' | 'system' | 'guest';
 export type ActivityMetadata = Record<string, string | number | boolean | null>;
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import type { BookingEntity } from '@/types/booking';
@@ -65,6 +66,7 @@ export async function POST(
       return fail(400, 'EXTENSION_REQUEST_FAILED', 'Gagal mengajukan perpanjangan sesi');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'pasien', category: 'session', action: 'booking.extension_requested', targetType: 'booking', targetId: id });
     return NextResponse.json({
       success: true,
       data: updatedBooking as BookingEntity,

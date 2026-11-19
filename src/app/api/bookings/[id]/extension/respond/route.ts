@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { extensionRespondSchema } from '@/lib/validations/booking';
@@ -67,6 +68,7 @@ export async function POST(
     }
 
     const typedResult = resultText as ExtensionRespondResult;
+    await logActivity({ actorId: user.id, actorRole: 'psikolog', category: 'session', action: typedResult === 'approved' ? 'booking.extension_approved' : 'booking.extension_rejected', targetType: 'booking', targetId: id });
 
     const { data: updatedBooking } = await supabaseAdmin
       .from('bookings')

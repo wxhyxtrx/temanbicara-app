@@ -4,6 +4,7 @@ const h = vi.hoisted(() => ({
   user: null as Record<string, unknown> | null,
   logs: [] as Record<string, unknown>[],
   actors: [] as Record<string, unknown>[],
+  byTable: {} as Record<string, Record<string, unknown>[]>,
   filters: [] as [string, unknown][],
 }));
 
@@ -31,7 +32,7 @@ vi.mock('@/lib/supabase/client', () => {
         select: () =>
           table === 'activity_logs'
             ? logsQuery()
-            : { in: async () => ({ data: h.actors, error: null }) },
+            : { in: async () => ({ data: h.byTable[table] ?? h.actors, error: null }) },
       }),
     },
   };
@@ -47,6 +48,7 @@ describe('GET /api/admin/activity-logs', () => {
     h.logs = [];
     h.actors = [];
     h.filters = [];
+    h.byTable = {};
   });
 
   it('menolak non-admin dengan 403', async () => {
@@ -83,5 +85,31 @@ describe('GET /api/admin/activity-logs', () => {
     expect(res.status).toBe(200);
     expect(body.data.map((r: { actor_name: string | null }) => r.actor_name)).toEqual(['Dr. Contoh', null]);
     expect(body.meta).toMatchObject({ page: 1, limit: 25, total: 2, totalPages: 1 });
+  });
+
+  it('menampilkan lawan interaksi & topik curhat, dan menyamarkan pasien Mode Anonim', async () => {
+    h.logs = [
+      { id: 'l1', created_at: '2026-11-19T00:00:00Z', actor_id: 'r1', actor_role: 'relawan', category: 'session', action: 'peer.claimed', target_type: 'peer_ticket', target_id: 't1', metadata: {} },
+      { id: 'l2', created_at: '2026-11-19T00:00:00Z', actor_id: 'p2', actor_role: 'pasien', category: 'money', action: 'tip.given', target_type: 'booking', target_id: 'b1', metadata: { coins: 5 } },
+    ];
+    h.byTable = {
+      peer_tickets: [{ id: 't1', patient_id: 'p1', claimed_by: 'r1', topic: 'Kesepian & Hampa', patient_alias: 'Senja Biru' }],
+      bookings: [{ id: 'b1', patient_id: 'p2', psikolog_id: 's1' }],
+      users: [
+        { id: 'r1', role: 'relawan', relawan_profiles: { nama_lengkap: 'Nurul' } },
+        { id: 'p1', role: 'pasien', pasien_profiles: { nama_lengkap: 'Nama Asli Pasien', is_anonim_default: true } },
+        { id: 'p2', role: 'pasien', pasien_profiles: { nama_lengkap: 'Fauzi Dahlan', is_anonim_default: false } },
+        { id: 's1', role: 'psikolog', psikolog_profiles: { nama_lengkap_gelar: 'Dr. Wijaya' } },
+      ],
+    };
+    const body = await (await GET(req())).json();
+    expect(body.data[0]).toMatchObject({ actor_name: 'Nurul', counterpart_name: 'Senja Biru', counterpart_role: 'pasien', topic: 'Kesepian & Hampa' });
+    expect(JSON.stringify(body)).not.toContain('Nama Asli Pasien');
+    expect(body.data[1]).toMatchObject({ actor_name: 'Fauzi Dahlan', counterpart_name: 'Dr. Wijaya', counterpart_role: 'psikolog', topic: null });
+  });
+
+  it('menerima filter kategori baru session dan feedback', async () => {
+    expect((await GET(req('?category=session'))).status).toBe(200);
+    expect((await GET(req('?category=feedback'))).status).toBe(200);
   });
 });

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { reviewUpsertSchema } from '@/lib/validations/booking';
@@ -141,6 +142,7 @@ export async function PUT(
       return fail(400, 'REVIEW_FAILED', 'Gagal menyimpan ulasan sesi');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'pasien', category: 'feedback', action: 'review.submitted', targetType: 'booking', targetId: id, metadata: { rating: parsed.data.rating } });
     return NextResponse.json({
       success: true,
       data: review as SessionReviewEntity,

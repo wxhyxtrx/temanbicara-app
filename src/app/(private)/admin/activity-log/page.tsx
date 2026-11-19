@@ -32,6 +32,20 @@ const ACTION_LABELS: Record<string, string> = {
   "topup.settled": "Top-up berhasil",
   "topup.refunded": "Top-up direfund",
   "topup.chargeback": "Top-up chargeback",
+  "peer.created": "Membuat curhat",
+  "peer.claimed": "Mengambil curhat",
+  "peer.closed": "Menutup curhat",
+  "booking.created": "Memesan sesi psikolog",
+  "booking.cancelled": "Membatalkan sesi",
+  "booking.rescheduled": "Memindah jadwal sesi",
+  "booking.refund_chosen": "Memilih refund penuh",
+  "booking.ended": "Mengakhiri sesi",
+  "booking.extension_requested": "Mengajukan perpanjangan sesi",
+  "booking.extension_approved": "Menyetujui perpanjangan sesi",
+  "booking.extension_rejected": "Menolak perpanjangan sesi",
+  "review.submitted": "Memberi ulasan",
+  "review.reported": "Melaporkan ulasan",
+  "tip.given": "Memberi tip",
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -47,6 +61,8 @@ const CATEGORY_TABS: { key: ActivityCategory | "all"; label: string }[] = [
   { key: "all", label: "Semua" },
   { key: "auth", label: "Akun & Login" },
   { key: "admin", label: "Aksi Admin" },
+  { key: "session", label: "Sesi & Curhat" },
+  { key: "feedback", label: "Ulasan" },
   { key: "money", label: "Transaksi Uang" },
 ];
 
@@ -54,7 +70,35 @@ const CATEGORY_STYLE: Record<ActivityCategory, string> = {
   auth: "border-sky-300 text-sky-700 dark:border-sky-800 dark:text-sky-400",
   admin: "border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400",
   money: "border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400",
+  session: "border-violet-300 text-violet-700 dark:border-violet-800 dark:text-violet-400",
+  feedback: "border-rose-300 text-rose-700 dark:border-rose-800 dark:text-rose-400",
 };
+
+const ROLE_WORD: Record<string, string> = { pasien: "pasien", psikolog: "psikolog", relawan: "relawan", admin: "admin" };
+
+/** Kalimat ringkas yang mudah dibaca: lawan interaksi, topik, koin, rating. Tanpa isi percakapan. */
+function describe(r: ActivityLogItem): string {
+  const m = r.metadata ?? {};
+  const parts: string[] = [];
+  if (r.counterpart_name) {
+    const role = r.counterpart_role ? ROLE_WORD[r.counterpart_role] : null;
+    parts.push(`dengan ${role ? `${role} ` : ""}${r.counterpart_name}`);
+  }
+  if (r.topic) parts.push(`topik ${r.topic}`);
+  if (typeof m.coins === "number") parts.push(`${m.coins} koin`);
+  if (typeof m.price_coins === "number") parts.push(`biaya ${m.price_coins} koin`);
+  if (typeof m.refund_coins === "number") parts.push(`refund ${m.refund_coins} koin`);
+  if (typeof m.rating === "number") parts.push(`rating ${m.rating}/5`);
+  if (m.by === "psikolog") parts.push("dibatalkan oleh psikolog");
+  if (typeof m.new_start_at === "string") {
+    parts.push(
+      `jadwal baru ${new Date(m.new_start_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })} WIB`
+    );
+  }
+  return parts.join(" · ");
+}
+
+const HUMANIZED_KEYS = new Set(["coins", "price_coins", "refund_coins", "rating", "by", "new_start_at", "topic", "emotion"]);
 
 function formatMetadata(meta: Record<string, unknown>): string {
   const parts: string[] = [];
@@ -138,9 +182,12 @@ export default function AdminActivityLogPage() {
       label: "Detail",
       className: "w-[38%]",
       renderCell: (r) => {
-        const detail = formatMetadata(r.metadata);
+        const sentence = describe(r);
+        const rest = Object.fromEntries(Object.entries(r.metadata ?? {}).filter(([k]) => !HUMANIZED_KEYS.has(k)));
+        const detail = formatMetadata(rest);
         return (
           <div className="space-y-0.5 min-w-0 text-[11px] text-slate-500 dark:text-slate-400">
+            {sentence && <p className="text-xs text-slate-700 dark:text-slate-200 break-words">{sentence}</p>}
             {r.target_type && (
               <p className="font-mono truncate">
                 {r.target_type}
@@ -148,7 +195,7 @@ export default function AdminActivityLogPage() {
               </p>
             )}
             {detail && <p className="break-words">{detail}</p>}
-            {!r.target_type && !detail && <p>—</p>}
+            {!r.target_type && !detail && !sentence && <p>—</p>}
           </div>
         );
       },
@@ -163,7 +210,7 @@ export default function AdminActivityLogPage() {
             Log Aktivitas
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Jejak audit seluruh pengguna: login, aksi admin, dan transaksi uang. Catatan tidak dapat diubah atau dihapus.
+            Jejak audit seluruh pengguna: login, sesi & curhat, ulasan, aksi admin, dan transaksi uang. Isi percakapan tidak pernah dicatat. Catatan tidak dapat diubah atau dihapus.
           </p>
         </div>
         <Button

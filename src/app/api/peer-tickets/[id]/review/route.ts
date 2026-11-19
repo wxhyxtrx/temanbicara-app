@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { getMaintenanceStatus } from '@/lib/maintenance';
@@ -197,6 +198,7 @@ export async function POST(
       return fail(500, 'REVIEW_FAILED', 'Gagal memuat hasil ulasan');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'pasien', category: 'feedback', action: 'review.submitted', targetType: 'peer_ticket', targetId: id, metadata: { rating: parsed.data.rating } });
     const { patient_id: _patientId, ...reviewData } = review as PeerReviewEntity;
 
     return NextResponse.json(

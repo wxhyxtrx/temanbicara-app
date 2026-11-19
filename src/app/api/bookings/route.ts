@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { getMaintenanceStatus } from '@/lib/maintenance';
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
       return fail(400, 'BOOKING_FAILED', 'Gagal memproses pemesanan sesi');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'pasien', category: 'session', action: 'booking.created', targetType: 'booking', targetId: bookingId, metadata: { price_coins: (booking as BookingEntity)?.price_coins ?? null } });
     return NextResponse.json({ success: true, data: booking as BookingEntity }, { status: 201 });
   } catch (err: unknown) {
     console.error('[BOOKINGS_CREATE_INTERNAL_ERROR]:', err);

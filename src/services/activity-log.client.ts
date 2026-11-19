@@ -1,7 +1,7 @@
 import { handleUnauthorized } from '@/lib/auth/unauthorized-handler';
 import type { PaginationMeta } from '@/types/wallet';
 
-export type ActivityCategory = 'auth' | 'admin' | 'money';
+export type ActivityCategory = 'auth' | 'admin' | 'money' | 'session' | 'feedback';
 
 export interface ActivityLogItem {
   id: string;
@@ -14,6 +14,11 @@ export interface ActivityLogItem {
   target_type: string | null;
   target_id: string | null;
   metadata: Record<string, unknown>;
+  /** Lawan interaksi pada booking/curhat (nama samaran bila pasien memakai Mode Anonim). */
+  counterpart_name?: string | null;
+  counterpart_role?: string | null;
+  /** Topik curhat (pilihan baku), hanya untuk tiket curhat. */
+  topic?: string | null;
 }
 
 export interface ListActivityLogsOptions {
