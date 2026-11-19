@@ -222,8 +222,9 @@ export function BookingCard({
       )}
 
       {/* Bottom Bar: Action Buttons & Badges */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+        {/* HP: tombol jadi grid 2 kolom selebar penuh agar rapi & mudah ditekan */}
+        <div className="grid grid-cols-2 gap-2 empty:hidden [&>*:only-child]:col-span-2 sm:flex sm:flex-wrap sm:items-center">
           {/* Refund indicator if already refunded */}
           {booking.refund_coins > 0 && (
             <Badge className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 text-[11px] font-semibold py-0.5 px-2.5">
@@ -284,8 +285,8 @@ export function BookingCard({
         </div>
 
         {/* Right side primary action */}
-        <div className="flex flex-col items-end gap-1 ml-auto">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-1 w-full sm:w-auto sm:items-end sm:ml-auto">
+          <div className="grid grid-cols-2 gap-2 [&>a>button]:w-full [&>*:nth-child(3)]:col-span-2 [&>*:only-child]:col-span-2 sm:flex sm:items-center sm:[&>a>button]:w-auto">
             <Button
               type="button"
               variant="outline"
@@ -348,14 +349,14 @@ export function BookingCard({
             )}
           </div>
           {(isBooked || isInProgress) && !isRoomActive && (
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 text-right">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center sm:text-right">
               Ruang sesi dibuka 10 menit sebelum jadwal
             </span>
           )}
           {booking.status === "completed" && (
             <Link
               href={`/patient/session/${booking.id}`}
-              className="text-[10px] text-slate-400 hover:text-teal-600 dark:text-slate-500 dark:hover:text-teal-400 text-right underline underline-offset-2 transition-colors cursor-pointer"
+              className="text-[10px] text-slate-400 hover:text-teal-600 dark:text-slate-500 dark:hover:text-teal-400 text-center sm:text-right underline underline-offset-2 transition-colors cursor-pointer"
             >
               Sesi konseling selesai • Riwayat read-only
             </Link>

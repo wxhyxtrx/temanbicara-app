@@ -172,7 +172,7 @@ export function SessionReviewCard<T = SessionReviewEntity | PeerReviewEntity>({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />
-              <h4 className="text-xs sm:text-sm font-bold font-heading text-slate-900 dark:white">
+              <h4 className="text-xs sm:text-sm font-bold font-heading text-slate-900 dark:text-white">
                 Penilaian Sesi Anda
               </h4>
             </div>

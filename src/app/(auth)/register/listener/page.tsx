@@ -192,7 +192,7 @@ export default function ListenerRegistrationPage() {
   };
 
   return (
-    <div className="min-h-screen py-10 px-4 relative overflow-hidden bg-gradient-to-br from-pink-50/70 via-slate-50 to-teal-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-teal-950/40 text-slate-900 dark:text-slate-100 font-nunito transition-colors duration-200">
+    <div className="min-h-dvh pt-5 pb-10 sm:py-10 px-4 relative overflow-hidden bg-gradient-to-br from-pink-50/70 via-slate-50 to-teal-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-teal-950/40 text-slate-900 dark:text-slate-100 font-nunito transition-colors duration-200">
       {/* Ambient Glow Orbs */}
       <div className="absolute top-10 right-10 w-96 h-96 rounded-full bg-pink-200/20 dark:bg-pink-900/15 blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 left-10 w-96 h-96 rounded-full bg-teal-200/20 dark:bg-teal-900/10 blur-3xl pointer-events-none" />

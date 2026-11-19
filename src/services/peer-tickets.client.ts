@@ -162,6 +162,11 @@ export const peerTicketClient = {
   /**
    * Memberikan tip koin kepada relawan pendamping
    */
+  async getTipStatus(ticketId: string): Promise<{ success: boolean; data: { tipped: boolean; coins: number | null } }> {
+    const res = await fetch(`/api/peer-tickets/${encodeURIComponent(ticketId)}/tip`, { credentials: 'include' });
+    return handleResponse<{ success: boolean; data: { tipped: boolean; coins: number | null } }>(res);
+  },
+
   async sendTip(
     ticketId: string,
     coins: number

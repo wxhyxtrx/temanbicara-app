@@ -225,6 +225,11 @@ export const bookingClient = {
   /**
    * Memberikan tip koin untuk sesi yang selesai (pasien)
    */
+  async getTipStatus(bookingId: string): Promise<{ success: boolean; data: { tipped: boolean; coins: number | null } }> {
+    const res = await fetch(`/api/bookings/${bookingId}/tip`, { credentials: 'include' });
+    return handleResponse<{ success: boolean; data: { tipped: boolean; coins: number | null } }>(res);
+  },
+
   async sendTip(
     bookingId: string,
     payload: SessionTipPayload

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getMyTipStatus } from '@/lib/tip-status';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { getMaintenanceStatus } from '@/lib/maintenance';
@@ -134,4 +135,10 @@ export async function POST(
     console.error('[PEER_TIP_INTERNAL_ERROR]:', err);
     return fail(500, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan sistem saat memproses tip');
   }
+}
+
+/** GET /api/peer-tickets/[id]/tip — status tip pasien untuk tiket ini. */
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return getMyTipStatus('ticket', id);
 }

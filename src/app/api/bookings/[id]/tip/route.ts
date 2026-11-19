@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getMyTipStatus } from '@/lib/tip-status';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import { sessionTipSchema } from '@/lib/validations/booking';
@@ -94,4 +95,10 @@ export async function POST(
     console.error('[BOOKING_TIP_INTERNAL_ERROR]:', err);
     return fail(500, 'INTERNAL_ERROR', 'Terjadi kesalahan sistem saat memberikan tip');
   }
+}
+
+/** GET /api/bookings/[id]/tip — status tip pasien untuk sesi ini. */
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return getMyTipStatus('session', id);
 }

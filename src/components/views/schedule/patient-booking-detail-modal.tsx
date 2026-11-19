@@ -73,13 +73,14 @@ export function PatientBookingDetailModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-full max-w-lg max-h-[92dvh] overflow-y-auto overflow-x-hidden font-nunito p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-2xl">
         <DialogHeader className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800 w-full min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+          {/* Judul di atas (ruang untuk tombol tutup), badge status di bawah agar label panjang tidak keluar layar */}
+          <div className="flex flex-col items-start gap-2 pr-8 text-left">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-400 flex items-center justify-center shrink-0">
                 <FileText size={16} />
               </div>
-              <div>
-                <DialogTitle className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white">
+              <div className="min-w-0">
+                <DialogTitle className="text-base sm:text-lg font-bold font-heading text-slate-900 dark:text-white text-left">
                   Detail Reservasi Konseling
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 font-mono">
@@ -87,7 +88,7 @@ export function PatientBookingDetailModal({
                 </DialogDescription>
               </div>
             </div>
-            <Badge className={`${statusConfig.badgeClass} text-xs font-semibold py-0.5 px-2.5`}>
+            <Badge className={`${statusConfig.badgeClass} text-xs font-semibold py-0.5 px-2.5 whitespace-normal text-left max-w-full`}>
               {statusConfig.label}
             </Badge>
           </div>
@@ -210,8 +211,9 @@ export function PatientBookingDetailModal({
           )}
 
           {/* Footer Actions */}
-          <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800 w-full min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="pt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between border-t border-slate-100 dark:border-slate-800 w-full min-w-0">
+            {/* HP: tombol jadi grid 2 kolom selebar penuh agar rapi & mudah ditekan */}
+            <div className="grid grid-cols-2 gap-2 empty:hidden [&>*:only-child]:col-span-2 sm:flex sm:flex-wrap sm:items-center">
               {booking.status === "awaiting_patient_choice" && (
                 <>
                   {onOpenReschedule && (
@@ -299,8 +301,8 @@ export function PatientBookingDetailModal({
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 sm:gap-2 ml-auto">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1.5 w-full sm:w-auto sm:flex-row sm:items-center sm:gap-2 sm:ml-auto">
+              <div className="grid grid-cols-2 gap-2 [&>a>button]:w-full [&>*:nth-child(3)]:col-span-2 [&>*:only-child]:col-span-2 sm:flex sm:items-center sm:[&>a>button]:w-auto">
                 <Button
                   type="button"
                   variant="outline"
@@ -364,12 +366,12 @@ export function PatientBookingDetailModal({
                 )}
               </div>
               {(booking.status === "booked" || booking.status === "in_progress") && !isRoomActive && (
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 text-right">
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center sm:text-right">
                   Ruang sesi dibuka 10 menit sebelum jadwal
                 </span>
               )}
               {booking.status === "completed" && (
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 text-right">
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 text-center sm:text-right">
                   Sesi selesai • Riwayat percakapan bersifat read-only
                 </span>
               )}

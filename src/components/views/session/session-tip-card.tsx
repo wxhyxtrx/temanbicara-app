@@ -45,10 +45,21 @@ export function SessionTipCard({
   const loadData = useCallback(async () => {
     setLoadingSettings(true);
     try {
-      const [settingsRes, walletRes] = await Promise.allSettled([
+      const [settingsRes, walletRes, tipRes] = await Promise.allSettled([
         systemSettingsClient.getPublicSettings(),
         walletClient.getWalletMe(),
+        targetId
+          ? isTicket
+            ? peerTicketClient.getTipStatus(targetId)
+            : bookingClient.getTipStatus(targetId)
+          : Promise.resolve(null),
       ]);
+
+      // Tip hanya 1x per sesi: tampilkan status yang tersimpan di server setelah refresh.
+      if (tipRes.status === "fulfilled" && tipRes.value?.data?.tipped) {
+        setAlreadyTipped(true);
+        setTipSuccessAmount(tipRes.value.data.coins);
+      }
 
       if (settingsRes.status === "fulfilled" && settingsRes.value.settings?.tip) {
         const tipCfg = settingsRes.value.settings.tip;
@@ -66,7 +77,7 @@ export function SessionTipCard({
     } finally {
       setLoadingSettings(false);
     }
-  }, []);
+  }, [targetId, isTicket]);
 
   useEffect(() => {
     loadData();
