@@ -66,6 +66,10 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
 
   // UI layout & refs
   const [isNotesPanelOpen, setIsNotesPanelOpen] = useState<boolean>(true);
+  // Di HP panel catatan menutupi chat, jadi mulai tertutup.
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) setIsNotesPanelOpen(false);
+  }, []);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const bookingRef = useRef(booking);
   bookingRef.current = booking;
@@ -560,7 +564,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
         onDismissCoinsError={() => setInsufficientCoinsError(null)}
       />
 
-      <div className="flex-1 min-h-0 flex overflow-hidden">
+      <div className="relative flex-1 min-h-0 flex overflow-hidden">
         {/* Kolom Chat */}
         <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-900">
           {/* Kartu Bantuan Hotline Krisis (Pasien) */}

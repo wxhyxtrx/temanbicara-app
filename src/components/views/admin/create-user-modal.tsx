@@ -356,7 +356,7 @@ export function CreateUserModal({
           </div>
 
           {/* 2. Email & Password */}
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div className="space-y-1">
               <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
                 Email Pengguna <span className="text-rose-500">*</span>
@@ -390,7 +390,7 @@ export function CreateUserModal({
           </div>
 
           {/* 3. Peran Akun & Status Awal */}
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div className="space-y-1">
               <Label className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold">
                 Peran Akun <span className="text-rose-500">*</span>
@@ -468,7 +468,7 @@ export function CreateUserModal({
                 <span>Kredensial & Berkas Praktik Psikolog</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="space-y-1">
                   <Label className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
                     Nomor SIPP / STR <span className="text-rose-500">*</span>

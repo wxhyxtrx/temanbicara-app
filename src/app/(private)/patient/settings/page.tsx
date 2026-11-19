@@ -240,7 +240,7 @@ export default function PatientSettingsPage() {
         </div>
       ) : (
         <Tabs defaultValue="profile" className="w-full space-y-6">
-        <TabsList className="bg-slate-100/90 dark:bg-slate-900 p-1 rounded-xl flex w-full sm:w-auto overflow-x-auto justify-start border border-slate-200/80 dark:border-slate-800">
+        <TabsList className="bg-slate-100/90 dark:bg-slate-900 p-1 rounded-xl grid grid-cols-2 gap-1 h-auto w-full sm:flex sm:w-auto justify-start border border-slate-200/80 dark:border-slate-800">
           <TabsTrigger
             value="profile"
             className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-teal-800 dark:data-[state=active]:text-teal-300 text-slate-600 dark:text-slate-400 data-[state=active]:shadow-xs rounded-lg px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"

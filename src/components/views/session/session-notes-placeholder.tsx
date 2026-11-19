@@ -226,7 +226,7 @@ export function SessionNotesPanel({
   const displayName = cleanedName || "Pasien";
 
   return (
-    <aside className="w-80 lg:w-96 shrink-0 border-l border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col font-nunito z-10">
+    <aside className="absolute inset-0 z-20 w-full md:static md:w-80 lg:w-96 shrink-0 md:border-l border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col font-nunito">
       {/* Header Panel */}
       <div className="p-3.5 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-950/40">
         <div className="flex items-center gap-2.5 min-w-0">
