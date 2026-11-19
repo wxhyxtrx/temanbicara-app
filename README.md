@@ -6,7 +6,7 @@ Platform konseling dan kesehatan mental. Pasien bisa memesan sesi dengan psikolo
 
 ![Landing page](screenshots/01-landing.png)
 
-## 📸 Tampilan per Peran
+## Tampilan per Peran
 
 | Pasien | Psikolog |
 |---|---|
@@ -19,7 +19,7 @@ Platform konseling dan kesehatan mental. Pasien bisa memesan sesi dengan psikolo
 | ![Beranda admin](screenshots/08-admin-beranda.png) | ![Pengelolaan sengketa payout](screenshots/09-admin-sengketa.png) |
 | ![Pengaturan sistem](screenshots/10-admin-pengaturan.png) | |
 
-## ✨ Fitur Utama
+## Fitur Utama
 
 - **Multi-peran:** Pasien, Psikolog, Relawan Pendengar Sebaya, dan Admin, masing-masing dengan akses dan dashboard sendiri
 - **Booking sesi:** pilih psikolog dan jadwal, reschedule, dan batalkan dengan refund otomatis sesuai kebijakan
@@ -29,11 +29,11 @@ Platform konseling dan kesehatan mental. Pasien bisa memesan sesi dengan psikolo
 - **Keuangan yang aman:** buku besar (ledger) append-only, penahanan dana saat refund/chargeback, dan layar admin untuk menyelesaikan sengketa
 - **Dashboard admin:** verifikasi mitra, antrean payout, sengketa, feed eskalasi krisis, dan pengaturan sistem beraudit
 
-## 🧰 Tech Stack
+## Tech Stack
 
 Next.js 15 · React 19 · TypeScript · Tailwind CSS 4 · Zustand · Supabase (PostgreSQL + RLS + Realtime) · Zod · Midtrans · Vitest · Vercel
 
-## 🏗️ Arsitektur Singkat
+## Arsitektur Singkat
 
 ```
 Browser (Next.js App Router, React 19)
@@ -49,7 +49,7 @@ Midtrans (sandbox) ── webhook top-up, refund, chargeback
 
 Semua mutasi uang (top-up, bayar sesi, tip, payout, potong saldo sengketa) berjalan di fungsi PostgreSQL yang atomik dan tercatat di ledger yang tidak bisa diubah.
 
-## 🧪 Pengujian
+## Pengujian
 
 161 tes otomatis (Vitest) untuk alur yang paling berisiko:
 
@@ -66,7 +66,7 @@ npm test
 
 Migrasi SQL juga diuji dengan skrip dry-run transaksional di PostgreSQL sungguhan (folder migrasi disimpan privat, tidak dipublikasikan di repo ini).
 
-## 💳 Mencoba Top-up (Sandbox)
+## Mencoba Top-up (Sandbox)
 
 Pembayaran memakai **Midtrans sandbox**, jadi tidak ada uang sungguhan. Saat top-up koin, pakai kartu uji resmi Midtrans:
 
@@ -74,14 +74,14 @@ Pembayaran memakai **Midtrans sandbox**, jadi tidak ada uang sungguhan. Saat top
 |---|---|---|
 | `4811 1111 1111 1114` | `12/30` | `123` |
 
-## 🔐 Keamanan
+## Keamanan
 
 - Autentikasi memakai cookie HttpOnly dan JWT Supabase yang diverifikasi di server
 - Row Level Security di database, dan akses service role hanya dari server
 - Validasi input di server dengan Zod, dan pesan error tidak membocorkan detail database
 - Webhook Midtrans diverifikasi signature-nya dan diproses secara idempoten
 
-## ⚙️ Menjalankan Secara Lokal
+## Menjalankan Secara Lokal
 
 ```bash
 git clone https://github.com/wxhyxtrx/temanbicara-app.git
@@ -91,6 +91,6 @@ cp .env.example .env.local   # isi variabel Supabase & Midtrans sandbox
 npm run dev
 ```
 
-## 🚧 Status
+## Status
 
 Proyek portofolio, belum untuk penggunaan produksi. Pembayaran berjalan di mode sandbox. Belum tersedia: ekspor PDF, autentikasi dua faktor (2FA), dan pengingat via WhatsApp.
