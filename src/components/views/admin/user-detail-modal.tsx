@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,7 @@ import {
   AlertTriangle,
   Wallet,
   Clock,
+  ScrollText,
 } from "lucide-react";
 import { userService } from "@/services/user.service";
 import { notify } from "@/lib/toast";
@@ -403,6 +405,14 @@ export function UserDetailModal({
                 {activeUser.no_wa || "-"}
               </span>
             </div>
+
+            <Link
+              href={`/admin/activity-log?actor_id=${activeUser.id}&actor_name=${encodeURIComponent(activeUser.fullName || activeUser.email)}`}
+              className="flex items-center justify-center gap-1.5 pt-2.5 border-t border-slate-200/70 dark:border-slate-800 text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline underline-offset-2"
+            >
+              <ScrollText size={13} />
+              Lihat log aktivitas pengguna ini
+            </Link>
           </div>
 
           {/* 2. Badge Status & Role */}

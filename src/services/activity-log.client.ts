@@ -25,6 +25,12 @@ export interface ListActivityLogsOptions {
   page?: number;
   limit?: number;
   category?: ActivityCategory;
+  actorId?: string;
+  /** Kata kunci nama pelaku (min. 2 huruf). */
+  q?: string;
+  /** Tanggal WIB YYYY-MM-DD (inklusif). */
+  from?: string;
+  to?: string;
 }
 
 /** Mengambil log aktivitas (khusus admin). Melempar Error berisi pesan ramah bila gagal. */
@@ -35,6 +41,10 @@ export async function listActivityLogs(
   params.set('page', String(opts.page ?? 1));
   params.set('limit', String(opts.limit ?? 25));
   if (opts.category) params.set('category', opts.category);
+  if (opts.actorId) params.set('actor_id', opts.actorId);
+  if (opts.q && opts.q.trim().length >= 2) params.set('q', opts.q.trim());
+  if (opts.from) params.set('from', opts.from);
+  if (opts.to) params.set('to', opts.to);
 
   const res = await fetch(`/api/admin/activity-logs?${params.toString()}`, { credentials: 'include' });
   const body = await res.json().catch(() => null);

@@ -1,14 +1,33 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/client';
-import { getSessionUser, fail, pageParams } from '@/lib/auth/session';
+import { getSessionUser, fail, pageParams, sanitizeSearch } from '@/lib/auth/session';
 
 const querySchema = z.object({
   category: z.enum(['auth', 'admin', 'money', 'session', 'feedback']).optional(),
   actor_role: z.enum(['pasien', 'psikolog', 'relawan', 'admin', 'system', 'guest']).optional(),
   action: z.string().regex(/^[a-z_]+\.[a-z_]+$/).optional(),
   actor_id: z.string().uuid().optional(),
+  /** Tanggal WIB format YYYY-MM-DD (inklusif). */
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
+
+/** Cari ID pengguna yang namanya (nama lengkap, panggilan, alias, gelar) cocok dengan kata kunci. */
+async function findUserIdsByName(db: NonNullable<typeof supabaseAdmin>, q: string): Promise<string[]> {
+  const like = `%${q}%`;
+  const [pasien, relawan, psikolog, admin] = await Promise.all([
+    db.from('pasien_profiles').select('user_id').or(`nama_lengkap.ilike.${like},nama_panggilan.ilike.${like}`).limit(50),
+    db.from('relawan_profiles').select('user_id').or(`nama_lengkap.ilike.${like},alias_name.ilike.${like}`).limit(50),
+    db.from('psikolog_profiles').select('user_id').ilike('nama_lengkap_gelar', like).limit(50),
+    db.from('admin_profiles').select('user_id').ilike('nama_lengkap', like).limit(50),
+  ]);
+  const ids = new Set<string>();
+  for (const res of [pasien, relawan, psikolog, admin]) {
+    for (const row of (res.data ?? []) as { user_id: string }[]) ids.add(row.user_id);
+  }
+  return Array.from(ids);
+}
 
 interface ActivityLogRow {
   id: string;
@@ -34,7 +53,8 @@ interface ActorRow {
 /**
  * GET /api/admin/activity-logs
  * Daftar log aktivitas seluruh pengguna (terbaru dulu), khusus admin aktif.
- * Filter opsional: category, actor_role, action, actor_id. Paginasi: page, limit (maks 100).
+ * Filter opsional: category, actor_role, action, actor_id, q (nama pelaku), from/to (tanggal WIB).
+ * Paginasi: page, limit (maks 100).
  */
 export async function GET(req: Request) {
   try {
@@ -51,11 +71,22 @@ export async function GET(req: Request) {
       actor_role: url.searchParams.get('actor_role') || undefined,
       action: url.searchParams.get('action') || undefined,
       actor_id: url.searchParams.get('actor_id') || undefined,
+      from: url.searchParams.get('from') || undefined,
+      to: url.searchParams.get('to') || undefined,
     });
     if (!parsed.success) return fail(400, 'VALIDATION_ERROR', 'Parameter filter tidak valid');
 
     const { page, limit, from, to } = pageParams(url, 25);
     const f = parsed.data;
+    const emptyPage = () =>
+      NextResponse.json({ success: true, data: [], meta: { page, limit, total: 0, totalPages: 1 } });
+
+    const q = sanitizeSearch(url.searchParams.get('q'));
+    let nameMatchIds: string[] | null = null;
+    if (q.length >= 2) {
+      nameMatchIds = await findUserIdsByName(supabaseAdmin, q);
+      if (nameMatchIds.length === 0) return emptyPage();
+    }
 
     let query = supabaseAdmin
       .from('activity_logs')
@@ -68,6 +99,9 @@ export async function GET(req: Request) {
     if (f.actor_role) query = query.eq('actor_role', f.actor_role);
     if (f.action) query = query.eq('action', f.action);
     if (f.actor_id) query = query.eq('actor_id', f.actor_id);
+    if (nameMatchIds) query = query.in('actor_id', nameMatchIds);
+    if (f.from) query = query.gte('created_at', `${f.from}T00:00:00+07:00`);
+    if (f.to) query = query.lte('created_at', `${f.to}T23:59:59.999+07:00`);
 
     const { data, error, count } = await query;
     if (error) {

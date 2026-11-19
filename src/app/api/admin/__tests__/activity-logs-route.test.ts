@@ -22,6 +22,9 @@ vi.mock('@/lib/supabase/client', () => {
         h.filters.push([col, val]);
         return q;
       },
+      in: (col: string, val: unknown) => (h.filters.push([col, val]), q),
+      gte: (col: string, val: unknown) => (h.filters.push([col + '>=', val]), q),
+      lte: (col: string, val: unknown) => (h.filters.push([col + '<=', val]), q),
       then: (resolve: (v: unknown) => void) => resolve({ data: h.logs, error: null, count: h.logs.length }),
     };
     return q;
@@ -32,7 +35,15 @@ vi.mock('@/lib/supabase/client', () => {
         select: () =>
           table === 'activity_logs'
             ? logsQuery()
-            : { in: async () => ({ data: h.byTable[table] ?? h.actors, error: null }) },
+            : (() => {
+                const chain = {
+                  in: async () => ({ data: h.byTable[table] ?? h.actors, error: null }),
+                  or: () => chain,
+                  ilike: () => chain,
+                  limit: async () => ({ data: h.byTable[table] ?? [], error: null }),
+                };
+                return chain;
+              })(),
       }),
     },
   };
@@ -111,5 +122,25 @@ describe('GET /api/admin/activity-logs', () => {
   it('menerima filter kategori baru session dan feedback', async () => {
     expect((await GET(req('?category=session'))).status).toBe(200);
     expect((await GET(req('?category=feedback'))).status).toBe(200);
+  });
+
+  it('filter rentang tanggal memakai batas hari WIB', async () => {
+    await GET(req('?from=2026-11-01&to=2026-11-19'));
+    expect(h.filters).toEqual([
+      ['created_at>=', '2026-11-01T00:00:00+07:00'],
+      ['created_at<=', '2026-11-19T23:59:59.999+07:00'],
+    ]);
+    expect((await GET(req('?from=19-11-2026'))).status).toBe(400);
+  });
+
+  it('cari nama: tanpa kecocokan langsung kosong, dengan kecocokan memfilter actor_id', async () => {
+    let body = await (await GET(req('?q=tidakada'))).json();
+    expect(body.data).toEqual([]);
+    expect(body.meta.total).toBe(0);
+
+    h.byTable = { pasien_profiles: [{ user_id: 'p1' }], psikolog_profiles: [{ user_id: 's1' }] };
+    h.filters = [];
+    await GET(req('?q=fau'));
+    expect(h.filters).toEqual([['actor_id', ['p1', 's1']]]);
   });
 });

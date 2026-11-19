@@ -8,7 +8,8 @@ import { Tables, TablePaginationFooter, Column } from "@/components/shared/atoms
 import { cn } from "@/lib/utils";
 import { listActivityLogs, type ActivityCategory, type ActivityLogItem } from "@/services/activity-log.client";
 import type { PaginationMeta } from "@/types/wallet";
-import { AlertCircle, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { AlertCircle, AlertTriangle, Loader2, RefreshCw, Search, UserRound, X } from "lucide-react";
 
 const ACTION_LABELS: Record<string, string> = {
   "auth.login": "Masuk ke akun",
@@ -118,12 +119,44 @@ export default function AdminActivityLogPage() {
   const [category, setCategory] = useState<ActivityCategory | "all">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Filter tahap 2: pelaku tertentu (dari tautan detail pengguna), kata kunci nama, rentang tanggal WIB.
+  const [actorFilter, setActorFilter] = useState<{ id: string; name: string } | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [q, setQ] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [ready, setReady] = useState(false);
+
+  // Baca ?actor_id=&actor_name= dari tautan "Lihat log aktivitas" di detail pengguna.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const id = sp.get("actor_id");
+    if (id && /^[0-9a-f-]{36}$/i.test(id)) setActorFilter({ id, name: sp.get("actor_name") || "Pengguna" });
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQ(searchInput.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const fetchLogs = useCallback(async () => {
+    if (!ready) return;
     try {
       setIsLoading(true);
       setErrorMessage(null);
-      const res = await listActivityLogs({ page, limit, category: category === "all" ? undefined : category });
+      const res = await listActivityLogs({
+        page,
+        limit,
+        category: category === "all" ? undefined : category,
+        actorId: actorFilter?.id,
+        q: actorFilter ? undefined : q,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      });
       setItems(res.items);
       setMeta(res.meta);
     } catch (err) {
@@ -131,11 +164,25 @@ export default function AdminActivityLogPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, category]);
+  }, [ready, page, limit, category, actorFilter, q, fromDate, toDate]);
 
   useEffect(() => {
     void fetchLogs();
   }, [fetchLogs]);
+
+  const clearActorFilter = () => {
+    setActorFilter(null);
+    setPage(1);
+    window.history.replaceState(null, "", "/admin/activity-log");
+  };
+  const hasFilter = Boolean(actorFilter || q || fromDate || toDate);
+  const resetFilters = () => {
+    clearActorFilter();
+    setSearchInput("");
+    setQ("");
+    setFromDate("");
+    setToDate("");
+  };
 
   const columns: Column<ActivityLogItem>[] = [
     {
@@ -157,9 +204,23 @@ export default function AdminActivityLogPage() {
       className: "w-[20%]",
       renderCell: (r) => (
         <div className="space-y-1 min-w-0">
-          <p className="font-bold text-slate-900 dark:text-white text-xs truncate">
-            {r.actor_name || (r.actor_role === "system" ? "Sistem (otomatis)" : r.actor_role === "guest" ? "Tidak dikenal" : "Pengguna dihapus")}
-          </p>
+          {r.actor_id && r.actor_name ? (
+            <button
+              type="button"
+              onClick={() => {
+                setActorFilter({ id: r.actor_id as string, name: r.actor_name as string });
+                setPage(1);
+              }}
+              title="Tampilkan semua aktivitas pengguna ini"
+              className="block max-w-full text-left font-bold text-slate-900 dark:text-white text-xs truncate hover:text-teal-700 dark:hover:text-teal-400 hover:underline underline-offset-2 cursor-pointer"
+            >
+              {r.actor_name}
+            </button>
+          ) : (
+            <p className="font-bold text-slate-900 dark:text-white text-xs truncate">
+              {r.actor_name || (r.actor_role === "system" ? "Sistem (otomatis)" : r.actor_role === "guest" ? "Tidak dikenal" : "Pengguna dihapus")}
+            </p>
+          )}
           <Badge variant="outline" className="text-[9px] uppercase font-bold px-1.5 py-0">
             {ROLE_LABELS[r.actor_role] ?? r.actor_role}
           </Badge>
@@ -270,6 +331,46 @@ export default function AdminActivityLogPage() {
               ))}
             </div>
           </div>
+
+          <div className="mt-4 flex flex-col lg:flex-row gap-2.5 lg:items-center">
+            {actorFilter ? (
+              <div className="flex items-center gap-2 h-9 px-3 rounded-xl border border-teal-300 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/50 text-xs text-teal-900 dark:text-teal-200 min-w-0 lg:flex-1">
+                <UserRound size={14} className="shrink-0" />
+                <span className="truncate">
+                  Aktivitas: <strong>{actorFilter.name}</strong>
+                </span>
+                <button type="button" onClick={clearActorFilter} aria-label="Hapus filter pengguna" className="ml-auto p-1 -m-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900 cursor-pointer">
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <div className="relative lg:flex-1 min-w-0">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Cari nama pelaku (min. 2 huruf)..."
+                  aria-label="Cari nama pelaku"
+                  className="pl-9 h-9 text-xs rounded-xl"
+                />
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2.5 lg:flex lg:items-center">
+              <label className="flex flex-col gap-1 text-[11px] text-slate-500 dark:text-slate-400 lg:flex-row lg:items-center lg:gap-2">
+                Dari
+                <Input type="date" value={fromDate} max={toDate || undefined} onChange={(e) => { setFromDate(e.target.value); setPage(1); }} className="h-9 text-xs rounded-xl" />
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-slate-500 dark:text-slate-400 lg:flex-row lg:items-center lg:gap-2">
+                Sampai
+                <Input type="date" value={toDate} min={fromDate || undefined} onChange={(e) => { setToDate(e.target.value); setPage(1); }} className="h-9 text-xs rounded-xl" />
+              </label>
+            </div>
+            {hasFilter && (
+              <Button type="button" variant="ghost" size="sm" onClick={resetFilters} className="h-9 text-xs rounded-xl self-start lg:self-auto cursor-pointer">
+                Reset filter
+              </Button>
+            )}
+          </div>
         </CardHeader>
 
         <CardContent className="p-0">
@@ -281,7 +382,7 @@ export default function AdminActivityLogPage() {
           ) : items.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-center px-4">
               <AlertCircle size={28} className="text-slate-300 dark:text-slate-600" />
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Belum ada aktivitas tercatat</p>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{hasFilter ? "Tidak ada aktivitas yang cocok dengan filter" : "Belum ada aktivitas tercatat"}</p>
               <p className="text-[11px] text-slate-400 max-w-sm">Aktivitas login, aksi admin, dan transaksi uang akan muncul di sini secara otomatis.</p>
             </div>
           ) : (
