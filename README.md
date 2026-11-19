@@ -51,7 +51,7 @@ Semua mutasi uang (top-up, bayar sesi, tip, payout, potong saldo sengketa) berja
 
 ## Pengujian
 
-161 tes otomatis (Vitest) untuk alur yang paling berisiko:
+172 tes otomatis (Vitest) untuk alur yang paling berisiko:
 
 | Area | Contoh yang diuji |
 |---|---|
