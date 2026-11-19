@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
 import type { PatientEmergencyContactView } from '@/types/booking';
@@ -99,6 +100,7 @@ export async function GET(
       return fail(500, 'AUDIT_LOG_FAILED', 'Gagal mencatat log audit akses kontak darurat');
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'admin', category: 'safety', action: 'contact.viewed', targetType: 'user', targetId: id });
     const contactView: PatientEmergencyContactView = {
       patient_id: id,
       kontak_darurat_nama: profile?.kontak_darurat_nama ?? null,

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail } from '@/lib/auth/session';
 import { updateScheduleSchema } from '@/lib/validations/schedule';
@@ -121,6 +122,7 @@ export async function PUT(req: Request) {
       return fail(500, 'UPDATE_SCHEDULE_FAILED', 'Gagal memperbarui jadwal konseling');
     }
 
+    await logActivity({ actorId: session.user.id, actorRole: 'psikolog', category: 'auth', action: 'schedule.updated', metadata: { ranges: weekly.length } });
     // Ambil hasil tersimpan terbaru
     const { data: updatedWeekly, error: fetchError } = await supabaseAdmin
       .from('psikolog_schedules')

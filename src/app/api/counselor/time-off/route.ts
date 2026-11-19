@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail } from '@/lib/auth/session';
 import { createTimeOffSchema } from '@/lib/validations/schedule';
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
       conflictingBookings = [];
     }
 
+    await logActivity({ actorId: session.user.id, actorRole: 'psikolog', category: 'auth', action: 'time_off.created' });
     return NextResponse.json(
       {
         success: true,

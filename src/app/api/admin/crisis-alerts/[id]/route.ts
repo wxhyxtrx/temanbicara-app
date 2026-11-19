@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
@@ -161,6 +162,7 @@ export async function PATCH(
       created_at: updatedAlert.created_at,
     };
 
+    await logActivity({ actorId: user.id, actorRole: 'admin', category: 'safety', action: parsed.data.status === 'false_alarm' ? 'crisis.false_alarm' : 'crisis.handled', targetType: 'user', targetId: existingAlert.patient_id });
     return NextResponse.json({
       success: true,
       data: resultItem,

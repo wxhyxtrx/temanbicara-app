@@ -323,13 +323,26 @@ export function NotificationDropdown() {
     }
   };
 
+  const triggerClass =
+    "relative h-9 w-9 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors shadow-2xs";
+
+  // Sebelum mount, render tombol statis tanpa Popover: ID Radix (aria-controls) dari useId
+  // berbeda antara HTML server dan klien sehingga memicu peringatan hydration mismatch.
+  if (!mounted) {
+    return (
+      <Button variant="outline" size="icon" className={triggerClass} aria-label="Pemberitahuan Notifikasi">
+        <Bell size={17} />
+      </Button>
+    );
+  }
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           size="icon"
-          className="relative h-9 w-9 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors shadow-2xs"
+          className={triggerClass}
           aria-label="Pemberitahuan Notifikasi"
         >
           <Bell size={17} />

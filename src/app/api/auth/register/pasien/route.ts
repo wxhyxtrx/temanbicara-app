@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getMaintenanceStatus } from '@/lib/maintenance';
 import { registerPasienSchema } from '@/lib/validations/auth';
@@ -150,6 +151,7 @@ export async function POST(req: Request) {
       );
     }
 
+    await logActivity({ actorId: userId, actorRole: 'pasien', category: 'auth', action: 'auth.registered' });
     return NextResponse.json(
       {
         success: true,

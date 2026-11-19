@@ -143,4 +143,15 @@ describe('GET /api/admin/activity-logs', () => {
     await GET(req('?q=fau'));
     expect(h.filters).toEqual([['actor_id', ['p1', 's1']]]);
   });
+
+  it('kejadian satu pengguna (strike/kontak darurat) menampilkan pengguna target; kategori safety diterima', async () => {
+    h.logs = [
+      { id: 'l9', created_at: '2026-11-19T00:00:00Z', actor_id: null, actor_role: 'system', category: 'safety', action: 'strike.added', target_type: 'user', target_id: 's1', metadata: { points: 2, reason: 'noshow' } },
+    ];
+    h.byTable = { users: [{ id: 's1', role: 'psikolog', psikolog_profiles: { nama_lengkap_gelar: 'Dr. Wijaya' } }] };
+    const res = await GET(req('?category=safety'));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.data[0]).toMatchObject({ actor_name: null, counterpart_name: 'Dr. Wijaya', counterpart_role: 'psikolog' });
+  });
 });

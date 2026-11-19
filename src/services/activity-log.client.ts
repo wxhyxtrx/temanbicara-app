@@ -1,7 +1,7 @@
 import { handleUnauthorized } from '@/lib/auth/unauthorized-handler';
 import type { PaginationMeta } from '@/types/wallet';
 
-export type ActivityCategory = 'auth' | 'admin' | 'money' | 'session' | 'feedback';
+export type ActivityCategory = 'auth' | 'admin' | 'money' | 'session' | 'feedback' | 'safety';
 
 export interface ActivityLogItem {
   id: string;

@@ -47,6 +47,26 @@ const ACTION_LABELS: Record<string, string> = {
   "review.submitted": "Memberi ulasan",
   "review.reported": "Melaporkan ulasan",
   "tip.given": "Memberi tip",
+  "booking.auto_cancelled": "Sesi batal otomatis (psikolog tidak hadir)",
+  "booking.no_show": "Pasien tidak hadir",
+  "booking.auto_completed": "Sesi selesai otomatis",
+  "booking.auto_refunded": "Refund otomatis (pasien tidak memilih)",
+  "peer.reopened": "Curhat kembali ke antrean (relawan tidak menyapa)",
+  "peer.expired": "Curhat kedaluwarsa (tidak terambil)",
+  "peer.auto_closed": "Curhat ditutup otomatis (24 jam)",
+  "crisis.reported": "Melaporkan krisis",
+  "crisis.handled": "Menangani laporan krisis",
+  "crisis.false_alarm": "Menandai alarm palsu",
+  "contact.viewed": "Membuka kontak darurat pasien",
+  "strike.added": "Psikolog mendapat strike",
+  "psikolog.suspended": "Psikolog ditangguhkan",
+  "auth.registered": "Mendaftar akun",
+  "profile.updated": "Memperbarui profil",
+  "availability.changed": "Mengubah status siaga",
+  "schedule.updated": "Memperbarui pola jadwal",
+  "time_off.created": "Menambah waktu libur",
+  "time_off.deleted": "Menghapus waktu libur",
+  "bank.saved": "Menyimpan rekening bank",
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -64,6 +84,7 @@ const CATEGORY_TABS: { key: ActivityCategory | "all"; label: string }[] = [
   { key: "admin", label: "Aksi Admin" },
   { key: "session", label: "Sesi & Curhat" },
   { key: "feedback", label: "Ulasan" },
+  { key: "safety", label: "Keselamatan" },
   { key: "money", label: "Transaksi Uang" },
 ];
 
@@ -73,6 +94,7 @@ const CATEGORY_STYLE: Record<ActivityCategory, string> = {
   money: "border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400",
   session: "border-violet-300 text-violet-700 dark:border-violet-800 dark:text-violet-400",
   feedback: "border-rose-300 text-rose-700 dark:border-rose-800 dark:text-rose-400",
+  safety: "border-red-400 text-red-700 dark:border-red-800 dark:text-red-400",
 };
 
 const ROLE_WORD: Record<string, string> = { pasien: "pasien", psikolog: "psikolog", relawan: "relawan", admin: "admin" };
@@ -91,6 +113,12 @@ function describe(r: ActivityLogItem): string {
   if (typeof m.refund_coins === "number") parts.push(`refund ${m.refund_coins} koin`);
   if (typeof m.rating === "number") parts.push(`rating ${m.rating}/5`);
   if (m.by === "psikolog") parts.push("dibatalkan oleh psikolog");
+  if (typeof m.points === "number") parts.push(`${m.points} poin strike${m.reason === "noshow" ? " (tidak hadir)" : m.reason === "late_cancel" ? " (batal mendadak)" : ""}`);
+  if (typeof m.until === "string") parts.push(`sampai ${m.until} WIB`);
+  if (typeof m.available === "boolean") parts.push(m.available ? "siaga" : "tidak siaga");
+  if (typeof m.fields === "string" && m.fields) parts.push(`kolom: ${m.fields.replace(/_/g, " ")}`);
+  if (typeof m.bank === "string") parts.push(`bank ${m.bank}`);
+  if (typeof m.ranges === "number") parts.push(`${m.ranges} rentang jam`);
   if (typeof m.new_start_at === "string") {
     parts.push(
       `jadwal baru ${new Date(m.new_start_at).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" })} WIB`
@@ -99,7 +127,10 @@ function describe(r: ActivityLogItem): string {
   return parts.join(" · ");
 }
 
-const HUMANIZED_KEYS = new Set(["coins", "price_coins", "refund_coins", "rating", "by", "new_start_at", "topic", "emotion"]);
+const HUMANIZED_KEYS = new Set([
+  "coins", "price_coins", "refund_coins", "rating", "by", "new_start_at", "topic", "emotion",
+  "points", "reason", "until", "available", "fields", "bank", "ranges", "booking_id", "missed_by",
+]);
 
 function formatMetadata(meta: Record<string, unknown>): string {
   const parts: string[] = [];
@@ -271,7 +302,7 @@ export default function AdminActivityLogPage() {
             Log Aktivitas
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Jejak audit seluruh pengguna: login, sesi & curhat, ulasan, aksi admin, dan transaksi uang. Isi percakapan tidak pernah dicatat. Catatan tidak dapat diubah atau dihapus.
+            Jejak audit seluruh pengguna: akun, sesi & curhat, ulasan, keselamatan, aksi admin, transaksi uang, dan kejadian otomatis sistem. Isi percakapan tidak pernah dicatat. Catatan tidak dapat diubah atau dihapus.
           </p>
         </div>
         <Button

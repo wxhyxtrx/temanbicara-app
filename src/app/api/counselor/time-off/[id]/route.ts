@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail } from '@/lib/auth/session';
 
@@ -55,6 +56,7 @@ export async function DELETE(
       return fail(500, 'DELETE_TIME_OFF_FAILED', 'Gagal menghapus waktu libur');
     }
 
+    await logActivity({ actorId: session.user.id, actorRole: 'psikolog', category: 'auth', action: 'time_off.deleted' });
     return NextResponse.json({
       success: true,
       message: 'Waktu libur berhasil dihapus',

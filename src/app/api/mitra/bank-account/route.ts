@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity, type ActivityActorRole } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail } from '@/lib/auth/session';
 import { saveMitraBankAccountSchema } from '@/lib/validations/mitra-bank-account';
@@ -101,6 +102,7 @@ export async function PUT(req: Request) {
       return fail(500, 'INTERNAL_SERVER_ERROR', 'Gagal menyimpan data rekening bank');
     }
 
+    await logActivity({ actorId: session.user.id, actorRole: session.user.role as ActivityActorRole, category: 'auth', action: 'bank.saved', metadata: { bank: bank_name } });
     return NextResponse.json({
       success: true,
       data: {

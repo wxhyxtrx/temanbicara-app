@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, fail, pageParams, sanitizeSearch } from '@/lib/auth/session';
 
 const querySchema = z.object({
-  category: z.enum(['auth', 'admin', 'money', 'session', 'feedback']).optional(),
+  category: z.enum(['auth', 'admin', 'money', 'session', 'feedback', 'safety']).optional(),
   actor_role: z.enum(['pasien', 'psikolog', 'relawan', 'admin', 'system', 'guest']).optional(),
   action: z.string().regex(/^[a-z_]+\.[a-z_]+$/).optional(),
   actor_id: z.string().uuid().optional(),
@@ -141,6 +141,8 @@ export async function GET(req: Request) {
       return { patient: null, mitra: null };
     };
     const counterpartOf = (r: ActivityLogRow): string | null => {
+      // Kejadian yang menyangkut satu pengguna (strike, kontak darurat, krisis ditangani).
+      if (r.target_type === 'user' && r.target_id) return r.target_id;
       const { patient, mitra } = participantsOf(r);
       if (!patient && !mitra) return null;
       if (r.actor_id && r.actor_id === patient) return mitra;

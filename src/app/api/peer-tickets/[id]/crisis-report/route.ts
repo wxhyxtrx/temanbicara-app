@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activity-log';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { fail, getSessionUser } from '@/lib/auth/session';
@@ -167,6 +168,7 @@ export async function POST(
       }
     }
 
+    await logActivity({ actorId: user.id, actorRole: 'relawan', category: 'safety', action: 'crisis.reported', targetType: 'peer_ticket', targetId: id });
     return NextResponse.json({
       success: true,
       message: 'Laporan krisis berhasil dicatat',

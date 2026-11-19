@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { logActivity, type ActivityActorRole } from '@/lib/activity-log';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { getSessionUser, getRoleProfile, displayName, fail } from '@/lib/auth/session';
 import { ROLE_UPDATE_SCHEMAS } from '@/lib/validations/user';
@@ -194,6 +195,9 @@ export async function PATCH(req: Request) {
     const updatedProfile = await getRoleProfile(updatedUser as UserEntity);
     const fullName = displayName(userToReturn, updatedProfile);
 
+    // Relawan menyalakan/mematikan siaga dicatat terpisah dari perubahan profil biasa.
+    const onlyAvailability = updateKeys.length === 1 && updateKeys[0] === 'is_available';
+    await logActivity({ actorId: session.user.id, actorRole: session.user.role as ActivityActorRole, category: 'auth', action: onlyAvailability ? 'availability.changed' : 'profile.updated', metadata: onlyAvailability ? { available: Boolean(validatedData.is_available) } : { fields: updateKeys.join(', ') } });
     return NextResponse.json({
       success: true,
       data: {
