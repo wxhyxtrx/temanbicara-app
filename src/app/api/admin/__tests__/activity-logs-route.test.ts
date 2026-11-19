@@ -23,6 +23,7 @@ vi.mock('@/lib/supabase/client', () => {
         return q;
       },
       in: (col: string, val: unknown) => (h.filters.push([col, val]), q),
+      or: (expr: string) => (h.filters.push(['or', expr]), q),
       gte: (col: string, val: unknown) => (h.filters.push([col + '>=', val]), q),
       lte: (col: string, val: unknown) => (h.filters.push([col + '<=', val]), q),
       then: (resolve: (v: unknown) => void) => resolve({ data: h.logs, error: null, count: h.logs.length }),
@@ -153,5 +154,23 @@ describe('GET /api/admin/activity-logs', () => {
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.data[0]).toMatchObject({ actor_name: null, counterpart_name: 'Dr. Wijaya', counterpart_role: 'psikolog' });
+  });
+
+  it('scope=involved: juga baris saat pengguna jadi pihak lawan (peserta booking/curhat atau target)', async () => {
+    const uid = '11111111-1111-4111-8111-111111111111';
+    h.byTable = { bookings: [{ id: 'b1' }, { id: 'b2' }], peer_tickets: [{ id: 't1' }] };
+    await GET(req(`?actor_id=${uid}&scope=involved`));
+    expect(h.filters).toEqual([
+      [
+        'or',
+        `actor_id.eq.${uid},and(target_type.eq.user,target_id.eq.${uid}),` +
+          'and(target_type.eq.booking,target_id.in.(b1,b2)),and(target_type.eq.peer_ticket,target_id.in.(t1))',
+      ],
+    ]);
+
+    h.filters = [];
+    await GET(req(`?actor_id=${uid}`));
+    expect(h.filters).toEqual([['actor_id', uid]]);
+    expect((await GET(req(`?actor_id=${uid}&scope=semua`))).status).toBe(400);
   });
 });

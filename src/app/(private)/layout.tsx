@@ -94,7 +94,7 @@ export default function PrivateLayouts({ children }: { children: React.ReactNode
     <SidebarProvider>
       <GlobalToastListener />
       <AppSidebar />
-      <SidebarInset className="bg-slate-50/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-dvh transition-colors duration-200">
+      <SidebarInset className="min-w-0 bg-slate-50/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-dvh transition-colors duration-200">
         <MaintenanceScheduledBanner />
         <header className="sticky top-0 z-40 w-full flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-4 md:px-8 py-3 backdrop-blur-md shadow-2xs transition-colors duration-200">
           <div className="flex items-center gap-3 md:gap-4">

@@ -26,6 +26,8 @@ export interface ListActivityLogsOptions {
   limit?: number;
   category?: ActivityCategory;
   actorId?: string;
+  /** 'involved' = termasuk saat pengguna menjadi pihak lawan. */
+  scope?: 'actor' | 'involved';
   /** Kata kunci nama pelaku (min. 2 huruf). */
   q?: string;
   /** Tanggal WIB YYYY-MM-DD (inklusif). */
@@ -42,6 +44,7 @@ export async function listActivityLogs(
   params.set('limit', String(opts.limit ?? 25));
   if (opts.category) params.set('category', opts.category);
   if (opts.actorId) params.set('actor_id', opts.actorId);
+  if (opts.actorId && opts.scope) params.set('scope', opts.scope);
   if (opts.q && opts.q.trim().length >= 2) params.set('q', opts.q.trim());
   if (opts.from) params.set('from', opts.from);
   if (opts.to) params.set('to', opts.to);

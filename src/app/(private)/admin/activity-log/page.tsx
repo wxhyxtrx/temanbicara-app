@@ -157,6 +157,8 @@ export default function AdminActivityLogPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [ready, setReady] = useState(false);
+  // "involved" juga menampilkan baris saat pengguna menjadi pihak lawan (peserta booking/curhat, target).
+  const [actorScope, setActorScope] = useState<"actor" | "involved">("involved");
 
   // Baca ?actor_id=&actor_name= dari tautan "Lihat log aktivitas" di detail pengguna.
   useEffect(() => {
@@ -184,6 +186,7 @@ export default function AdminActivityLogPage() {
         limit,
         category: category === "all" ? undefined : category,
         actorId: actorFilter?.id,
+        scope: actorFilter ? actorScope : undefined,
         q: actorFilter ? undefined : q,
         from: fromDate || undefined,
         to: toDate || undefined,
@@ -195,7 +198,7 @@ export default function AdminActivityLogPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [ready, page, limit, category, actorFilter, q, fromDate, toDate]);
+  }, [ready, page, limit, category, actorFilter, actorScope, q, fromDate, toDate]);
 
   useEffect(() => {
     void fetchLogs();
@@ -363,19 +366,43 @@ export default function AdminActivityLogPage() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col lg:flex-row gap-2.5 lg:items-center">
+          <div className="mt-4 flex flex-col gap-2.5 min-w-0 w-full">
             {actorFilter ? (
-              <div className="flex items-center gap-2 h-9 px-3 rounded-xl border border-teal-300 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/50 text-xs text-teal-900 dark:text-teal-200 min-w-0 lg:flex-1">
-                <UserRound size={14} className="shrink-0" />
-                <span className="truncate">
-                  Aktivitas: <strong>{actorFilter.name}</strong>
-                </span>
-                <button type="button" onClick={clearActorFilter} aria-label="Hapus filter pengguna" className="ml-auto p-1 -m-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900 cursor-pointer">
-                  <X size={14} />
-                </button>
+              <div className="flex flex-col sm:flex-row gap-2 min-w-0 w-full">
+                <div className="flex items-center gap-2 h-9 px-3 rounded-xl border border-teal-300 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/50 text-xs text-teal-900 dark:text-teal-200 min-w-0 sm:min-w-[12rem] flex-1">
+                  <UserRound size={14} className="shrink-0" />
+                  <span className="truncate">
+                    Aktivitas: <strong>{actorFilter.name}</strong>
+                  </span>
+                  <button type="button" onClick={clearActorFilter} aria-label="Hapus filter pengguna" className="ml-auto p-1 -m-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900 cursor-pointer">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div role="group" aria-label="Cakupan aktivitas pengguna" className="grid grid-cols-2 rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold sm:w-72 shrink-0">
+                  {([
+                    ["involved", "Semua yang melibatkan"],
+                    ["actor", "Yang dilakukan"],
+                  ] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={actorScope === key}
+                      onClick={() => {
+                        setActorScope(key);
+                        setPage(1);
+                      }}
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer leading-tight text-center",
+                        actorScope === key ? "bg-teal-600 text-white shadow-2xs" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className="relative lg:flex-1 min-w-0">
+              <div className="relative w-full min-w-0">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
                   value={searchInput}
@@ -386,21 +413,23 @@ export default function AdminActivityLogPage() {
                 />
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2.5 lg:flex lg:items-center">
-              <label className="flex flex-col gap-1 text-[11px] text-slate-500 dark:text-slate-400 lg:flex-row lg:items-center lg:gap-2">
+            <div className="flex flex-wrap items-end sm:items-center gap-2.5">
+            <div className="grid grid-cols-2 gap-2.5 flex-1 sm:flex-none sm:flex sm:items-center">
+              <label className="flex flex-col gap-1 text-[11px] text-slate-500 dark:text-slate-400 sm:flex-row sm:items-center sm:gap-2">
                 Dari
                 <Input type="date" value={fromDate} max={toDate || undefined} onChange={(e) => { setFromDate(e.target.value); setPage(1); }} className="h-9 text-xs rounded-xl" />
               </label>
-              <label className="flex flex-col gap-1 text-[11px] text-slate-500 dark:text-slate-400 lg:flex-row lg:items-center lg:gap-2">
+              <label className="flex flex-col gap-1 text-[11px] text-slate-500 dark:text-slate-400 sm:flex-row sm:items-center sm:gap-2">
                 Sampai
                 <Input type="date" value={toDate} min={fromDate || undefined} onChange={(e) => { setToDate(e.target.value); setPage(1); }} className="h-9 text-xs rounded-xl" />
               </label>
             </div>
             {hasFilter && (
-              <Button type="button" variant="ghost" size="sm" onClick={resetFilters} className="h-9 text-xs rounded-xl self-start lg:self-auto cursor-pointer">
+              <Button type="button" variant="ghost" size="sm" onClick={resetFilters} className="h-9 text-xs rounded-xl cursor-pointer">
                 Reset filter
               </Button>
             )}
+            </div>
           </div>
         </CardHeader>
 

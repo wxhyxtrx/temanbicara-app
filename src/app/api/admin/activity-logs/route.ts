@@ -8,6 +8,8 @@ const querySchema = z.object({
   actor_role: z.enum(['pasien', 'psikolog', 'relawan', 'admin', 'system', 'guest']).optional(),
   action: z.string().regex(/^[a-z_]+\.[a-z_]+$/).optional(),
   actor_id: z.string().uuid().optional(),
+  /** 'involved' = juga baris saat pengguna menjadi pihak lawan (peserta booking/curhat atau target). */
+  scope: z.enum(['actor', 'involved']).optional(),
   /** Tanggal WIB format YYYY-MM-DD (inklusif). */
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -53,7 +55,7 @@ interface ActorRow {
 /**
  * GET /api/admin/activity-logs
  * Daftar log aktivitas seluruh pengguna (terbaru dulu), khusus admin aktif.
- * Filter opsional: category, actor_role, action, actor_id, q (nama pelaku), from/to (tanggal WIB).
+ * Filter opsional: category, actor_role, action, actor_id (+ scope=involved), q (nama pelaku), from/to (tanggal WIB).
  * Paginasi: page, limit (maks 100).
  */
 export async function GET(req: Request) {
@@ -71,6 +73,7 @@ export async function GET(req: Request) {
       actor_role: url.searchParams.get('actor_role') || undefined,
       action: url.searchParams.get('action') || undefined,
       actor_id: url.searchParams.get('actor_id') || undefined,
+      scope: url.searchParams.get('scope') || undefined,
       from: url.searchParams.get('from') || undefined,
       to: url.searchParams.get('to') || undefined,
     });
@@ -98,7 +101,22 @@ export async function GET(req: Request) {
     if (f.category) query = query.eq('category', f.category);
     if (f.actor_role) query = query.eq('actor_role', f.actor_role);
     if (f.action) query = query.eq('action', f.action);
-    if (f.actor_id) query = query.eq('actor_id', f.actor_id);
+    if (f.actor_id && f.scope === 'involved') {
+      // Booking & tiket curhat tempat pengguna ini menjadi peserta (pasien, psikolog, atau relawan).
+      const uid = f.actor_id;
+      const [bk, tk] = await Promise.all([
+        supabaseAdmin.from('bookings').select('id').or(`patient_id.eq.${uid},psikolog_id.eq.${uid}`).limit(500),
+        supabaseAdmin.from('peer_tickets').select('id').or(`patient_id.eq.${uid},claimed_by.eq.${uid}`).limit(500),
+      ]);
+      const ors = [`actor_id.eq.${uid}`, `and(target_type.eq.user,target_id.eq.${uid})`];
+      const bookingIds = ((bk.data ?? []) as { id: string }[]).map((b) => b.id);
+      const ticketIds = ((tk.data ?? []) as { id: string }[]).map((t) => t.id);
+      if (bookingIds.length) ors.push(`and(target_type.eq.booking,target_id.in.(${bookingIds.join(',')}))`);
+      if (ticketIds.length) ors.push(`and(target_type.eq.peer_ticket,target_id.in.(${ticketIds.join(',')}))`);
+      query = query.or(ors.join(','));
+    } else if (f.actor_id) {
+      query = query.eq('actor_id', f.actor_id);
+    }
     if (nameMatchIds) query = query.in('actor_id', nameMatchIds);
     if (f.from) query = query.gte('created_at', `${f.from}T00:00:00+07:00`);
     if (f.to) query = query.lte('created_at', `${f.to}T23:59:59.999+07:00`);
