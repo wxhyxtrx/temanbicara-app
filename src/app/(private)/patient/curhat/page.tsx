@@ -1,5 +1,6 @@
 "use client";
 
+import { PeerHistoryList } from "@/components/views/peer-room/peer-history-list";
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -261,6 +262,9 @@ export default function PatientCurhatPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Riwayat curhat yang sudah selesai */}
+      <PeerHistoryList role="pasien" />
 
       {/* 4. Banner Bantuan Medis & Krisis Darurat */}
       <div className="p-4 sm:p-5 rounded-2xl border border-amber-200/80 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 min-w-0">

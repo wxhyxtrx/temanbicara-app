@@ -90,3 +90,15 @@ export interface PeerTicketDetailView {
 }
 
 export type RelawanPeerTicketDetailView = Omit<PeerTicketDetailView, 'patient_id'>;
+
+export interface PeerTicketHistoryItem {
+  id: string;
+  topic: string;
+  emotion: string;
+  status: string;
+  created_at: string;
+  ended_at: string | null;
+  /** Pasien: alias relawan (null jika tidak pernah diambil). Relawan: alias pasien. */
+  counterpart_name: string | null;
+  rating: number | null;
+}

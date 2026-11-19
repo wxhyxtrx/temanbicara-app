@@ -1,5 +1,6 @@
 "use client";
 
+import { PeerHistoryList } from "@/components/views/peer-room/peer-history-list";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -359,6 +360,9 @@ export default function ListenerQueueRoomPage() {
         onClaimClick={handleOpenClaimDialog}
         onManualRefresh={() => loadQueueData(false)}
       />
+
+      {/* Riwayat curhat yang pernah didampingi */}
+      <PeerHistoryList role="relawan" />
 
       {/* 5. Dialog Konfirmasi Klaim Tiket */}
       <ListenerClaimDialog

@@ -6,7 +6,9 @@ import type {
   PeerTicketDetailView,
   PeerReviewEntity,
   PeerRatingSummaryDTO,
+  PeerTicketHistoryItem,
 } from '@/types/peer-tickets';
+import type { PaginationMeta } from '@/types/wallet';
 
 export class PeerTicketApiError extends Error {
   status: number;
@@ -98,6 +100,12 @@ export const peerTicketClient = {
   /**
    * Mengambil tiket aktif yang sedang diklaim/ditangani oleh relawan saat ini
    */
+  /** Riwayat curhat yang sudah selesai (pasien: miliknya, relawan: yang pernah didampingi). */
+  async getHistory(page = 1, limit = 10): Promise<{ success: boolean; data: PeerTicketHistoryItem[]; meta: PaginationMeta }> {
+    const res = await fetch(`/api/peer-tickets/history?page=${page}&limit=${limit}`, { credentials: 'include' });
+    return handleResponse<{ success: boolean; data: PeerTicketHistoryItem[]; meta: PaginationMeta }>(res);
+  },
+
   async getMyClaimedTicket(): Promise<{ success: boolean; data: RelawanPeerTicketDTO | null }> {
     const res = await fetch('/api/peer-tickets/my-claimed', {
       method: 'GET',
