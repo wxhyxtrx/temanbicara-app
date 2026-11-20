@@ -22,6 +22,8 @@ import type { PsikologBookingView } from "@/types/booking";
 import { formatWibDateFull, formatWibTime } from "@/lib/booking-utils";
 import { StatusBadge } from "@/components/shared/atoms/status-badge";
 import { LoadingState } from "@/components/shared/atoms/loading-state";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
 
 function CounselorRoomContent() {
   const searchParams = useSearchParams();
@@ -131,15 +133,12 @@ function CounselorRoomContent() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-6 px-4 font-nunito space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-xl font-bold font-heading text-slate-900 dark:text-white">
-          Ruang Konseling Klinis
-        </h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Pilih salah satu sesi aktif untuk memulai telekonseling privat atau tinjau catatan rekam sesi sebelumnya.
-        </p>
-      </div>
+    <PageShell>
+      <PageHeader
+        icon={<MessageSquare className="text-teal-600 dark:text-teal-400 shrink-0" size={28} />}
+        title="Ruang Konseling Klinis"
+        description="Pilih salah satu sesi aktif untuk memulai telekonseling privat atau tinjau catatan rekam sesi sebelumnya."
+      />
 
       <Tabs defaultValue="active" className="w-full space-y-4">
         <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl flex w-full sm:w-auto overflow-x-auto justify-start border border-slate-200/80 dark:border-slate-800">
@@ -324,7 +323,7 @@ function CounselorRoomContent() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }
 

@@ -26,6 +26,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { bookingClient } from "@/services/booking.client";
 import { formatWibDateFull, formatWibDateShort, formatWibTime } from "@/lib/booking-utils";
 import type { ClientNoteDetail, PsikologBookingView } from "@/types/booking";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
 
 interface PatientGroupItem {
   patientId: string;
@@ -153,24 +155,22 @@ export default function CounselorClientsPage() {
   }, [patients, searchQuery]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 font-nunito space-y-6 max-w-7xl mx-auto">
-      {/* Page Header */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white">
+    <PageShell>
+      <PageHeader
+        icon={<ClipboardList className="text-teal-600 dark:text-teal-400 shrink-0" size={28} />}
+        title={
+          <span className="inline-flex items-center gap-2.5 flex-wrap">
             Catatan Klien
-          </h1>
-          <Badge
-            variant="outline"
-            className="text-xs bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800"
-          >
-            Rekam Klinis
-          </Badge>
-        </div>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Daftar pasien yang pernah menjalani sesi konseling dengan Anda dan riwayat rekam catatan SOAP per sesi.
-        </p>
-      </div>
+            <Badge
+              variant="outline"
+              className="text-xs bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800"
+            >
+              Rekam Klinis
+            </Badge>
+          </span>
+        }
+        description="Daftar pasien yang pernah menjalani sesi konseling dengan Anda dan riwayat rekam catatan SOAP per sesi."
+      />
 
       {/* Main Content Area */}
       {bookingsLoading ? (
@@ -459,6 +459,6 @@ export default function CounselorClientsPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

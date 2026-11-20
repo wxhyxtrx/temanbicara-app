@@ -141,7 +141,7 @@ export function CrisisFeedView() {
   };
 
   return (
-    <div className="w-full min-w-0 max-w-7xl mx-auto space-y-6 font-nunito text-slate-900 dark:text-slate-100 pb-12">
+    <div className="w-full min-w-0 space-y-6 font-nunito text-slate-900 dark:text-slate-100 pb-12">
       {/* 1. Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-5 min-w-0">
         <div className="min-w-0 space-y-1">
