@@ -2,7 +2,7 @@
 
 Platform konseling dan kesehatan mental. Pasien bisa memesan sesi dengan psikolog, berbagi cerita dengan relawan pendengar sebaya, dan admin memantau seluruh platform.
 
-🔗 **[Demo live](https://temanbicara-app-eight.vercel.app)**
+🔗 **[Demo live](https://temanbicara.site)**
 
 ## Peran Pengguna
 
