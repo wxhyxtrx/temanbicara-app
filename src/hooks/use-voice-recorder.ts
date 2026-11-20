@@ -30,7 +30,8 @@ export function useVoiceRecorder({ onRecorded, maxSeconds = 180 }: UseVoiceRecor
 
     recorder.onstop = async () => {
       try {
-        const mimeType = recorder.mimeType || "audio/webm";
+        // Chrome melaporkan "audio/webm;codecs=opus"; server hanya menerima tipe tanpa parameter.
+        const mimeType = (recorder.mimeType || "audio/webm").split(";")[0].trim();
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
 
         if (audioBlob.size === 0) {

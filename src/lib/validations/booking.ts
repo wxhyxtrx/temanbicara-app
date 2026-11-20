@@ -432,13 +432,17 @@ export const sendSessionMessageSchema = z
 export const sessionMediaUploadSchema = z
   .object({
     file_name: z.string().min(1, 'Nama file wajib diisi').max(255),
-    file_type: z.string().min(1, 'Tipe file wajib diisi'),
+    // Parameter MIME (mis. ";codecs=opus" dari MediaRecorder Chrome) dibuang sebelum divalidasi.
+    file_type: z
+      .string()
+      .min(1, 'Tipe file wajib diisi')
+      .transform((s) => s.split(';')[0].trim().toLowerCase()),
     kind: z.enum(['image', 'voice'], {
       message: 'Kategori media harus image atau voice',
     }),
   })
   .superRefine((data, ctx) => {
-    const mime = data.file_type.toLowerCase();
+    const mime = data.file_type;
     if (data.kind === 'image') {
       if (!ALLOWED_IMAGE_MIME_TYPES.includes(mime)) {
         ctx.addIssue({
