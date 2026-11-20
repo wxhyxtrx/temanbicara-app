@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { bookingClient, BookingApiError } from "@/services/booking.client";
 import { formatWibDateFull, formatWibTime, BOOKING_STATUS_CONFIG } from "@/lib/booking-utils";
 import type { BookingStatus, ClientNoteDetail } from "@/types/booking";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 interface SessionNotesPanelProps {
   isOpen: boolean;
@@ -278,10 +279,7 @@ export function SessionNotesPanel({
           className="flex-1 flex flex-col min-h-0 p-3.5 space-y-3 mt-0 focus-visible:outline-none"
         >
           {initialLoading ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-2">
-              <Loader2 size={20} className="animate-spin text-teal-600" />
-              <p className="text-xs text-slate-500 dark:text-slate-400">Memuat catatan klinis sesi...</p>
-            </div>
+            <LoadingState label="Memuat catatan klinis sesi..." className="flex-1 p-6" />
           ) : initialError ? (
             <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 space-y-2">
               <div className="flex items-center gap-1.5 font-bold">

@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { SessionRoomView } from "@/components/views/session/session-room-view";
 import { Button } from "@/components/ui/button";
-import { CalendarX, Loader2 } from "lucide-react";
+import { CalendarX } from "lucide-react";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 function PatientSessionQueryContent() {
   const searchParams = useSearchParams();
@@ -39,10 +40,7 @@ export default function PatientSessionPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
-          <Loader2 size={32} className="animate-spin text-teal-600" />
-          <p className="text-sm text-slate-600 dark:text-slate-300">Menyiapkan ruang sesi konseling...</p>
-        </div>
+        <LoadingState label="Menyiapkan ruang sesi konseling..." className="h-[calc(100dvh-7rem)] p-8" />
       }
     >
       <PatientSessionQueryContent />

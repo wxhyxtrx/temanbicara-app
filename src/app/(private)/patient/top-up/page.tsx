@@ -35,6 +35,8 @@ import {
   XCircle,
   Info,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
 
 interface TherapyPackage {
   id: string;
@@ -274,49 +276,43 @@ export default function PatientTopUpPage() {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       {/* 1. Header Halaman */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-            Top Up Koin Konseling
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Beli koin untuk membayar sesi dengan psikolog. Tarif setiap psikolog tampil di profilnya.
-          </p>
-        </div>
+      <PageHeader
+        title="Top Up Koin Konseling"
+        description="Beli koin untuk membayar sesi dengan psikolog. Tarif setiap psikolog tampil di profilnya."
+        actions={
+          <>
+            <Link href="/patient/top-up/history">
+              <Button
+                variant="outline"
+                className="text-xs sm:text-sm border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-4 h-12 font-semibold gap-2 cursor-pointer"
+              >
+                <FileText size={14} className="text-teal-600 dark:text-teal-400" />
+                <span>Mutasi & Riwayat</span>
+              </Button>
+            </Link>
 
-        {/* Current Balance Pill & Link to Mutation History */}
-        <div className="flex items-center gap-2.5">
-          <Link href="/patient/top-up/history">
-            <Button
-              variant="outline"
-              className="text-xs sm:text-sm border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-4 h-12 font-semibold gap-2 cursor-pointer"
-            >
-              <FileText size={14} className="text-teal-600 dark:text-teal-400" />
-              <span>Mutasi & Riwayat</span>
-            </Button>
-          </Link>
-
-          <div className="flex items-center gap-2.5 px-4 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 shadow-2xs">
-            <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0">
-              <Coins size={16} />
+            <div className="flex items-center gap-2.5 px-4 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 shadow-2xs">
+              <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0">
+                <Coins size={16} />
+              </div>
+              <div>
+                <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold block leading-tight uppercase tracking-wider">
+                  Saldo Pasien
+                </span>
+                <span className="text-sm font-bold font-heading flex items-center gap-1.5">
+                  {loadingWallet ? (
+                    <Loader2 size={13} className="animate-spin text-teal-600" />
+                  ) : (
+                    `${wallet?.coin_balance ?? 0} Koin`
+                  )}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] text-teal-700 dark:text-teal-400 font-semibold block leading-tight uppercase tracking-wider">
-                Saldo Pasien
-              </span>
-              <span className="text-sm font-bold font-heading flex items-center gap-1.5">
-                {loadingWallet ? (
-                  <Loader2 size={13} className="animate-spin text-teal-600" />
-                ) : (
-                  `${wallet?.coin_balance ?? 0} Koin`
-                )}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Peringatan Wajib Regulasi Koin */}
       <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/60 flex items-center gap-3 text-amber-900 dark:text-amber-200">
@@ -682,6 +678,6 @@ export default function PatientTopUpPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

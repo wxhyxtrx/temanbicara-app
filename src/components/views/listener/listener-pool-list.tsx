@@ -14,11 +14,11 @@ import {
   Tag,
   HeartHandshake,
   Shield,
-  AlertCircle,
   Sparkles,
 } from "lucide-react";
 import type { RelawanPeerTicketDTO } from "@/types/peer-tickets";
 import { formatWibTime, formatWibDateShort } from "@/lib/booking-utils";
+import { EmptyState } from "@/components/shared/molecules/empty-state";
 
 interface ListenerPoolListProps {
   tickets: RelawanPeerTicketDTO[];
@@ -132,23 +132,11 @@ export function ListenerPoolList({
           </div>
         ) : sortedTickets.length === 0 ? (
           /* Empty State */
-          <div className="py-12 px-4 flex flex-col items-center justify-center text-center gap-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400">
-              <HeartHandshake size={24} />
-            </div>
-            <div className="space-y-1 max-w-md min-w-0">
-              <p className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                Belum Ada Teman Bicara di Antrean
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-nunito leading-relaxed">
-                Belum ada teman bicara yang membutuhkan pendengar saat ini. Terima kasih telah bersiap siaga.
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-3 py-1 rounded-full border border-teal-200 dark:border-teal-800">
+          <EmptyState
+            icon={<HeartHandshake size={24} />} title="Belum Ada Teman Bicara di Antrean" description="Belum ada teman bicara yang membutuhkan pendengar saat ini. Terima kasih telah bersiap siaga." action={<><div className="flex items-center gap-1.5 text-[11px] text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-3 py-1 rounded-full border border-teal-200 dark:border-teal-800">
               <Sparkles size={12} />
               <span>Sistem terus memantau antrean secara otomatis</span>
-            </div>
-          </div>
+            </div></>} />
         ) : (
           /* Tickets Pool List */
           <div className="space-y-3 min-w-0">

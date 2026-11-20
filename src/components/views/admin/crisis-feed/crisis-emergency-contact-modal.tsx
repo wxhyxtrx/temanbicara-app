@@ -17,12 +17,12 @@ import type { PatientEmergencyContactView } from "@/types/booking";
 import {
   PhoneCall,
   ShieldAlert,
-  Loader2,
   AlertTriangle,
   User,
   ExternalLink,
   Info,
 } from "lucide-react";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 interface CrisisEmergencyContactModalProps {
   isOpen: boolean;
@@ -120,10 +120,7 @@ export function CrisisEmergencyContactModal({
         </div>
 
         {loading ? (
-          <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
-            <Loader2 size={24} className="animate-spin text-teal-600" />
-            <p className="text-xs">Mengambil data kontak darurat...</p>
-          </div>
+          <LoadingState label="Mengambil data kontak darurat..." className="py-8" />
         ) : error ? (
           <div className="p-4 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/80 dark:bg-rose-950/40 text-xs text-rose-800 dark:text-rose-300 flex items-start gap-2">
             <AlertTriangle size={16} className="shrink-0 mt-0.5" />

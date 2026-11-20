@@ -15,6 +15,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { notify } from "@/lib/toast";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 interface UserDocumentPreviewAccordionProps {
   role: "psikolog" | "relawan" | string;
@@ -101,10 +102,7 @@ export function UserDocumentPreviewAccordion({
 
   if (isLoading) {
     return (
-      <div className="p-3 rounded-xl border border-teal-100 dark:border-teal-900/40 bg-white/60 dark:bg-slate-900/60 flex items-center justify-center gap-2 text-xs text-slate-500">
-        <Loader2 size={13} className="animate-spin text-teal-600" />
-        <span>Memeriksa lampiran berkas dokumen...</span>
-      </div>
+      <LoadingState inline label="Memeriksa lampiran berkas dokumen..." className="p-3 rounded-xl border border-teal-100 dark:border-teal-900/40 bg-white/60 dark:bg-slate-900/60" />
     );
   }
 

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Loader2,
   Calendar,
   MessageSquare,
   ArrowRight,
@@ -21,59 +20,8 @@ import {
 } from "lucide-react";
 import type { PsikologBookingView } from "@/types/booking";
 import { formatWibDateFull, formatWibTime } from "@/lib/booking-utils";
-
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "in_progress":
-      return {
-        label: "Sedang Berlangsung",
-        className:
-          "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300",
-      };
-    case "booked":
-      return {
-        label: "Terjadwal",
-        className:
-          "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-300",
-      };
-    case "completed":
-      return {
-        label: "Selesai",
-        className:
-          "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300",
-      };
-    case "no_show":
-      return {
-        label: "Tidak Hadir (No Show)",
-        className:
-          "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950 dark:text-rose-300",
-      };
-    case "auto_cancelled_late":
-      return {
-        label: "Batal Otomatis",
-        className:
-          "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300",
-      };
-    case "cancelled_by_patient":
-      return {
-        label: "Dibatalkan Pasien",
-        className:
-          "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300",
-      };
-    case "cancelled_by_psikolog":
-      return {
-        label: "Dibatalkan Konselor",
-        className:
-          "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300",
-      };
-    default:
-      return {
-        label: status,
-        className:
-          "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300",
-      };
-  }
-}
+import { StatusBadge } from "@/components/shared/atoms/status-badge";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 function CounselorRoomContent() {
   const searchParams = useSearchParams();
@@ -159,12 +107,7 @@ function CounselorRoomContent() {
   // Jika tidak ada booking ID, tampilkan selektor sesi aktif & riwayat
   if (loading) {
     return (
-      <div className="h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
-        <Loader2 size={32} className="animate-spin text-teal-600" />
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          Memeriksa jadwal sesi konseling Anda...
-        </p>
-      </div>
+      <LoadingState label="Memeriksa jadwal sesi konseling Anda..." className="h-[calc(100dvh-7rem)] p-8" />
     );
   }
 
@@ -252,7 +195,6 @@ function CounselorRoomContent() {
           ) : (
             <div className="space-y-3">
               {activeBookings.map((b) => {
-                const badgeInfo = getStatusBadge(b.status);
                 return (
                   <div
                     key={b.id}
@@ -263,12 +205,7 @@ function CounselorRoomContent() {
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
                           {b.patient_display_name || "Pasien Anonim"}
                         </h3>
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] px-2 py-0.5 ${badgeInfo.className}`}
-                        >
-                          {badgeInfo.label}
-                        </Badge>
+                        <StatusBadge status={b.status} />
                       </div>
                       <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                         <div className="flex items-center gap-1">
@@ -328,7 +265,6 @@ function CounselorRoomContent() {
           ) : (
             <div className="space-y-3">
               {historyBookings.map((b) => {
-                const badgeInfo = getStatusBadge(b.status);
                 return (
                   <div
                     key={b.id}
@@ -339,12 +275,7 @@ function CounselorRoomContent() {
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
                           {b.patient_display_name || "Pasien Anonim"}
                         </h3>
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] px-2 py-0.5 ${badgeInfo.className}`}
-                        >
-                          {badgeInfo.label}
-                        </Badge>
+                        <StatusBadge status={b.status} />
                         <Badge
                           variant="outline"
                           className="text-[9px] px-1.5 py-0 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800"
@@ -401,12 +332,7 @@ export default function CounselorRoomPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
-          <Loader2 size={32} className="animate-spin text-teal-600" />
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            Menyiapkan ruang sesi konselor...
-          </p>
-        </div>
+        <LoadingState label="Menyiapkan ruang sesi konselor..." className="h-[calc(100dvh-7rem)] p-8" />
       }
     >
       <CounselorRoomContent />

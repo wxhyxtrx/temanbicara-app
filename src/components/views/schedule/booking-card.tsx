@@ -11,8 +11,6 @@ import {
   RotateCcw,
   XCircle,
   Coins,
-  AlertCircle,
-  ArrowRight,
   ShieldAlert,
   Lock,
 } from "lucide-react";
@@ -22,13 +20,12 @@ import {
   formatWibDateFull,
   formatWibTime,
   getInitials,
-  formatRupiah,
-  BOOKING_STATUS_CONFIG,
   checkRescheduleEligibility,
   isBookingRoomActive,
 } from "@/lib/booking-utils";
 import { SessionReviewCard } from "@/components/views/session/session-review-card";
 import { SessionTipCard } from "@/components/views/session/session-tip-card";
+import { StatusBadge } from "@/components/shared/atoms/status-badge";
 
 interface BookingCardProps {
   booking: PatientBookingView;
@@ -49,11 +46,6 @@ export function BookingCard({
 }: BookingCardProps) {
   const psychName = booking.psikolog?.nama_lengkap_gelar || "Psikolog Terverifikasi";
   const initials = getInitials(psychName);
-  const statusConfig = BOOKING_STATUS_CONFIG[booking.status] || {
-    label: booking.status,
-    badgeClass: "bg-slate-100 text-slate-700 border-slate-200",
-    description: "",
-  };
 
   const isAwaitingChoice = booking.status === "awaiting_patient_choice";
   const isBooked = booking.status === "booked";
@@ -100,9 +92,7 @@ export function BookingCard({
                 </p>
               )}
               <MdVerified className="text-sky-500 text-xs shrink-0" />
-              <Badge className={`${statusConfig.badgeClass} text-[10px] font-semibold py-0.5 px-2`}>
-                {statusConfig.label}
-              </Badge>
+              <StatusBadge status={booking.status} />
               {booking.reschedule_count > 0 && (
                 <Badge
                   variant="outline"

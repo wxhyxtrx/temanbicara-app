@@ -10,16 +10,12 @@ import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Switch } from "@/components/ui/switch";
 import {
-  User,
-  Heart,
   Bell,
   Save,
   CheckCircle2,
   Headphones,
   ShieldCheck,
   Lock,
-  Plus,
-  X,
   Loader2,
   Building2,
   Edit3,
@@ -43,6 +39,9 @@ import {
   useQueueNotificationSettings,
   QUEUE_TAB_OPEN_NOTE,
 } from "@/lib/queue-alert";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { TagInput } from "@/components/shared/molecules/tag-input";
 
 const SUGGESTED_TOPICS = [
   "Stres Akademik & Skripsi",
@@ -69,7 +68,6 @@ export default function ListenerSettingsPage() {
   const [aliasName, setAliasName] = useState("");
   const [phone, setPhone] = useState("");
   const [topics, setTopics] = useState<string[]>([]);
-  const [newTopicInput, setNewTopicInput] = useState("");
 
   // Status feedback
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -112,22 +110,6 @@ export default function ListenerSettingsPage() {
       isSubscribed = false;
     };
   }, []);
-
-  const handleAddTopic = (topicToAdd: string) => {
-    const trimmed = topicToAdd.trim();
-    if (!trimmed) return;
-    if (topics.includes(trimmed)) return;
-    if (topics.length >= 10) {
-      notify.error("Batas Maksimal", "Maksimal 10 topik keahlian.");
-      return;
-    }
-    setTopics((prev) => [...prev, trimmed]);
-    setNewTopicInput("");
-  };
-
-  const handleRemoveTopic = (topicToRemove: string) => {
-    setTopics((prev) => prev.filter((t) => t !== topicToRemove));
-  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,16 +155,12 @@ export default function ListenerSettingsPage() {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       {/* 1. Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-          Pengaturan Relawan Pendengar Sebaya
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Kelola kontak WhatsApp, nama samaran (alias), dan topik pendampingan empati
-        </p>
-      </div>
+      <PageHeader
+        title="Pengaturan Relawan Pendengar Sebaya"
+        description="Kelola kontak WhatsApp, nama samaran (alias), dan topik pendampingan empati"
+      />
 
       {saveSuccess && (
         <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in">
@@ -258,40 +236,18 @@ export default function ListenerSettingsPage() {
             </div>
 
             {/* Topik Keahlian & Kesiapan Pendampingan */}
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Topik Keahlian & Minat Pendampingan Empati ({topics.length}/10)</Label>
-
-              {/* Selected Topics */}
-              <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-                {topics.length === 0 ? (
-                  <span className="text-xs text-slate-400 italic">Belum ada topik dipilih</span>
-                ) : (
-                  topics.map((t) => (
-                    <span key={t} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs font-semibold">
-                      {t}
-                      <button type="button" onClick={() => handleRemoveTopic(t)} aria-label={`Hapus ${t}`} className="inline-flex p-2.5 -my-2.5 -mr-2.5 rounded-md hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer" title="Hapus"><X size={12} /></button>
-                    </span>
-                  ))
-                )}
-              </div>
-
-              {/* Input New Topic */}
-              <div className="flex items-center gap-2">
-                <Input value={newTopicInput} onChange={(e) => setNewTopicInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddTopic(newTopicInput); } }} placeholder="Ketik topik baru lalu tekan Tambah" className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl" />
-                <Button type="button" variant="outline" size="sm" onClick={() => handleAddTopic(newTopicInput)} className="h-8 text-xs rounded-xl shrink-0 gap-1"><Plus size={13} />Tambah</Button>
-              </div>
-
-              {/* Suggestions */}
-              <div className="space-y-1 pt-1">
-                <span className="text-[11px] text-slate-400 block font-nunito">Saran topik pendengar:</span>
-                <div className="flex flex-wrap gap-1">
-                  {SUGGESTED_TOPICS.filter((st) => !topics.includes(st)).map((sug) => (
-                    <button key={sug} type="button" onClick={() => handleAddTopic(sug)} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 hover:bg-teal-50 dark:bg-slate-800 dark:hover:bg-teal-950/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer">+ {sug}</button>
-                  ))}
-                </div>
-              </div>
-              {errors.topik_keahlian && <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.topik_keahlian}</p>}
-            </div>
+            <TagInput
+              className="pt-2 border-t border-slate-100 dark:border-slate-800"
+              label="Topik Keahlian & Minat Pendampingan Empati"
+              itemName="topik keahlian"
+              value={topics}
+              onChange={setTopics}
+              suggestions={SUGGESTED_TOPICS}
+              suggestionsLabel="Saran topik pendengar:"
+              placeholder="Ketik topik baru lalu tekan Tambah"
+              emptyText="Belum ada topik dipilih"
+              error={errors.topik_keahlian}
+            />
           </CardContent>
         </Card>
 
@@ -339,7 +295,7 @@ export default function ListenerSettingsPage() {
       </Card>
       </div>
       )}
-    </div>
+    </PageShell>
   );
 }
 

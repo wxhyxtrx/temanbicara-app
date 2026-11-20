@@ -1,35 +1,27 @@
 "use client";
 
 import React from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  BookOpen,
-  ShieldCheck,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
-  Heart,
   Eye,
   Ear,
   Link as LinkIcon,
   PhoneCall,
-  Sparkles,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
 
 export default function ListenerGuidelinesPage() {
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       {/* 1. Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-          Panduan Etika & Pertolongan Pertama Psikologis (PFA)
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Pedoman operasional pendengar sebaya berbasis panduan Psychological First Aid (PFA) dari WHO
-        </p>
-      </div>
+      <PageHeader
+        title="Panduan Etika & Pertolongan Pertama Psikologis (PFA)"
+        description="Pedoman operasional pendengar sebaya berbasis panduan Psychological First Aid (PFA) dari WHO"
+      />
 
       {/* 2. Kerangka Kerja 3L (Look, Listen, Link) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -158,6 +150,6 @@ export default function ListenerGuidelinesPage() {
           </Button>
         </a>
       </div>
-    </div>
+    </PageShell>
   );
 }

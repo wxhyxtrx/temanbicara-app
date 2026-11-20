@@ -32,6 +32,7 @@ import {
 } from "@/lib/booking-utils";
 import { scheduleClient } from "@/services/schedule.client";
 import { bookingClient, BookingApiError } from "@/services/booking.client";
+import { EmptyState } from "@/components/shared/molecules/empty-state";
 
 interface RescheduleBookingModalProps {
   booking: PatientBookingView | null;
@@ -409,15 +410,12 @@ export function RescheduleBookingModal({
                   </Button>
                 </div>
               ) : activeSlots.length === 0 ? (
-                <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center space-y-1 w-full min-w-0">
-                  <Clock className="w-5 h-5 mx-auto text-slate-400" />
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Tidak ada slot jadwal yang tersedia pada tanggal ini
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Pilih tanggal lain yang memiliki penanda slot hijau di atas.
-                  </p>
-                </div>
+                <EmptyState
+                  size="compact"
+                  icon={<Clock />}
+                  title="Tidak ada slot jadwal yang tersedia pada tanggal ini"
+                  description="Pilih tanggal lain yang memiliki penanda slot hijau di atas."
+                />
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full min-w-0">
                   {activeSlots.map((slotIso) => {

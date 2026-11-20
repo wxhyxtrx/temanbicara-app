@@ -18,11 +18,7 @@ import { notify } from "@/lib/toast";
 import { walletClient, WalletApiError } from "@/services/wallet.client";
 import type { AdminPayoutItem, PaginationMeta, PayoutStatus } from "@/types/wallet";
 import {
-  Coins,
-  Building2,
-  Calendar,
   CheckCircle2,
-  XCircle,
   Clock,
   ShieldCheck,
   ShieldAlert,
@@ -34,8 +30,11 @@ import {
   AlertTriangle,
   AlertCircle,
   RefreshCw,
-  Wallet,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { FilterTabs } from "@/components/shared/molecules/filter-tabs";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 export default function AdminTransactionsPage() {
   const [mounted, setMounted] = useState<boolean>(false);
@@ -321,31 +320,26 @@ export default function AdminTransactionsPage() {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       {/* 1. Header Halaman */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-            Antrean Payout & Audit Transaksi
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Verifikasi pengajuan penarikan dana honor psikolog klinis & relawan pendengar TemanBicara
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchPayouts(page, statusFilter)}
-            disabled={isLoading}
-            className="text-xs rounded-xl h-9 gap-1.5 border-slate-200 dark:border-slate-800"
-          >
-            <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
-            <span>Segarkan Antrean</span>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Antrean Payout & Audit Transaksi"
+        description="Verifikasi pengajuan penarikan dana honor psikolog klinis & relawan pendengar TemanBicara"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchPayouts(page, statusFilter)}
+              disabled={isLoading}
+              className="text-xs rounded-xl h-9 gap-1.5 border-slate-200 dark:border-slate-800"
+            >
+              <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+              <span>Segarkan Antrean</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* 2. Kartu Ringkasan Antrean */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -420,52 +414,17 @@ export default function AdminTransactionsPage() {
 
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto min-w-0">
               {/* Status Filter Buttons */}
-              <div className="inline-flex max-w-full overflow-x-auto rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange("requested")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
-                    statusFilter === "requested"
-                      ? "bg-amber-500 text-white shadow-2xs font-bold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                  }`}
-                >
-                  Menunggu
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange("paid")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
-                    statusFilter === "paid"
-                      ? "bg-emerald-600 text-white shadow-2xs font-bold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                  }`}
-                >
-                  Lunas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange("rejected")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
-                    statusFilter === "rejected"
-                      ? "bg-rose-600 text-white shadow-2xs font-bold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                  }`}
-                >
-                  Ditolak
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange("all")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
-                    statusFilter === "all"
-                      ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                  }`}
-                >
-                  Semua
-                </button>
-              </div>
+              <FilterTabs
+                ariaLabel="Filter status payout"
+                value={statusFilter}
+                onChange={handleFilterChange}
+                options={[
+                  { value: "requested", label: "Menunggu", tone: "amber" },
+                  { value: "paid", label: "Lunas", tone: "emerald" },
+                  { value: "rejected", label: "Ditolak", tone: "rose" },
+                  { value: "all", label: "Semua", tone: "neutral" },
+                ]}
+              />
 
               {/* Search Bar */}
               <div className="relative flex-1 w-full sm:w-60 min-w-0">
@@ -483,10 +442,7 @@ export default function AdminTransactionsPage() {
 
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
-              <Loader2 size={24} className="animate-spin text-teal-600" />
-              <span className="text-xs">Memuat antrean payout...</span>
-            </div>
+            <LoadingState label="Memuat antrean payout..." className="py-16" />
           ) : filteredPayouts.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-center px-4">
               <AlertCircle size={28} className="text-slate-300 dark:text-slate-600" />
@@ -665,6 +621,6 @@ export default function AdminTransactionsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

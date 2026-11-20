@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import type { PublicPsychologist } from "@/types/user-profile";
 import { userService } from "@/services/user.service";
 import { getInitials, tarifToCoins, formatRupiah } from "@/lib/booking-utils";
@@ -21,10 +20,10 @@ import {
   ShieldCheck,
   Star,
   Calendar,
-  ChevronRight,
   ArrowRight,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
+import { EmptyState } from "@/components/shared/molecules/empty-state";
 
 interface SelectPsychologistModalProps {
   isOpen: boolean;
@@ -129,17 +128,11 @@ export function SelectPsychologistModal({
               ))}
             </div>
           ) : filteredPsychologists.length === 0 ? (
-            <div className="py-10 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
-              <Users className="w-8 h-8 mx-auto text-slate-400 opacity-60" />
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                {searchQuery ? "Tidak ada psikolog yang cocok" : "Belum ada psikolog terverifikasi"}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                {searchQuery
-                  ? "Coba gunakan kata kunci nama atau spesialisasi lain."
-                  : "Psikolog berlisensi akan tampil di sini begitu terdaftar."}
-              </p>
-            </div>
+            <EmptyState
+              icon={<Users />}
+              title={<>{searchQuery ? "Tidak ada psikolog yang cocok" : "Belum ada psikolog terverifikasi"}</>}
+              description={<>{searchQuery ? "Coba gunakan kata kunci nama atau spesialisasi lain." : "Psikolog berlisensi akan tampil di sini begitu terdaftar."}</>}
+            />
           ) : (
             filteredPsychologists.map((psychologist) => {
               const coins = tarifToCoins(psychologist.tarif_sesi);

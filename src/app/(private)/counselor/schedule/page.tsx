@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Calendar, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Calendar, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WeeklyPatternEditor } from "@/components/views/counselor/schedule/weekly-pattern-editor";
 import { TimeOffManager } from "@/components/views/counselor/schedule/time-off-manager";
@@ -12,6 +12,9 @@ import {
   type ScheduleWeeklyItem,
   type TimeOffItem,
 } from "@/services/schedule.client";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 export default function CounselorSchedulePage() {
   const [data, setData] = useState<CounselorScheduleData | null>(null);
@@ -57,24 +60,17 @@ export default function CounselorSchedulePage() {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       {/* 1. Header Halaman */}
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-          <Calendar className="text-teal-600 dark:text-teal-400" size={28} />
-          Jadwal Praktik & Ketersediaan Sesi
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Kelola pola jadwal mingguan, waktu libur pengecualian, dan status penerimaan booking sesi konseling
-        </p>
-      </div>
+      <PageHeader
+        icon={<Calendar className="text-teal-600 dark:text-teal-400" size={28} />}
+        title="Jadwal Praktik & Ketersediaan Sesi"
+        description="Kelola pola jadwal mingguan, waktu libur pengecualian, dan status penerimaan booking sesi konseling"
+      />
 
       {/* 2. Loading State */}
       {loading && (
-        <div className="p-12 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="animate-spin text-teal-600 dark:text-teal-400" size={32} />
-          <p className="text-xs text-slate-500 font-semibold">Memuat data jadwal praktik...</p>
-        </div>
+        <LoadingState label="Memuat data jadwal praktik..." className="p-12 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900" />
       )}
 
       {/* 3. Error State */}
@@ -125,6 +121,6 @@ export default function CounselorSchedulePage() {
           />
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

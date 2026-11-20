@@ -10,6 +10,7 @@ import { bookingClient, BookingApiError } from "@/services/booking.client";
 import { peerTicketClient, PeerTicketApiError } from "@/services/peer-tickets.client";
 import { systemSettingsClient } from "@/services/system-settings.client";
 import { walletClient } from "@/services/wallet.client";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 export interface SessionTipCardProps {
   bookingId?: string;
@@ -195,10 +196,7 @@ export function SessionTipCard({
 
   if (loadingSettings) {
     return (
-      <div className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex items-center justify-center gap-2 text-xs text-slate-400">
-        <Loader2 size={13} className="animate-spin text-teal-600" />
-        <span>Memuat data tip...</span>
-      </div>
+      <LoadingState inline label="Memuat data tip..." className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40" />
     );
   }
 

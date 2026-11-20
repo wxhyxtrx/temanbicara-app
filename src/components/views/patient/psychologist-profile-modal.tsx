@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
+import { EmptyState } from "@/components/shared/molecules/empty-state";
 
 interface PsychologistProfileModalProps {
   consultant?: Consultant | null;
@@ -416,15 +416,12 @@ export function PsychologistProfileModal({
                   </Button>
                 </div>
               ) : activeSlots.length === 0 ? (
-                <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center space-y-1">
-                  <Clock className="w-5 h-5 mx-auto text-slate-400" />
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Tidak ada slot jadwal yang tersedia di tanggal ini
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Silakan pilih tanggal lain yang memiliki penanda slot hijau di atas.
-                  </p>
-                </div>
+                <EmptyState
+                  size="compact"
+                  icon={<Clock />}
+                  title="Tidak ada slot jadwal yang tersedia di tanggal ini"
+                  description="Silakan pilih tanggal lain yang memiliki penanda slot hijau di atas."
+                />
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {activeSlots.map((slotIso) => {
@@ -513,14 +510,11 @@ export function PsychologistProfileModal({
                 ))}
               </div>
             ) : publicReviews.length === 0 ? (
-              <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1">
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Belum ada ulasan tertulis untuk psikolog ini
-                </p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                  Ulasan akan tercantum secara anonim setelah sesi konseling selesai.
-                </p>
-              </div>
+              <EmptyState
+                size="compact"
+                title="Belum ada ulasan tertulis untuk psikolog ini"
+                description="Ulasan akan tercantum secara anonim setelah sesi konseling selesai."
+              />
             ) : (
               <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                 {publicReviews.map((rev, idx) => (

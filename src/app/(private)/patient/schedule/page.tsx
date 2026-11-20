@@ -1,14 +1,11 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback, Suspense } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,11 +13,8 @@ import {
   Calendar as CalendarIcon,
   PlusCircle,
   Search,
-  Clock,
-
   RefreshCw,
   History,
-  Sparkles,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { BookingModal } from "@/components/views/schedule/booking-modal";
@@ -33,8 +27,9 @@ import { RescheduleBookingModal } from "@/components/views/schedule/reschedule-b
 import { ChooseRefundModal } from "@/components/views/schedule/choose-refund-modal";
 import { notify } from "@/lib/toast";
 import { bookingClient } from "@/services/booking.client";
-import type { PatientBookingView, BookingStatus } from "@/types/booking";
+import type { PatientBookingView } from "@/types/booking";
 import type { PublicPsychologist } from "@/types/user-profile";
+import { PageHeader } from "@/components/shared/molecules/page-header";
 
 type ScheduleTab = "upcoming" | "history";
 
@@ -229,26 +224,21 @@ function PatientScheduleContent() {
   return (
     <div className="flex flex-col gap-6 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Page Header */}
-      <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-            Jadwal Konseling Saya
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Kelola sesi konseling aktif, janji temu mendatang, dan riwayat konsultasi privat Anda
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            onClick={() => setIsSelectPsychologistOpen(true)}
-            className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-4 py-2 h-9 font-semibold shadow-xs gap-1.5 cursor-pointer"
-          >
-            <PlusCircle size={15} />
-            <span>Jadwalkan Konsultasi Baru</span>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Jadwal Konseling Saya"
+        description="Kelola sesi konseling aktif, janji temu mendatang, dan riwayat konsultasi privat Anda"
+        actions={
+          <>
+            <Button
+              onClick={() => setIsSelectPsychologistOpen(true)}
+              className="text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-xl px-4 py-2 h-9 font-semibold shadow-xs gap-1.5 cursor-pointer"
+            >
+              <PlusCircle size={15} />
+              <span>Jadwalkan Konsultasi Baru</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* 2. Main Card Container with Tabs */}
       <Card className="w-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs rounded-2xl overflow-hidden">

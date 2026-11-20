@@ -11,7 +11,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -21,9 +20,7 @@ import {
   AlertTriangle,
   Clock,
   Loader2,
-  Calendar,
   AlertCircle,
-  CheckCircle2,
 } from "lucide-react";
 import { notify } from "@/lib/toast";
 import {
@@ -32,6 +29,7 @@ import {
   type TimeOffItem,
   type ConflictingBooking,
 } from "@/services/schedule.client";
+import { EmptyState } from "@/components/shared/molecules/empty-state";
 
 interface TimeOffManagerProps {
   initialTimeOff: TimeOffItem[];
@@ -288,15 +286,12 @@ export function TimeOffManager({
 
         {/* Daftar Waktu Libur */}
         {timeOffList.length === 0 ? (
-          <div className="p-8 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-center">
-            <CalendarOff size={28} className="mx-auto text-slate-400 dark:text-slate-500 mb-2 opacity-60" />
-            <p className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Belum ada jadwal libur yang diatur
-            </p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-              Slot praktik Anda akan dibuka penuh sesuai pola mingguan reguler di atas.
-            </p>
-          </div>
+          <EmptyState
+            size="compact"
+            icon={<CalendarOff size={28} />}
+            title="Belum ada jadwal libur yang diatur"
+            description="Slot praktik Anda akan dibuka penuh sesuai pola mingguan reguler di atas."
+          />
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {timeOffList.map((item) => {

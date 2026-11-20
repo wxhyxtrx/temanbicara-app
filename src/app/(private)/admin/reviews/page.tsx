@@ -27,9 +27,11 @@ import {
   AlertCircle,
   Calendar,
   MessageSquare,
-  ShieldAlert,
-  CheckCircle2,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { FilterTabs } from "@/components/shared/molecules/filter-tabs";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 type ModerationFilter = "all" | "reported" | "hidden";
 
@@ -306,31 +308,26 @@ export default function AdminReviewsPage() {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       {/* 1. Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-            Moderasi Ulasan Sesi Konseling
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Kurasi dan moderasi ulasan pasien terhadap psikolog klinis untuk menjaga kepatuhan dan integritas komunitas
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchReviews(page, filter, limit)}
-            disabled={isLoading}
-            className="text-xs rounded-xl h-9 gap-1.5 border-slate-200 dark:border-slate-800 cursor-pointer"
-          >
-            <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
-            <span>Segarkan Ulasan</span>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Moderasi Ulasan Sesi Konseling"
+        description="Kurasi dan moderasi ulasan pasien terhadap psikolog klinis untuk menjaga kepatuhan dan integritas komunitas"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchReviews(page, filter, limit)}
+              disabled={isLoading}
+              className="text-xs rounded-xl h-9 gap-1.5 border-slate-200 dark:border-slate-800 cursor-pointer"
+            >
+              <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+              <span>Segarkan Ulasan</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* 2. Kartu Metrik */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -405,41 +402,16 @@ export default function AdminReviewsPage() {
 
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
               {/* Filter Tabs */}
-              <div className="inline-flex rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange("reported")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    filter === "reported"
-                      ? "bg-amber-500 text-white shadow-2xs font-bold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                  }`}
-                >
-                  Dilaporkan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange("hidden")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    filter === "hidden"
-                      ? "bg-rose-600 text-white shadow-2xs font-bold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                  }`}
-                >
-                  Disembunyikan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFilterChange("all")}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    filter === "all"
-                      ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                  }`}
-                >
-                  Semua
-                </button>
-              </div>
+              <FilterTabs
+                ariaLabel="Filter status ulasan"
+                value={filter}
+                onChange={handleFilterChange}
+                options={[
+                  { value: "reported", label: "Dilaporkan", tone: "amber" },
+                  { value: "hidden", label: "Disembunyikan", tone: "rose" },
+                  { value: "all", label: "Semua", tone: "neutral" },
+                ]}
+              />
 
               {/* Search Bar */}
               <div className="relative flex-1 sm:w-60">
@@ -457,10 +429,7 @@ export default function AdminReviewsPage() {
 
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
-              <Loader2 size={24} className="animate-spin text-teal-600" />
-              <span className="text-xs">Memuat ulasan moderasi...</span>
-            </div>
+            <LoadingState label="Memuat ulasan moderasi..." className="py-16" />
           ) : error ? (
             <div className="py-16 flex flex-col items-center justify-center gap-3 text-center px-4">
               <AlertCircle size={32} className="text-rose-500" />
@@ -627,6 +596,6 @@ export default function AdminReviewsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

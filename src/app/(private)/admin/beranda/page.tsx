@@ -23,6 +23,9 @@ import {
 import { userService } from "@/services/user.service";
 import { crisisClient } from "@/services/crisis.client";
 import type { AdminDashboardStatsData } from "@/types/user-profile";
+import { WelcomeHero, HeroAction } from "@/components/shared/organisms/welcome-hero";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { EmptyState } from "@/components/shared/molecules/empty-state";
 
 const REASON_LABELS: Record<string, string> = {
   session_platform_fee: "Bagi Hasil Sesi Konsultasi",
@@ -82,71 +85,42 @@ export default function AdminBerandaPage() {
   const activePeerCount = stats?.active_sessions?.peer_count ?? 0;
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      {/* 1. Header Hero Admin */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-950 to-slate-950 text-white p-6 sm:p-8 md:p-10 shadow-lg border border-teal-800/60 dark:border-teal-900/40">
-        <div className="absolute top-0 right-10 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 left-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+    <PageShell>
+      {/* 1. Hero sambutan */}
+      <WelcomeHero
+        badge="Sistem Pengawasan & Administrasi TemanBicara"
+        title="Pusat Kendali Platform"
+        description="Memantau metrik real-time platform: pertumbuhan pengguna terdaftar, verifikasi lisensi mitra, perputaran koin top-up, antrean payout, dan pendapatan platform."
+        actions={
+          <>
+            <HeroAction variant="primary" href="/admin/users?tab=verifications" icon={<FileCheck2 size={17} />}>
+              <span>Verifikasi Mitra</span>
+              {loading ? (
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-800 text-white text-xs font-semibold">...</span>
+              ) : pendingMitra > 0 ? (
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-slate-950 text-emerald-300 text-xs font-bold animate-pulse">
+                  {pendingMitra} Baru
+                </span>
+              ) : null}
+            </HeroAction>
+            <HeroAction href="/admin/transactions" icon={<Wallet size={17} />}>
+              <span>Antrean Payout</span>
+              {loading ? (
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-teal-800 text-teal-200 text-xs">...</span>
+              ) : pendingPayout > 0 ? (
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-xs font-bold animate-pulse">
+                  {pendingPayout} Menunggu
+                </span>
+              ) : null}
+            </HeroAction>
+            <HeroAction onClick={fetchStats} disabled={loading} icon={<RefreshCw size={15} className={loading ? "animate-spin" : ""} />}>
+              Segarkan Data
+            </HeroAction>
+          </>
+        }
+      />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
-          <div className="space-y-3.5 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/60 border border-teal-700/60 text-teal-200 text-xs font-semibold backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Sistem Pengawasan & Administrasi TemanBicara</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white tracking-tight leading-snug">
-              Pusat Kendali Platform
-            </h1>
-
-            <p className="text-sm sm:text-base text-teal-100/80 leading-relaxed max-w-xl">
-              Memantau metrik real-time platform: pertumbuhan pengguna terdaftar, verifikasi lisensi mitra, perputaran koin top-up, antrean payout, dan pendapatan platform.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link href="/admin/users?tab=verifications">
-                <Button className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-5 py-5 text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-2">
-                  <FileCheck2 size={17} />
-                  <span>Verifikasi Mitra</span>
-                  {loading ? (
-                    <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-semibold">...</span>
-                  ) : pendingMitra > 0 ? (
-                    <span className="ml-1 px-2 py-0.5 rounded-full bg-slate-950 text-emerald-300 text-xs font-bold animate-pulse">
-                      {pendingMitra} Baru
-                    </span>
-                  ) : null}
-                </Button>
-              </Link>
-
-              <Link href="/admin/transactions">
-                <Button variant="outline" className="border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-4 py-5 text-sm cursor-pointer gap-2">
-                  <Wallet size={17} />
-                  <span>Antrean Payout</span>
-                  {loading ? (
-                    <span className="ml-1 px-2 py-0.5 rounded-full bg-teal-800 text-teal-200 text-xs">...</span>
-                  ) : pendingPayout > 0 ? (
-                    <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-xs font-bold animate-pulse">
-                      {pendingPayout} Menunggu
-                    </span>
-                  ) : null}
-                </Button>
-              </Link>
-
-              <Button
-                variant="outline"
-                onClick={fetchStats}
-                disabled={loading}
-                className="border-teal-700/80 bg-teal-900/30 hover:bg-teal-800/50 text-teal-200 font-semibold rounded-xl px-4 py-5 text-sm cursor-pointer gap-2"
-              >
-                <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-                <span>Segarkan Data</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Banner jika gagal fetch */}
+{/* Error Banner jika gagal fetch */}
       {error && (
         <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
           <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
@@ -462,9 +436,10 @@ export default function AdminBerandaPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="p-3.5 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500">
-                      Belum ada rincian transaksi pendapatan yang terakumulasi.
-                    </div>
+                    <EmptyState
+                      size="compact"
+                      title="Belum ada rincian transaksi pendapatan yang terakumulasi."
+                    />
                   )}
                 </div>
               </>
@@ -617,6 +592,6 @@ export default function AdminBerandaPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

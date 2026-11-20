@@ -25,6 +25,10 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { FilterTabs } from "@/components/shared/molecules/filter-tabs";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 const SUMMARY_CARDS = [
   { key: "active" as const, label: "Sengketa Aktif", sub: "Dana tertahan menunggu resolusi", border: "border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300", textVal: "text-amber-900 dark:text-amber-200", iconBg: "bg-amber-500", icon: ShieldAlert },
@@ -266,27 +270,25 @@ export default function AdminSengketaPage() {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200 min-w-0 max-w-full">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-w-0">
-        <div className="space-y-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight truncate">
-            Pengelolaan Sengketa Payout
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Peninjauan penahanan dana dan eksekusi resolusi sengketa transaksi pembayaran mitra
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fetchHolds(page, currentTab, limit)}
-          disabled={isLoading}
-          className="text-xs rounded-xl h-9 gap-1.5 border-slate-200 dark:border-slate-800 cursor-pointer shrink-0"
-        >
-          <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
-          <span>Segarkan</span>
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Pengelolaan Sengketa Payout"
+        description="Peninjauan penahanan dana dan eksekusi resolusi sengketa transaksi pembayaran mitra"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchHolds(page, currentTab, limit)}
+              disabled={isLoading}
+              className="text-xs rounded-xl h-9 gap-1.5 border-slate-200 dark:border-slate-800 cursor-pointer shrink-0"
+            >
+              <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+              <span>Segarkan</span>
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {SUMMARY_CARDS.map((card) => {
@@ -332,23 +334,16 @@ export default function AdminSengketaPage() {
               <CardDescription className="text-xs text-slate-500 dark:text-slate-400 font-nunito">Pilih tab status di bawah untuk melihat sengketa aktif, dibebaskan, atau dipotong</CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-              <div className="inline-flex rounded-xl p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
-                {(["active", "cleared", "deducted"] as DisputedHoldStatus[]).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => handleTabChange(t)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg transition-colors cursor-pointer",
-                      currentTab === t
-                        ? t === "active" ? "bg-amber-500 text-white shadow-2xs font-bold" : t === "cleared" ? "bg-emerald-600 text-white shadow-2xs font-bold" : "bg-rose-600 text-white shadow-2xs font-bold"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                    )}
-                  >
-                    {t === "active" ? "Aktif" : t === "cleared" ? "Dibebaskan" : "Dipotong"}
-                  </button>
-                ))}
-              </div>
+              <FilterTabs
+                ariaLabel="Filter status sengketa"
+                value={currentTab}
+                onChange={handleTabChange}
+                options={[
+                  { value: "active", label: "Aktif", tone: "amber" },
+                  { value: "cleared", label: "Dibebaskan", tone: "emerald" },
+                  { value: "deducted", label: "Dipotong", tone: "rose" },
+                ]}
+              />
               <div className="relative flex-1 sm:w-60 min-w-[180px]">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
@@ -364,10 +359,7 @@ export default function AdminSengketaPage() {
 
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
-              <Loader2 size={24} className="animate-spin text-teal-600" />
-              <span className="text-xs">Memuat daftar sengketa...</span>
-            </div>
+            <LoadingState label="Memuat daftar sengketa..." className="py-16" />
           ) : filteredHolds.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-center px-4">
               <AlertCircle size={28} className="text-slate-300 dark:text-slate-600" />
@@ -547,6 +539,6 @@ export default function AdminSengketaPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

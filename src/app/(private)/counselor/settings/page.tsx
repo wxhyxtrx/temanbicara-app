@@ -16,8 +16,6 @@ import {
   CheckCircle2,
   Coins,
   Lock,
-  Plus,
-  X,
   Loader2,
   Edit3,
   AlertCircle,
@@ -35,6 +33,9 @@ import { notify } from "@/lib/toast";
 import { userService, UserApiError } from "@/services/user.service";
 import { usePublicSettings } from "@/hooks/use-public-settings";
 import type { PsikologProfile, UpdateMePsikologPayload } from "@/types/user-profile";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { TagInput } from "@/components/shared/molecules/tag-input";
 
 const SUGGESTED_SPECIALIZATIONS = [
   "Ansietas Klinis", "Depresi & Gangguan Mood", "Trauma & PTSD", "Konseling Relasi & Pasangan",
@@ -56,7 +57,6 @@ export default function CounselorSettingsPage() {
   // Editable fields
   const [phone, setPhone] = useState("");
   const [specializations, setSpecializations] = useState<string[]>([]);
-  const [newTagInput, setNewTagInput] = useState("");
   const [experienceYears, setExperienceYears] = useState<number>(0);
   const [sessionRate, setSessionRate] = useState<number>(150000);
   const [extensionPriceCoins, setExtensionPriceCoins] = useState<number>(2);
@@ -111,22 +111,6 @@ export default function CounselorSettingsPage() {
       isSubscribed = false;
     };
   }, [minExtCoins]);
-
-  const handleAddTag = (tagToAdd: string) => {
-    const trimmed = tagToAdd.trim();
-    if (!trimmed) return;
-    if (specializations.includes(trimmed)) return;
-    if (specializations.length >= 10) {
-      notify.error("Batas Maksimal", "Maksimal 10 bidang spesialisasi.");
-      return;
-    }
-    setSpecializations((prev) => [...prev, trimmed]);
-    setNewTagInput("");
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setSpecializations((prev) => prev.filter((t) => t !== tagToRemove));
-  };
 
   const calculatedCoins = Math.floor(sessionRate / 10000);
 
@@ -199,16 +183,12 @@ export default function CounselorSettingsPage() {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       {/* 1. Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-          Pengaturan Praktik & Lisensi SIPPK
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Kelola kontak WhatsApp, tarif per sesi, tarif ekstensi, spesialisasi klinis, dan kredensial praktik psikolog
-        </p>
-      </div>
+      <PageHeader
+        title="Pengaturan Praktik & Lisensi SIPPK"
+        description="Kelola kontak WhatsApp, tarif per sesi, tarif ekstensi, spesialisasi klinis, dan kredensial praktik psikolog"
+      />
 
       {saveSuccess && (
         <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold animate-in fade-in">
@@ -346,83 +326,18 @@ export default function CounselorSettingsPage() {
             </div>
 
             {/* Bidang Spesialisasi Klinis */}
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Bidang Spesialisasi & Keahlian Konseling ({specializations.length}/10)
-              </Label>
-
-              {/* Selected Tags */}
-              <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
-                {specializations.length === 0 ? (
-                  <span className="text-xs text-slate-400 italic">Belum ada spesialisasi dipilih</span>
-                ) : (
-                  specializations.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs font-semibold"
-                    >
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        aria-label={`Hapus ${tag}`}
-                        className="inline-flex p-2.5 -my-2.5 -mr-2.5 rounded-md hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
-                        title="Hapus"
-                      >
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))
-                )}
-              </div>
-
-              {/* Input New Tag */}
-              <div className="flex items-center gap-2">
-                <Input
-                  value={newTagInput}
-                  onChange={(e) => setNewTagInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddTag(newTagInput);
-                    }
-                  }}
-                  placeholder="Ketik spesialisasi baru lalu tekan Tambah"
-                  className="h-8 text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAddTag(newTagInput)}
-                  className="h-8 text-xs rounded-xl shrink-0 gap-1"
-                >
-                  <Plus size={13} />
-                  Tambah
-                </Button>
-              </div>
-
-              {/* Suggestions */}
-              <div className="space-y-1 pt-1">
-                <span className="text-[11px] text-slate-400 block font-nunito">Saran spesialisasi populer:</span>
-                <div className="flex flex-wrap gap-1">
-                  {SUGGESTED_SPECIALIZATIONS.filter((s) => !specializations.includes(s)).map((sug) => (
-                    <button
-                      key={sug}
-                      type="button"
-                      onClick={() => handleAddTag(sug)}
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 hover:bg-teal-50 dark:bg-slate-800 dark:hover:bg-teal-950/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-                    >
-                      + {sug}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {errors.spesialisasi && (
-                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">{errors.spesialisasi}</p>
-              )}
-            </div>
+            <TagInput
+              className="pt-2 border-t border-slate-100 dark:border-slate-800"
+              label="Bidang Spesialisasi & Keahlian Konseling"
+              itemName="bidang spesialisasi"
+              value={specializations}
+              onChange={setSpecializations}
+              suggestions={SUGGESTED_SPECIALIZATIONS}
+              suggestionsLabel="Saran spesialisasi populer:"
+              placeholder="Ketik spesialisasi baru lalu tekan Tambah"
+              emptyText="Belum ada spesialisasi dipilih"
+              error={errors.spesialisasi}
+            />
           </CardContent>
         </Card>
 
@@ -467,7 +382,7 @@ export default function CounselorSettingsPage() {
       </Card>
       </div>
       )}
-    </div>
+    </PageShell>
   );
 }
 

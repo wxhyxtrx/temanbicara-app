@@ -27,6 +27,7 @@ import { crisisClient } from "@/services/crisis.client";
 import { syncRealtimeAuth } from "@/lib/supabase/realtime-token";
 import type { PeerTicketDetailView } from "@/types/peer-tickets";
 import type { PeerMessageView, PeerMessageEntity } from "@/types/peer-messages";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 function getGreetingTimer(claimedAt: string | null, now: number) {
   if (!claimedAt) return { text: "10:00", isExpired: false };
@@ -480,10 +481,7 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
 
   if (loadingTicket) {
     return (
-      <div className="min-h-[480px] h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
-        <Loader2 size={32} className="animate-spin text-teal-600" />
-        <p className="text-sm text-slate-600 dark:text-slate-300">Menyiapkan Ruang Dengar...</p>
-      </div>
+      <LoadingState label="Menyiapkan Ruang Dengar..." className="min-h-[480px] h-[calc(100dvh-7rem)] p-8" />
     );
   }
 
@@ -644,10 +642,7 @@ export function PeerRoomView({ ticketId, role }: PeerRoomViewProps) {
         )}
 
         {loadingMessages ? (
-          <div className="flex items-center justify-center py-10 text-xs text-slate-400 gap-2">
-            <Loader2 size={16} className="animate-spin text-teal-600" />
-            <span>Memuat pesan obrolan...</span>
-          </div>
+          <LoadingState inline label="Memuat pesan obrolan..." className="py-10" />
         ) : messages.length === 0 ? (
           <div className="py-12 text-center space-y-2 max-w-sm mx-auto px-4">
             <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto">

@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -21,6 +19,9 @@ import { notify } from "@/lib/toast";
 import type { RelawanProfile } from "@/types/user-profile";
 import type { RelawanPeerTicketDTO, RelawanQuotaInfo, PeerRatingSummaryDTO } from "@/types/peer-tickets";
 import { ListenerQueueSummaryCard } from "@/components/views/listener/listener-queue-summary-card";
+import { WelcomeHero, HeroAction, HeroInfoCard } from "@/components/shared/organisms/welcome-hero";
+import { StatCard } from "@/components/shared/molecules/stat-card";
+import { PageShell } from "@/components/shared/templates/page-shell";
 
 export default function ListenerBerandaPage() {
   const user = useUserStore((state) => state.user);
@@ -160,139 +161,87 @@ export default function ListenerBerandaPage() {
     "Sahabat Pendengar";
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      {/* 1. Header Hero Sanctuary */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-950 to-slate-950 text-white p-6 sm:p-8 md:p-10 shadow-lg border border-teal-800/60 dark:border-teal-900/40">
-        <div className="absolute top-0 right-10 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 left-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
-          <div className="space-y-3.5 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/60 border border-teal-700/60 text-teal-200 text-xs font-semibold backdrop-blur-md">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isAvailable ? "bg-emerald-400 animate-pulse" : "bg-slate-400"
-                }`}
-              />
-              <span>
-                {isAvailable
-                  ? "Status: Siaga Menerima Curhat"
-                  : "Status: Istirahat / Belum Aktif"}
-              </span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white tracking-tight leading-snug">
-              Halo, {displayName}
-            </h1>
-
-            <p className="text-sm sm:text-base text-teal-100/80 leading-relaxed max-w-xl">
-              Hadir dan mendengarkan dengan penuh penerimaan tanpa menghakimi adalah obat terbaik bagi jiwa yang lelah. Terima kasih telah menjadi suaka bagi sesama.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link href="/listener/queue">
-                <Button className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-5 py-5 text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-2">
-                  <Headphones size={17} />
-                  Buka Ruang Dengar
-                </Button>
-              </Link>
-              <Link href="/listener/guidelines">
-                <Button variant="outline" className="border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-5 py-5 text-sm cursor-pointer gap-2">
-                  <BookOpen size={17} />
-                  Panduan Etika PFA
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Burnout Guard Status Card */}
-          <div className="rounded-2xl bg-teal-900/40 border border-teal-700/50 p-4 sm:p-5 backdrop-blur-md max-w-xs space-y-3 shrink-0">
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <p className="text-xs font-bold text-emerald-300">Burnout Guard Relawan</p>
-                <p className="text-[11px] text-teal-100/70 font-nunito">
-                  {`Beban: ${ticketsClaimed}/${dailyQuota} sesi hari ini`}
-                </p>
+    <PageShell>
+      {/* 1. Hero sambutan */}
+      <WelcomeHero
+        badgeLive={isAvailable}
+        badge={isAvailable ? "Status: Siaga Menerima Curhat" : "Status: Istirahat / Belum Aktif"}
+        title={`Halo, ${displayName}`}
+        description="Hadir dan mendengarkan dengan penuh penerimaan tanpa menghakimi adalah obat terbaik bagi jiwa yang lelah. Terima kasih telah menjadi suaka bagi sesama."
+        actions={
+          <>
+            <HeroAction variant="primary" href="/listener/queue" icon={<Headphones size={17} />}>
+              Buka Ruang Dengar
+            </HeroAction>
+            <HeroAction href="/listener/guidelines" icon={<BookOpen size={17} />}>
+              Panduan Etika PFA
+            </HeroAction>
+          </>
+        }
+        aside={
+          <HeroInfoCard
+            title={
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <p>Burnout Guard Relawan</p>
+                  <p className="text-[11px] text-teal-100/70 font-nunito font-normal">
+                    {`Beban: ${ticketsClaimed}/${dailyQuota} sesi hari ini`}
+                  </p>
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Switch
+                        checked={isAvailable}
+                        disabled={isTogglingSiaga}
+                        onCheckedChange={handleToggleSiaga}
+                        className="cursor-pointer"
+                        aria-label="Status siaga menerima curhat"
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{isAvailable ? "Klik untuk mode istirahat" : "Klik untuk siaga menerima curhat"}</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Switch
-                      checked={isAvailable}
-                      disabled={isTogglingSiaga}
-                      onCheckedChange={handleToggleSiaga}
-                      className="cursor-pointer"
-                    />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{isAvailable ? "Klik untuk mode istirahat" : "Klik untuk siaga menerima curhat"}</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="pt-2 border-t border-teal-800/80 flex items-center justify-between text-[11px] text-teal-300">
-              <span>Batas Aman: {dailyQuota} Sesi/Hari</span>
-              <span className="flex items-center gap-1 text-amber-300 font-bold">
-                <Star size={12} className="fill-amber-300" /> {loadingRating ? "..." : ratingDisplay}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+            }
+            footer={
+              <>
+                <span>Batas Aman: {dailyQuota} Sesi/Hari</span>
+                <span className="flex items-center gap-1 text-amber-300 font-bold">
+                  <Star size={12} className="fill-amber-300" /> {loadingRating ? "..." : ratingDisplay}
+                </span>
+              </>
+            }
+          />
+        }
+      />
 
-      {/* 2. KPI Stat Cards (2 Cards) */}
+      {/* 2. Kartu statistik */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {/* Card 1: Jiwa Didampingi */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5 min-w-0">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Jiwa Didampingi</span>
-            <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-400">
-              <Heart size={15} />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-teal-900 dark:text-teal-300">
-            {loadingProfile ? (
-              <span className="text-base text-slate-400 font-normal">Memuat...</span>
-            ) : (
-              <>
-                {totalSesi} <span className="text-xs font-semibold text-teal-600">Teman</span>
-              </>
-            )}
-          </p>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
-            Percakapan empatik selesai
-          </span>
-        </div>
-
-        {/* Card 2: Skor Kehangatan (Rating) */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5 min-w-0">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Skor Kehangatan</span>
-            <span className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400">
-              <Star size={15} className="fill-amber-400 text-amber-400" />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-amber-700 dark:text-amber-400">
-            {loadingRating ? (
-              <span className="text-base text-slate-400 font-normal">Memuat...</span>
-            ) : ratingDisplay === "-" ? (
-              <span className="text-slate-900 dark:text-white">-</span>
-            ) : (
-              <>
-                {ratingDisplay}{" "}
-                <span className="text-xs font-semibold text-slate-500">/ 5.0</span>
-              </>
-            )}
-          </p>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
-            {loadingRating
-              ? "Memuat ringkasan ulasan..."
-              : `Berdasarkan ${reviewCount} ulasan apresiasi anonim`}
-          </span>
-        </div>
+        <StatCard
+          label="Jiwa Didampingi"
+          icon={<Heart size={15} />}
+          loading={loadingProfile}
+          value={totalSesi}
+          unit="Teman"
+          valueClassName="text-teal-900 dark:text-teal-300"
+          hint="Percakapan empatik selesai"
+        />
+        <StatCard
+          label="Skor Kehangatan"
+          icon={<Star size={15} className="fill-amber-400 text-amber-400" />}
+          tone="amber"
+          loading={loadingRating}
+          value={ratingDisplay}
+          unit={ratingDisplay === "-" ? undefined : "/ 5.0"}
+          valueClassName={ratingDisplay === "-" ? undefined : "text-amber-700 dark:text-amber-400"}
+          hint={`Berdasarkan ${reviewCount} ulasan apresiasi anonim`}
+        />
       </div>
 
-      {/* 3. Antrean Curhat Masuk & Panduan Pendengar */}
+{/* 3. Antrean Curhat Masuk & Panduan Pendengar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         {/* Left: Antrean Masuk (8 Cols) - Real Queue Summary Card */}
         <div className="lg:col-span-8 space-y-6 min-w-0">
@@ -342,6 +291,6 @@ export default function ListenerBerandaPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

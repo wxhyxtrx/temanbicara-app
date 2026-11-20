@@ -17,15 +17,11 @@ import {
   ChevronRight,
   MessageCircle,
   ShieldCheck,
-  Clock,
   AlertCircle,
-  Star,
   HeartHandshake,
   Users,
-  CheckCircle2,
   ArrowRight,
 } from "lucide-react";
-import { MdVerified } from "react-icons/md";
 import { useUserStore } from "@/store/user-store";
 import { peerTicketClient } from "@/services/peer-tickets.client";
 import type { PeerTicketEntity } from "@/types/peer-tickets";
@@ -41,6 +37,10 @@ import type { PatientBookingView } from "@/types/booking";
 import type { PasienProfile } from "@/types/user-profile";
 import { formatWibDateFull, formatWibTime, BOOKING_STATUS_CONFIG } from "@/lib/booking-utils";
 import { notify } from "@/lib/toast";
+import { WelcomeHero, HeroAction, HeroInfoCard } from "@/components/shared/organisms/welcome-hero";
+import { NoticeBanner } from "@/components/shared/molecules/notice-banner";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { EmptyState } from "@/components/shared/molecules/empty-state";
 
 export default function PatientBerandaPage() {
   const [mounted, setMounted] = useState<boolean>(false);
@@ -167,95 +167,77 @@ export default function PatientBerandaPage() {
   const displayName = getGreetingName();
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-10 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       <MaintenanceDrainingBanner />
 
-      {/* 1. Header Welcome Sanctuary Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-950 to-slate-950 text-white p-6 sm:p-7 xl:p-8 2xl:p-10 shadow-lg border border-teal-800/60 dark:border-teal-900/40">
-        {/* Calming ambient background glow */}
-        <div className="absolute top-0 right-10 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 left-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5 xl:gap-6">
-          <div className="space-y-3.5 flex-1 min-w-0 max-w-4xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/60 border border-teal-700/60 text-teal-200 text-xs font-semibold backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Ruang Suaka & Pendampingan Pasien</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white tracking-tight leading-snug">
-              Selamat Datang,{" "}
-              {!isProfileLoaded ? (
-                <Skeleton className="inline-block w-40 sm:w-48 h-8 sm:h-9 md:h-10 align-middle bg-teal-800/70 rounded-xl" />
-              ) : (
-                displayName
-              )}
-            </h1>
-
-            <p className="text-sm sm:text-base text-teal-100/80 leading-relaxed max-w-xl">
-              Setiap emosi yang kamu rasakan adalah valid. Ambil jeda, tarik napas perlahan, dan ketahuilah bahwa kamu tidak sendirian. Psikolog klinis dan pendengar sebaya kami siap mendampingimu.
-            </p>
-
-            <div className="flex flex-wrap xl:flex-nowrap items-center gap-2 xl:gap-2 2xl:gap-2.5 pt-2">
-              {(!activeTicket || activeTicket.status === "archived") && (
-                <Button
-                  type="button"
-                  onClick={handleOpenVentingModal}
-                  className="w-full sm:w-auto border border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 font-semibold rounded-xl px-3.5 xl:px-3 2xl:px-4 h-10 xl:h-10 text-xs sm:text-xs 2xl:text-sm cursor-pointer gap-1.5 sm:gap-2 backdrop-blur-md shadow-xs whitespace-nowrap"
-                >
-                  <HeartHandshake size={15} className="text-pink-400" />
-                  <span>Curhat Pendengar Sebaya</span>
-                </Button>
-              )}
-              <Link href="/patient/schedule?booking=true" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-3.5 xl:px-3 2xl:px-4 h-10 xl:h-10 text-xs sm:text-xs 2xl:text-sm cursor-pointer gap-1.5 sm:gap-2 whitespace-nowrap">
-                  <Calendar size={15} />
-                  <span>Reservasi Sesi Psikolog</span>
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* Clinical Assurance Mini-Card */}
-          <div className="rounded-2xl bg-teal-900/40 border border-teal-700/50 p-4 sm:p-5 backdrop-blur-md w-full lg:w-60 xl:w-64 2xl:w-72 shrink-0 space-y-3">
-            <div className="flex items-center gap-2.5 text-emerald-300 font-semibold text-xs">
-              <ShieldCheck size={18} />
-              <span>Standar Etika Medis HIMPSI</span>
-            </div>
-            <p className="text-xs text-teal-100/70 leading-relaxed font-nunito">
-              Semua sesi konseling dan catatan refleksi berada di bawah perlindungan kode etik kerahasiaan psikolog.
-            </p>
-            <div className="pt-1 flex items-center justify-between border-t border-teal-800/80 text-[11px] text-teal-300 font-medium">
-              <span>Sesi Terjadwal: {loadingUpcoming ? "..." : `${upcomingBookings.length} Sesi`}</span>
-              <Link href="/patient/schedule" className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold">
-                Lihat Jadwal →
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* 1. Hero sambutan */}
+      <WelcomeHero
+        badge="Ruang Suaka & Pendampingan Pasien"
+        title={
+          <>
+            Selamat Datang,{" "}
+            {!isProfileLoaded ? (
+              <Skeleton className="inline-block w-40 sm:w-48 h-8 sm:h-9 md:h-10 align-middle bg-teal-800/70 rounded-xl" />
+            ) : (
+              displayName
+            )}
+          </>
+        }
+        description="Setiap emosi yang kamu rasakan adalah valid. Ambil jeda, tarik napas perlahan, dan ketahuilah bahwa kamu tidak sendirian. Psikolog klinis dan pendengar sebaya kami siap mendampingimu."
+        actions={
+          <>
+            {(!activeTicket || activeTicket.status === "archived") && (
+              <HeroAction
+                onClick={handleOpenVentingModal}
+                icon={<HeartHandshake size={16} className="text-pink-300" />}
+                className="border-pink-500/50 bg-pink-950/40 hover:bg-pink-900/60 text-pink-100 hover:text-white"
+              >
+                Curhat Pendengar Sebaya
+              </HeroAction>
+            )}
+            <HeroAction href="/patient/schedule?booking=true" icon={<Calendar size={16} />}>
+              Reservasi Sesi Psikolog
+            </HeroAction>
+          </>
+        }
+        aside={
+          <HeroInfoCard
+            title={
+              <span className="flex items-center gap-2.5">
+                <ShieldCheck size={18} />
+                Standar Etika Medis HIMPSI
+              </span>
+            }
+            footer={
+              <>
+                <span>Sesi Terjadwal: {loadingUpcoming ? "..." : `${upcomingBookings.length} Sesi`}</span>
+                <Link href="/patient/schedule" className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold">
+                  Lihat Jadwal →
+                </Link>
+              </>
+            }
+          >
+            Semua sesi konseling dan catatan refleksi berada di bawah perlindungan kode etik kerahasiaan psikolog.
+          </HeroInfoCard>
+        }
+      />
 
       {/* 2. Banner: Lengkapi Kontak Darurat */}
       {isEmergencyContactEmpty && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 shadow-xs">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div className="space-y-0.5">
-              <h4 className="font-bold font-heading text-sm text-amber-950 dark:text-amber-100">
-                Lengkapi Kontak Darurat
-              </h4>
-              <p className="text-xs text-amber-800 dark:text-amber-300 font-nunito leading-relaxed">
-                Informasi kontak darurat Anda belum lengkap. Kontak ini wajib sesuai SOP telekonseling klinis untuk penanganan cepat saat kondisi krisis.
-              </p>
-            </div>
-          </div>
-          <Link href="/patient/settings" className="shrink-0 self-start sm:self-center">
-            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-xs px-3.5 py-1.5 h-8 gap-1.5 shadow-xs cursor-pointer">
-              <span>Lengkapi Sekarang</span>
-              <ArrowRight size={13} />
-            </Button>
-          </Link>
-        </div>
+        <NoticeBanner
+          tone="warning"
+          title="Lengkapi Kontak Darurat"
+          action={
+            <Link href="/patient/settings">
+              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-xs px-3.5 py-1.5 h-8 gap-1.5 shadow-xs cursor-pointer">
+                <span>Lengkapi Sekarang</span>
+                <ArrowRight size={13} />
+              </Button>
+            </Link>
+          }
+        >
+          Informasi kontak darurat Anda belum lengkap. Kontak ini wajib sesuai SOP telekonseling klinis untuk penanganan cepat saat kondisi krisis.
+        </NoticeBanner>
       )}
 
       {/* Main 2-Column Clinical Dashboard Layout */}
@@ -433,15 +415,12 @@ export default function PatientBerandaPage() {
                   ))}
                 </div>
               ) : filteredPsychologists.length === 0 ? (
-                <div className="p-6 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1.5">
-                  <Users className="w-7 h-7 mx-auto text-slate-400 opacity-60" />
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    {psychologistSearch ? "Tidak ada psikolog yang cocok" : "Belum ada psikolog terverifikasi"}
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    {psychologistSearch ? "Coba gunakan kata kunci spesialisasi lain." : "Psikolog yang disetujui admin akan tampil otomatis di sini."}
-                  </p>
-                </div>
+                <EmptyState
+                  size="compact"
+                  icon={<Users />}
+                  title={<>{psychologistSearch ? "Tidak ada psikolog yang cocok" : "Belum ada psikolog terverifikasi"}</>}
+                  description={<>{psychologistSearch ? "Coba gunakan kata kunci spesialisasi lain." : "Psikolog yang disetujui admin akan tampil otomatis di sini."}</>}
+                />
               ) : (
                 filteredPsychologists.map((psychologist) => (
                   <PsychologistCard
@@ -540,6 +519,6 @@ export default function PatientBerandaPage() {
         slotIso={selectedSlotIso}
         initialConsultantId={bookingConsultantId}
       />
-    </div>
+    </PageShell>
   );
 }

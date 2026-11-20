@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { RelawanPeerTicketDTO, RelawanQuotaInfo } from "@/types/peer-tickets";
 import { formatWibTime } from "@/lib/booking-utils";
+import { EmptyState } from "@/components/shared/molecules/empty-state";
 
 interface ListenerQueueSummaryCardProps {
   poolTickets: RelawanPeerTicketDTO[];
@@ -283,17 +284,11 @@ export function ListenerQueueSummaryCard({
             )}
           </div>
         ) : (
-          <div className="py-5 flex flex-col items-center justify-center text-center gap-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 p-4 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-100 dark:border-teal-900 flex items-center justify-center text-teal-600 dark:text-teal-400 shrink-0">
-              <Headphones size={20} />
-            </div>
-            <p className="font-heading font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
-              Antrean Sedang Lengang
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
-              Belum ada teman bicara yang membutuhkan pendengar saat ini. Terima kasih telah bersiap siaga.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Headphones size={20} />}
+            title="Antrean Sedang Lengang"
+            description="Belum ada teman bicara yang membutuhkan pendengar saat ini. Terima kasih telah bersiap siaga."
+          />
         )}
 
         {/* Status Notices */}

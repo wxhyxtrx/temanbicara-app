@@ -44,6 +44,8 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
 
 
 type SettingsSubTab = "keuangan" | "sesi" | "relawan" | "sistem";
@@ -387,15 +389,11 @@ export default function AdminSettingsPage() {
   const hasMeta = !!meta && Object.keys(meta).length > 0;
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-          Pengaturan Sistem & Operasional Platform
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Konfigurasi ekonomi koin, kebijakan sesi, relawan, unggahan, dan jadwal maintenance
-        </p>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Pengaturan Sistem & Operasional Platform"
+        description="Konfigurasi ekonomi koin, kebijakan sesi, relawan, unggahan, dan jadwal maintenance"
+      />
 
       <Tabs defaultValue="settings" className="gap-4">
         <TabsList className="max-w-full">
@@ -659,6 +657,6 @@ export default function AdminSettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }

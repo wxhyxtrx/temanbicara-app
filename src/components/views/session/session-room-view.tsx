@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Loader2, Shield, User } from "lucide-react";
+import { AlertCircle, Shield, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabasePublic } from "@/lib/supabase/client";
 import { notify } from "@/lib/toast";
@@ -29,6 +29,7 @@ import type {
   SessionMessageEntity,
   SessionMessageView,
 } from "@/types/booking";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 interface SessionRoomViewProps {
   bookingId: string;
@@ -503,10 +504,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
 
   if (loading) {
     return (
-      <div className="h-[calc(100dvh-7rem)] flex flex-col items-center justify-center p-8 text-center space-y-3 font-nunito">
-        <Loader2 size={32} className="animate-spin text-teal-600" />
-        <p className="text-sm text-slate-600 dark:text-slate-300">Menyiapkan ruang sesi konseling...</p>
-      </div>
+      <LoadingState label="Menyiapkan ruang sesi konseling..." className="h-[calc(100dvh-7rem)] p-8" />
     );
   }
 
@@ -595,10 +593,7 @@ export function SessionRoomView({ bookingId, role }: SessionRoomViewProps) {
             )}
 
             {loadingMessages ? (
-              <div className="flex items-center justify-center py-10 text-xs text-slate-400 gap-2">
-                <Loader2 size={16} className="animate-spin text-teal-600" />
-                <span>Memuat riwayat percakapan...</span>
-              </div>
+              <LoadingState inline label="Memuat riwayat percakapan..." className="py-10" />
             ) : messages.length === 0 ? (
               <div className="py-12 text-center space-y-2 max-w-sm mx-auto">
                 <div className="w-12 h-12 rounded-full bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto">

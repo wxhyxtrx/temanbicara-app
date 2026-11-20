@@ -20,10 +20,6 @@ import {
   UserPlus,
   Filter,
   FileCheck2,
-  CheckCircle2,
-  ShieldCheck,
-  Clock,
-  Sparkles,
 } from "lucide-react";
 import { userService } from "@/services/user.service";
 import { UserDetailModal } from "@/components/views/admin/user-detail-modal";
@@ -32,6 +28,8 @@ import { DeleteUserDialog } from "@/components/views/admin/delete-user-dialog";
 import { useUserStore } from "@/store/user-store";
 import type { AdminUserRow, ApiAccountStatus, ApiRole } from "@/types/user-profile";
 import { DataTable, Column } from "@/components/shared/atoms/Table";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
 
 const statusBadgeConfig: Record<
   ApiAccountStatus,
@@ -351,42 +349,41 @@ function AdminUsersContent() {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       {/* 1. Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-            Manajemen Pengguna & Verifikasi Mitra
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+      <PageHeader
+        title="Manajemen Pengguna & Verifikasi Mitra"
+        description={
+          <>
             {activeTab === "verifications"
-              ? "Validasi dokumen legal lisensi praktik SIPPK/STR psikolog klinis dan berkas pendengar sebaya"
-              : `Direktori seluruh akun terdaftar, status kepatuhan etika, dan peran akses platform (${total} akun)`}
-          </p>
-        </div>
+            ? "Validasi dokumen legal lisensi praktik SIPPK/STR psikolog klinis dan berkas pendengar sebaya"
+            : `Direktori seluruh akun terdaftar, status kepatuhan etika, dan peran akses platform (${total} akun)`}
+          </>
+        }
+        actions={
+          <>
+            <Button
+              size="sm"
+              onClick={() => setIsCreateOpen(true)}
+              className="text-xs gap-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold cursor-pointer shadow-xs"
+            >
+              <UserPlus size={14} />
+              <span>Tambah Pengguna</span>
+            </Button>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <Button
-            size="sm"
-            onClick={() => setIsCreateOpen(true)}
-            className="text-xs gap-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold cursor-pointer shadow-xs"
-          >
-            <UserPlus size={14} />
-            <span>Tambah Pengguna</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchUsers}
-            disabled={loading}
-            className="text-xs gap-1.5 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-          >
-            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-            <span>Segarkan</span>
-          </Button>
-        </div>
-      </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchUsers}
+              disabled={loading}
+              className="text-xs gap-1.5 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+            >
+              <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+              <span>Segarkan</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* 2. Main Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
@@ -597,7 +594,7 @@ function AdminUsersContent() {
         onOpenChange={(open) => !open && setDeleteTargetUser(null)}
         onDeleted={fetchUsers}
       />
-    </div>
+    </PageShell>
   );
 }
 

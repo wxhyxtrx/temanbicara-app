@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,18 +25,16 @@ import {
   Wallet,
   Building2,
   Clock,
-  CheckCircle2,
-  XCircle,
   AlertCircle,
   Loader2,
   ShieldCheck,
-  ArrowDownLeft,
-  ArrowUpRight,
   Info,
-  DollarSign,
   AlertTriangle,
   Receipt,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 interface MitraEarningsViewProps {
   role: "psikolog" | "relawan";
@@ -386,25 +384,24 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       {/* 1. Header Halaman */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-w-0">
-        <div className="space-y-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-            Honor & Penarikan Dana
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+      <PageHeader
+        title="Honor & Penarikan Dana"
+        description={
+          <>
             Kelola pendapatan sesi dan ajukan pencairan dana ({roleTitle || "Mitra TemanBicara"}) langsung ke rekening bank
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="px-3.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 text-xs font-semibold flex items-center gap-2 shadow-2xs min-w-0">
-            <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />
-            <span className="truncate">Nama rekening dicek admin saat pencairan</span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <div className="px-3.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200/90 dark:border-teal-800 text-teal-900 dark:text-teal-200 text-xs font-semibold flex items-center gap-2 shadow-2xs min-w-0">
+              <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />
+              <span className="truncate">Nama rekening dicek admin saat pencairan</span>
+            </div>
+          </>
+        }
+      />
 
       {/* 2. Kartu Ringkasan Saldo (Dalam RUPIAH) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -734,10 +731,7 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
 
             <CardContent className="p-0">
               {loadingPayouts ? (
-                <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
-                  <Loader2 size={24} className="animate-spin text-teal-600" />
-                  <span className="text-xs">Memuat riwayat pengajuan penarikan dana...</span>
-                </div>
+                <LoadingState label="Memuat riwayat pengajuan penarikan dana..." className="py-16" />
               ) : payouts.length === 0 ? (
                 <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-center px-4">
                   <AlertCircle size={28} className="text-slate-300 dark:text-slate-600" />
@@ -858,6 +852,6 @@ export function MitraEarningsView({ role, roleTitle }: MitraEarningsViewProps) {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

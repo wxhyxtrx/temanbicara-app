@@ -32,21 +32,19 @@ import {
   ArrowUpRight,
   Search,
   FileText,
-  Calendar,
   CheckCircle2,
   Clock,
   ArrowLeft,
   PlusCircle,
   Eye,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   AlertCircle,
   ShieldCheck,
   CreditCard,
   XCircle,
   RefreshCw,
 } from "lucide-react";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 function getReasonMetadata(reason: string): { label: string; description: string; isCredit: boolean } {
   switch (reason) {
@@ -987,10 +985,7 @@ export default function PatientTransactionHistoryPage() {
 
             <CardContent className="p-0">
               {isLoadingTopups ? (
-                <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
-                  <Loader2 size={24} className="animate-spin text-teal-600" />
-                  <span className="text-xs">Memuat riwayat top-up...</span>
-                </div>
+                <LoadingState label="Memuat riwayat top-up..." className="py-16" />
               ) : filteredTopups.length === 0 ? (
                 <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-center px-4">
                   <AlertCircle size={28} className="text-slate-300 dark:text-slate-600" />
@@ -1156,10 +1151,7 @@ export default function PatientTransactionHistoryPage() {
 
             <CardContent className="p-0">
               {isLoading ? (
-                <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
-                  <Loader2 size={24} className="animate-spin text-teal-600" />
-                  <span className="text-xs">Memuat data mutasi buku besar...</span>
-                </div>
+                <LoadingState label="Memuat data mutasi buku besar..." className="py-16" />
               ) : filteredList.length === 0 ? (
                 <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-center px-4">
                   <AlertCircle size={28} className="text-slate-300 dark:text-slate-600" />

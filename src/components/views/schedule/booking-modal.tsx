@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,14 +34,13 @@ import {
   AlertCircle,
   CheckCircle2,
   RefreshCw,
-  User,
-  ArrowRight,
   ExternalLink,
 } from "lucide-react";
 import { MdVerified } from "react-icons/md";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { notify } from "@/lib/toast";
+import { EmptyState } from "@/components/shared/molecules/empty-state";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -525,9 +524,10 @@ export function BookingModal({
                   ))}
                 </div>
               ) : availableSlots.length === 0 ? (
-                <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center text-xs text-slate-500">
-                  Tidak ada slot jadwal yang tersedia dalam 14 hari ke depan untuk psikolog ini.
-                </div>
+                <EmptyState
+                  size="compact"
+                  title="Tidak ada slot jadwal yang tersedia dalam 14 hari ke depan untuk psikolog ini."
+                />
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-36 overflow-y-auto p-0.5">
                   {availableSlots.map((slot) => {

@@ -10,14 +10,12 @@ import {
   Calendar,
   Clock,
   Video,
-  ShieldCheck,
   Star,
   Users,
   Wallet,
   FileText,
   UserCheck,
   CalendarDays,
-  MessageSquare,
   User,
   RefreshCw,
   XCircle,
@@ -30,16 +28,19 @@ import { userService } from "@/services/user.service";
 import { walletClient } from "@/services/wallet.client";
 import { bookingClient } from "@/services/booking.client";
 import { notify } from "@/lib/toast";
+import { WelcomeHero, HeroAction, HeroInfoCard } from "@/components/shared/organisms/welcome-hero";
+import { StatCard } from "@/components/shared/molecules/stat-card";
 import {
   formatWibDateFull,
   formatWibTime,
-  BOOKING_STATUS_CONFIG,
 } from "@/lib/booking-utils";
 import { CounselorCancelBookingModal } from "@/components/views/counselor/counselor-cancel-booking-modal";
 import { MaintenanceDrainingBanner } from "@/components/shared/maintenance-draining-banner";
 import type { WalletInfoResponse } from "@/types/wallet";
 import type { PsikologProfile } from "@/types/user-profile";
 import type { PsikologBookingView } from "@/types/booking";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { StatusBadge } from "@/components/shared/atoms/status-badge";
 
 export default function CounselorBerandaPage() {
   const user = useUserStore((state) => state.user);
@@ -201,152 +202,88 @@ export default function CounselorBerandaPage() {
   const pendingRupiah = wallet?.pending_rupiah ?? 0;
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <PageShell>
       <MaintenanceDrainingBanner />
 
-      {/* 1. Header Welcome Counselor Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-900 via-teal-950 to-slate-950 text-white p-6 sm:p-8 md:p-10 shadow-lg border border-teal-800/60 dark:border-teal-900/40">
-        <div className="absolute top-0 right-10 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 left-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
-          <div className="space-y-3.5 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/60 border border-teal-700/60 text-teal-200 text-xs font-semibold backdrop-blur-md">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Portal Psikolog Berlisensi SIPPK</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-heading text-white tracking-tight leading-snug">
-              Selamat Bertugas, {counselorName}
-            </h1>
-
-            <p className="text-sm sm:text-base text-teal-100/80 leading-relaxed max-w-xl">
-              Terima kasih telah menghadirkan ruang aman dan pemulihan bagi para klien. Seluruh sesi terlindungi oleh standar etika kerahasiaan medis HIMPSI.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link href="/counselor/schedule">
-                <Button className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-5 py-5 text-sm cursor-pointer shadow-md shadow-emerald-500/20 gap-2">
-                  <Calendar size={17} />
-                  Kelola Kalender Praktik
-                </Button>
-              </Link>
-              <Link href="/counselor/clients">
-                <Button variant="outline" className="border-teal-700/80 bg-teal-900/50 hover:bg-teal-800/60 text-teal-100 font-semibold rounded-xl px-5 py-5 text-sm cursor-pointer gap-2">
-                  <FileText size={17} />
-                  Catatan Rekam Klien
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          {/* License & Verification Badge Card */}
-          <div className="rounded-2xl bg-teal-900/40 border border-teal-700/50 p-4 sm:p-5 backdrop-blur-md max-w-xs space-y-3 shrink-0">
-            <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
-              <MdVerified className="text-sky-400 text-base" />
-              <span>SIPPK: {licenseNumber}</span>
-            </div>
-            <p className="text-xs text-teal-100/70 leading-relaxed font-nunito">
-              Psikolog Klinis Terverifikasi • Spesialisasi {specialty}.
-            </p>
-            <div className="pt-2 border-t border-teal-800/80 flex items-center justify-between text-[11px] text-teal-300">
-              <span className="flex items-center gap-1 font-semibold text-emerald-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" /> Praktik Buka
+      {/* 1. Hero sambutan */}
+      <WelcomeHero
+        badge="Portal Psikolog Berlisensi SIPPK"
+        title={`Selamat Bertugas, ${counselorName}`}
+        description="Terima kasih telah menghadirkan ruang aman dan pemulihan bagi para klien. Seluruh sesi terlindungi oleh standar etika kerahasiaan medis HIMPSI."
+        actions={
+          <>
+            <HeroAction variant="primary" href="/counselor/schedule" icon={<Calendar size={17} />}>
+              Kelola Kalender Praktik
+            </HeroAction>
+            <HeroAction href="/counselor/clients" icon={<FileText size={17} />}>
+              Catatan Rekam Klien
+            </HeroAction>
+          </>
+        }
+        aside={
+          <HeroInfoCard
+            title={
+              <span className="flex items-center gap-2">
+                <MdVerified className="text-sky-400 text-base" />
+                SIPPK: {licenseNumber}
               </span>
-              <span className="font-mono text-emerald-200">
-                {loadingProfile ? "Memuat tarif..." : tarifDisplay}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. KPI Stat Cards (4 Cards) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1: Pasien Aktif */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Pasien Aktif</span>
-            <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-400">
-              <Users size={15} />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white">
-            {upcomingBookings.length} <span className="text-xs font-semibold text-slate-500">Sesi Aktif</span>
-          </p>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
-            {upcomingBookings.length > 0 ? "Memiliki janji temu terjadwal" : "Belum ada sesi terjadwal"}
-          </span>
-        </div>
-
-        {/* Card 2: Sesi Selesai */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Sesi Selesai</span>
-            <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400">
-              <UserCheck size={15} />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white">
-            {completedBookings.filter((b) => b.status === "completed").length}{" "}
-            <span className="text-xs font-semibold text-slate-500">Sesi</span>
-          </p>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
-            {completedBookings.length > 0 ? "Riwayat sesi selesai tercatat" : "Belum ada sesi selesai"}
-          </span>
-        </div>
-
-        {/* Card 3: Rating Praktik */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Rating Praktik</span>
-            <span className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400">
-              <Star size={15} className="fill-amber-400 text-amber-400" />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-slate-900 dark:text-white flex items-center gap-1.5">
-            {averageRating ? (
+            }
+            footer={
               <>
-                <span>{averageRating}</span>
-                <span className="text-xs font-semibold text-slate-500">
-                  / 5.0 ({sessionReviews.length})
+                <span className="flex items-center gap-1 font-semibold text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" /> Praktik Buka
                 </span>
+                <span className="font-mono text-emerald-200">{loadingProfile ? "Memuat tarif..." : tarifDisplay}</span>
               </>
-            ) : (
-              "Belum ada"
-            )}
-          </p>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-nunito">
-            {averageRating ? "Berdasarkan ulasan sesi pasien" : "Belum cukup ulasan masuk"}
-          </span>
-        </div>
+            }
+          >
+            Psikolog Klinis Terverifikasi • Spesialisasi {specialty}.
+          </HeroInfoCard>
+        }
+      />
 
-        {/* Card 4: Saldo Siap Cair (Dompet Asli) */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Saldo Siap Cair</span>
-            <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-400">
-              <Wallet size={15} />
-            </span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold font-heading text-teal-900 dark:text-teal-300 font-mono">
-            {loadingWallet ? (
-              <span className="text-base text-slate-400 font-normal">Memuat...</span>
-            ) : (
-              `Rp ${availableRupiah.toLocaleString("id-ID")}`
-            )}
-          </p>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-nunito truncate">
-            {loadingWallet
+      {/* 2. Kartu statistik */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          label="Pasien Aktif"
+          icon={<Users size={15} />}
+          value={upcomingBookings.length}
+          unit="Sesi Aktif"
+          hint={upcomingBookings.length > 0 ? "Memiliki janji temu terjadwal" : "Belum ada sesi terjadwal"}
+        />
+        <StatCard
+          label="Sesi Selesai"
+          icon={<UserCheck size={15} />}
+          tone="emerald"
+          value={completedBookings.filter((b) => b.status === "completed").length}
+          unit="Sesi"
+          hint={completedBookings.length > 0 ? "Riwayat sesi selesai tercatat" : "Belum ada sesi selesai"}
+        />
+        <StatCard
+          label="Rating Praktik"
+          icon={<Star size={15} className="fill-amber-400 text-amber-400" />}
+          tone="amber"
+          value={averageRating || "Belum ada"}
+          unit={averageRating ? `/ 5.0 (${sessionReviews.length})` : undefined}
+          hint={averageRating ? "Berdasarkan ulasan sesi pasien" : "Belum cukup ulasan masuk"}
+        />
+        <StatCard
+          label="Saldo Siap Cair"
+          icon={<Wallet size={15} />}
+          loading={loadingWallet}
+          value={`Rp ${availableRupiah.toLocaleString("id-ID")}`}
+          valueClassName="text-teal-900 dark:text-teal-300 font-mono"
+          hint={
+            loadingWallet
               ? "Menghubungkan ke dompet mitra"
               : pendingRupiah > 0
                 ? `Rp ${pendingRupiah.toLocaleString("id-ID")} tertahan (holding)`
-                : "Sesuai data dompet mitra"}
-          </span>
-        </div>
+                : "Sesuai data dompet mitra"
+          }
+        />
       </div>
 
-      {/* 3. Main 2-Column Section */}
+{/* 3. Main 2-Column Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
         {/* Left Column: Permintaan Janji Temu Masuk (8 Cols) */}
         <div className="lg:col-span-8 space-y-6">
@@ -410,10 +347,6 @@ export default function CounselorBerandaPage() {
               ) : (
                 <div className="space-y-3.5">
                   {upcomingBookings.map((b) => {
-                    const statusConfig = BOOKING_STATUS_CONFIG[b.status] || {
-                      label: b.status,
-                      badgeClass: "bg-slate-100 text-slate-700",
-                    };
                     const dateFull = formatWibDateFull(b.start_at);
                     const timeWib = formatWibTime(b.start_at);
 
@@ -432,9 +365,7 @@ export default function CounselorBerandaPage() {
                                 <p className="font-bold text-sm text-slate-900 dark:text-white font-heading">
                                   {b.patient_display_name}
                                 </p>
-                                <Badge className={`${statusConfig.badgeClass} text-[10px] font-semibold py-0 px-2`}>
-                                  {statusConfig.label}
-                                </Badge>
+                                <StatusBadge status={b.status} className="py-0" />
                               </div>
                               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                 Sesi Konseling Privat 45 Menit • Biaya Sesi {b.price_coins} Koin
@@ -744,6 +675,6 @@ export default function CounselorBerandaPage() {
           loadUpcomingBookings();
         }}
       />
-    </div>
+    </PageShell>
   );
 }

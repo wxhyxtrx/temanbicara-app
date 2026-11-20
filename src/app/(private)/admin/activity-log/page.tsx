@@ -9,7 +9,10 @@ import { cn } from "@/lib/utils";
 import { listActivityLogs, type ActivityCategory, type ActivityLogItem } from "@/services/activity-log.client";
 import type { PaginationMeta } from "@/types/wallet";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, AlertTriangle, Loader2, RefreshCw, Search, UserRound, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, RefreshCw, Search, UserRound, X } from "lucide-react";
+import { PageHeader } from "@/components/shared/molecules/page-header";
+import { PageShell } from "@/components/shared/templates/page-shell";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 const ACTION_LABELS: Record<string, string> = {
   "auth.login": "Masuk ke akun",
@@ -298,27 +301,25 @@ export default function AdminActivityLogPage() {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200 min-w-0 max-w-full">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-w-0">
-        <div className="space-y-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight truncate">
-            Log Aktivitas
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Jejak audit seluruh pengguna: akun, sesi & curhat, ulasan, keselamatan, aksi admin, transaksi uang, dan kejadian otomatis sistem. Isi percakapan tidak pernah dicatat. Catatan tidak dapat diubah atau dihapus.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void fetchLogs()}
-          disabled={isLoading}
-          className="text-xs rounded-xl h-9 gap-1.5 border-slate-200 dark:border-slate-800 cursor-pointer shrink-0"
-        >
-          <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
-          <span>Segarkan</span>
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Log Aktivitas"
+        description="Jejak audit seluruh pengguna: akun, sesi & curhat, ulasan, keselamatan, aksi admin, transaksi uang, dan kejadian otomatis sistem. Isi percakapan tidak pernah dicatat. Catatan tidak dapat diubah atau dihapus."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void fetchLogs()}
+              disabled={isLoading}
+              className="text-xs rounded-xl h-9 gap-1.5 border-slate-200 dark:border-slate-800 cursor-pointer shrink-0"
+            >
+              <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+              <span>Segarkan</span>
+            </Button>
+          </>
+        }
+      />
 
       {errorMessage && (
         <div className="p-4 rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50/70 dark:bg-rose-950/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -435,10 +436,7 @@ export default function AdminActivityLogPage() {
 
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
-              <Loader2 size={24} className="animate-spin text-teal-600" />
-              <span className="text-xs">Memuat log aktivitas...</span>
-            </div>
+            <LoadingState label="Memuat log aktivitas..." className="py-16" />
           ) : items.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-center px-4">
               <AlertCircle size={28} className="text-slate-300 dark:text-slate-600" />
@@ -452,6 +450,6 @@ export default function AdminActivityLogPage() {
           <TablePaginationFooter totalItems={meta.total} page={page} limit={limit} onPageChange={setPage} onChangeLimit={setLimit} />
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

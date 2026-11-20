@@ -8,6 +8,7 @@ import { bookingClient } from "@/services/booking.client";
 import { peerTicketClient } from "@/services/peer-tickets.client";
 import type { SessionReviewEntity } from "@/types/booking";
 import type { PeerReviewEntity } from "@/types/peer-tickets";
+import { LoadingState } from "@/components/shared/atoms/loading-state";
 
 export interface SessionReviewCardProps<T = SessionReviewEntity | PeerReviewEntity> {
   bookingId?: string;
@@ -154,10 +155,7 @@ export function SessionReviewCard<T = SessionReviewEntity | PeerReviewEntity>({
 
   if (loading) {
     return (
-      <div className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex items-center justify-center gap-2 text-xs text-slate-400">
-        <Loader2 size={14} className="animate-spin text-teal-600" />
-        <span>Memuat data penilaian sesi...</span>
-      </div>
+      <LoadingState inline label="Memuat data penilaian sesi..." className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40" />
     );
   }
 

@@ -28,6 +28,7 @@ import { useNotificationStore } from "@/store/notification-store";
 import { notify } from "@/lib/toast";
 import { userService, UserApiError } from "@/services/user.service";
 import type { PasienProfile, UpdateMePasienPayload } from "@/types/user-profile";
+import { PageHeader } from "@/components/shared/molecules/page-header";
 
 export default function PatientSettingsPage() {
   const user = useUserStore((state) => state.user);
@@ -178,14 +179,10 @@ export default function PatientSettingsPage() {
   return (
     <div className="flex flex-col gap-6 font-nunito pb-12 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* 1. Page Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-bold font-heading text-slate-900 dark:text-white tracking-tight">
-          Pengaturan & Privasi Pasien
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Kelola identitas klinis, tingkat kerahasiaan konseling, kontak darurat, dan keamanan akunmu
-        </p>
-      </div>
+      <PageHeader
+        title="Pengaturan & Privasi Pasien"
+        description="Kelola identitas klinis, tingkat kerahasiaan konseling, kontak darurat, dan keamanan akunmu"
+      />
 
       {/* Banner Peringatan Kontak Darurat Kosong */}
       {isEmergencyEmpty && (
