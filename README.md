@@ -130,25 +130,25 @@ Proyek portofolio, belum untuk penggunaan produksi. Pembayaran berjalan di mode 
 
 ### Desktop
 
-![Landing page](screenshots/01-landing.png)
+![Landing page](public/readme/01-landing.png)
 
 | Pasien | Psikolog |
 |---|---|
-| ![Beranda pasien](screenshots/02-pasien-beranda.png) | ![Beranda psikolog](screenshots/05-psikolog-beranda.png) |
-| ![Pilih psikolog untuk booking](screenshots/03-pasien-pilih-psikolog.png) | ![Honor dan payout psikolog](screenshots/06-psikolog-honor-payout.png) |
-| ![Riwayat top-up koin](screenshots/04-pasien-riwayat-topup.png) | ![Beranda relawan pendengar sebaya](screenshots/07-relawan-beranda.png) |
+| ![Beranda pasien](public/readme/02-pasien-beranda.png) | ![Beranda psikolog](public/readme/05-psikolog-beranda.png) |
+| ![Pilih psikolog untuk booking](public/readme/03-pasien-pilih-psikolog.png) | ![Honor dan payout psikolog](public/readme/06-psikolog-honor-payout.png) |
+| ![Riwayat top-up koin](public/readme/04-pasien-riwayat-topup.png) | ![Beranda relawan pendengar sebaya](public/readme/07-relawan-beranda.png) |
 
 | Admin | |
 |---|---|
-| ![Beranda admin](screenshots/08-admin-beranda.png) | ![Pengelolaan sengketa payout](screenshots/09-admin-sengketa.png) |
-| ![Pengaturan sistem](screenshots/10-admin-pengaturan.png) | |
+| ![Beranda admin](public/readme/08-admin-beranda.png) | ![Pengelolaan sengketa payout](public/readme/09-admin-sengketa.png) |
+| ![Pengaturan sistem](public/readme/10-admin-pengaturan.png) | |
 
 ### Mobile
 
 | Landing | Beranda pasien | Booking sesi | Top-up koin |
 |---|---|---|---|
-| ![Landing HP](screenshots/mobile-01-landing.jpg) | ![Beranda pasien HP](screenshots/mobile-02-pasien-beranda.jpg) | ![Pilih jadwal HP](screenshots/mobile-03-pilih-jadwal.jpg) | ![Top-up HP](screenshots/mobile-04-topup.jpg) |
+| ![Landing HP](public/readme/mobile-01-landing.jpg) | ![Beranda pasien HP](public/readme/mobile-02-pasien-beranda.jpg) | ![Pilih jadwal HP](public/readme/mobile-03-pilih-jadwal.jpg) | ![Top-up HP](public/readme/mobile-04-topup.jpg) |
 
 | Ruang sesi | Jadwal psikolog | Ruang curhat relawan | Admin |
 |---|---|---|---|
-| ![Ruang sesi HP](screenshots/mobile-05-ruang-sesi.jpg) | ![Jadwal psikolog HP](screenshots/mobile-06-psikolog-jadwal.jpg) | ![Ruang dengar relawan HP](screenshots/mobile-07-relawan-ruang-dengar.jpg) | ![Eskalasi krisis HP](screenshots/mobile-08-admin-krisis.jpg) |
+| ![Ruang sesi HP](public/readme/mobile-05-ruang-sesi.jpg) | ![Jadwal psikolog HP](public/readme/mobile-06-psikolog-jadwal.jpg) | ![Ruang dengar relawan HP](public/readme/mobile-07-relawan-ruang-dengar.jpg) | ![Eskalasi krisis HP](public/readme/mobile-08-admin-krisis.jpg) |
